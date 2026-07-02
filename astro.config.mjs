@@ -4,7 +4,7 @@ import react from '@astrojs/react';
 import netlify from '@astrojs/netlify';
 
 export default defineConfig({
-  output: 'server',
+  output: 'static',
   integrations: [mdx(), react()],
   adapter: netlify(),
   site: 'https://aethel-ai.netlify.app',
