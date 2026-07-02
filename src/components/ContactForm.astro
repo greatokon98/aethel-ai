@@ -1,0 +1,73 @@
+---
+---
+
+<form class="contact-form" method="post" action="/api/contact" netlify>
+  <div class="contact-form__field">
+    <label for="name" class="contact-form__label">Name</label>
+    <input type="text" id="name" name="name" class="contact-form__input" required />
+  </div>
+  <div class="contact-form__field">
+    <label for="email" class="contact-form__label">Email</label>
+    <input type="email" id="email" name="email" class="contact-form__input" required />
+  </div>
+  <div class="contact-form__field">
+    <label for="subject" class="contact-form__label">Subject</label>
+    <input type="text" id="subject" name="subject" class="contact-form__input" />
+  </div>
+  <div class="contact-form__field">
+    <label for="message" class="contact-form__label">Message</label>
+    <textarea id="message" name="message" class="contact-form__textarea" rows="6" required></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">Send Message</button>
+</form>
+
+<style>
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+  }
+
+  .contact-form__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .contact-form__label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .contact-form__input,
+  .contact-form__textarea {
+    padding: var(--space-3) var(--space-4);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    outline: none;
+    transition: border-color var(--transition);
+  }
+
+  .contact-form__input:focus,
+  .contact-form__textarea:focus {
+    border-color: var(--color-accent);
+  }
+
+  .contact-form__textarea {
+    resize: vertical;
+    min-height: 120px;
+  }
+
+  .contact-form button {
+    align-self: flex-start;
+  }
+</style>

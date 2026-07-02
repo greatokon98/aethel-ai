@@ -1,0 +1,308 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Sidebar from '../components/Sidebar.astro';
+
+export interface Props {
+  title: string;
+  description?: string;
+  publishDate: Date;
+  featuredImage?: string;
+  categories?: string[];
+  tags?: string[];
+  author?: string;
+  readingTime?: number;
+  recentPosts?: Array<{
+    title: string;
+    slug: string;
+    publishDate: Date;
+  }>;
+  allCategories?: string[];
+}
+
+const {
+  title,
+  description,
+  publishDate,
+  featuredImage,
+  categories,
+  tags,
+  author,
+  readingTime,
+  recentPosts = [],
+  allCategories = [],
+} = Astro.props;
+
+const formattedDate = publishDate.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<BaseLayout title={title} description={description} image={featuredImage}>
+  <article class="post-page">
+    <div class="container">
+      <div class="post-page__layout">
+        <div class="post-page__main">
+          <header class="post-page__header">
+            {categories && categories.length > 0 && (
+              <div class="post-page__categories">
+                {categories.map((cat) => (
+                  <span class="post-page__category">{cat}</span>
+                ))}
+              </div>
+            )}
+            <h1 class="post-page__title">{title}</h1>
+            <div class="post-page__meta">
+              <time datetime={publishDate.toISOString()}>{formattedDate}</time>
+              {readingTime && <span class="post-page__reading">{readingTime} min read</span>}
+              {author && <span>by {author}</span>}
+            </div>
+          </header>
+
+          {featuredImage && (
+            <div class="post-page__image-wrapper">
+              <img src={featuredImage} alt={title} class="post-page__image" />
+            </div>
+          )}
+
+          <div class="post-page__content">
+            <slot />
+          </div>
+
+          {tags && tags.length > 0 && (
+            <footer class="post-page__footer">
+              <div class="post-page__tags">
+                <span class="post-page__tags-label">Tags</span>
+                {tags.map((tag) => (
+                  <span class="post-page__tag">{tag}</span>
+                ))}
+              </div>
+            </footer>
+          )}
+        </div>
+        <div class="post-page__sidebar">
+          <Sidebar categories={allCategories} recentPosts={recentPosts} />
+        </div>
+      </div>
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .post-page {
+    padding: var(--space-12) 0 var(--space-16);
+  }
+
+  .post-page__layout {
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-width);
+    gap: var(--space-12);
+  }
+
+  .post-page__main {
+    min-width: 0;
+  }
+
+  .post-page__header {
+    margin-bottom: var(--space-8);
+  }
+
+  .post-page__categories {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  .post-page__category {
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-accent);
+    font-weight: 500;
+  }
+
+  .post-page__title {
+    font-family: var(--font-heading);
+    font-size: var(--text-5xl);
+    margin-bottom: var(--space-4);
+    line-height: var(--leading-tight);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  .post-page__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    color: var(--color-text-muted);
+  }
+
+  .post-page__reading::before {
+    content: '·';
+    margin-right: var(--space-3);
+  }
+
+  .post-page__image-wrapper {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: var(--space-10);
+  }
+
+  .post-page__image {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+
+  .post-page__content {
+    font-family: var(--font-body);
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+    max-width: var(--content-width);
+    font-weight: 300;
+  }
+
+  .post-page__content p {
+    margin-bottom: var(--space-6);
+  }
+
+  .post-page__content h2 {
+    font-family: var(--font-heading);
+    margin-top: var(--space-12);
+    margin-bottom: var(--space-4);
+    font-weight: 500;
+  }
+
+  .post-page__content h3 {
+    font-family: var(--font-heading);
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-3);
+    font-weight: 500;
+  }
+
+  .post-page__content ul,
+  .post-page__content ol {
+    margin-bottom: var(--space-6);
+    padding-left: var(--space-6);
+  }
+
+  .post-page__content li {
+    margin-bottom: var(--space-2);
+  }
+
+  .post-page__content blockquote {
+    border-left: 3px solid var(--color-accent);
+    padding-left: var(--space-6);
+    margin: var(--space-8) 0;
+    font-style: italic;
+    color: var(--color-text-secondary);
+    position: relative;
+  }
+
+  .post-page__content blockquote::before {
+    content: '\201C';
+    font-family: var(--font-heading);
+    font-size: var(--text-5xl);
+    color: var(--color-accent);
+    position: absolute;
+    top: -0.5rem;
+    left: var(--space-3);
+    opacity: 0.3;
+    line-height: 1;
+  }
+
+  .post-page__content strong {
+    font-weight: 500;
+  }
+
+  .post-page__content em {
+    font-style: italic;
+  }
+
+  .post-page__content a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-decoration-color: var(--color-accent-light);
+    text-underline-offset: 2px;
+  }
+
+  .post-page__content a:hover {
+    text-decoration-color: var(--color-accent);
+  }
+
+  .post-page__content img {
+    border-radius: var(--radius-md);
+    margin: var(--space-8) 0;
+  }
+
+  .post-page__content code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.875em;
+    padding: var(--space-1) var(--space-2);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .post-page__content pre {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-6);
+    overflow-x: auto;
+    margin: var(--space-6) 0;
+  }
+
+  .post-page__content pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: var(--text-sm);
+  }
+
+  .post-page__footer {
+    margin-top: var(--space-12);
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .post-page__tags {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .post-page__tags-label {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: var(--space-2);
+  }
+
+  .post-page__tag {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    padding: var(--space-1) var(--space-3);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 968px) {
+    .post-page__layout {
+      grid-template-columns: 1fr;
+    }
+
+    .post-page__title {
+      font-size: var(--text-4xl);
+    }
+  }
+</style>

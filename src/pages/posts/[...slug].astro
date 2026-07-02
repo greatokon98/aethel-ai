@@ -1,0 +1,127 @@
+---
+import PostLayout from '../../layouts/PostLayout.astro';
+import fs from 'node:fs';
+import path from 'node:path';
+import parseFrontmatter from 'front-matter';
+import { Marked } from 'marked';
+
+const marked = new Marked();
+
+function getReadingTime(body: string) {
+  const words = body.trim().split(/\s+/).length;
+  return Math.max(1, Math.ceil(words / 200));
+}
+
+export async function getStaticPaths() {
+  const postsDir = path.resolve('src/content/posts');
+  if (!fs.existsSync(postsDir)) return [];
+  const files = fs.readdirSync(postsDir).filter((f) => f.endsWith('.md'));
+  return files.map((file) => ({
+    params: { slug: file.replace(/\.md$/, '') },
+    props: { file },
+  }));
+}
+
+export const prerender = true;
+
+const { slug } = Astro.params;
+
+const postsDir = path.resolve('src/content/posts');
+const allFiles = fs.readdirSync(postsDir).filter((f) => f.endsWith('.md'));
+
+const allPosts = allFiles.map((f) => {
+  const c = fs.readFileSync(path.join(postsDir, f), 'utf-8');
+  const { attributes, body } = parseFrontmatter(c);
+  return {
+    ...attributes as Record<string, unknown>,
+    slug: f.replace(/\.md$/, ''),
+    body,
+    publishDate: new Date(attributes.publishDate as string),
+  };
+});
+
+const matchingFile = allFiles.find((f) => f.replace(/\.md$/, '') === slug);
+if (!matchingFile) {
+  return Astro.redirect('/404');
+}
+
+const fileContent = fs.readFileSync(path.join(postsDir, matchingFile), 'utf-8');
+const { attributes, body } = parseFrontmatter(fileContent);
+const publishDate = new Date(attributes.publishDate as string);
+const htmlContent = marked.parse(body);
+const readingTime = getReadingTime(body);
+
+const allCategories = [...new Set(allPosts.flatMap((p: any) => p.categories || []))] as string[];
+const recentPosts = allPosts
+  .filter((p: any) => p.slug !== slug)
+  .sort((a: any, b: any) => b.publishDate.getTime() - a.publishDate.getTime())
+  .slice(0, 5);
+---
+
+<PostLayout
+  title={attributes.title as string}
+  description={attributes.excerpt as string}
+  publishDate={publishDate}
+  featuredImage={attributes.featuredImage as string}
+  categories={attributes.categories as string[]}
+  tags={attributes.tags as string[]}
+  author={attributes.author as string}
+  readingTime={readingTime}
+  recentPosts={recentPosts}
+  allCategories={allCategories}
+>
+  <div class="post-content" set:html={htmlContent} />
+</PostLayout>
+
+<style>
+  .post-content {
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+    max-width: var(--content-width);
+  }
+
+  .post-content :global(p) {
+    margin-bottom: var(--space-6);
+  }
+
+  .post-content :global(h2) {
+    margin-top: var(--space-12);
+    margin-bottom: var(--space-4);
+  }
+
+  .post-content :global(h3) {
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-3);
+  }
+
+  .post-content :global(ul),
+  .post-content :global(ol) {
+    margin-bottom: var(--space-6);
+    padding-left: var(--space-6);
+  }
+
+  .post-content :global(li) {
+    margin-bottom: var(--space-2);
+  }
+
+  .post-content :global(blockquote) {
+    border-left: 3px solid var(--color-accent);
+    padding-left: var(--space-6);
+    margin: var(--space-8) 0;
+    font-style: italic;
+    color: var(--color-text-secondary);
+  }
+
+  .post-content :global(strong) {
+    font-weight: 600;
+  }
+
+  .post-content :global(em) {
+    font-style: italic;
+  }
+
+  .post-content :global(a) {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+</style>

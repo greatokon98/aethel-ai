@@ -1,0 +1,106 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import PostCard from '../components/PostCard.astro';
+import Sidebar from '../components/Sidebar.astro';
+import fs from 'node:fs';
+import path from 'node:path';
+import parseFrontmatter from 'front-matter';
+
+const postsDir = path.resolve('src/content/posts');
+const files = fs.readdirSync(postsDir).filter((f) => f.endsWith('.md'));
+
+function getSlug(file: string) {
+  return file.replace(/\.md$/, '');
+}
+
+function getReadingTime(body: string) {
+  const words = body.trim().split(/\s+/).length;
+  return Math.max(1, Math.ceil(words / 200));
+}
+
+const posts = files
+  .map((file) => {
+    const content = fs.readFileSync(path.join(postsDir, file), 'utf-8');
+    const { attributes, body } = parseFrontmatter(content);
+    return {
+      title: attributes.title as string || '',
+      excerpt: attributes.excerpt as string || '',
+      publishDate: new Date(attributes.publishDate as string || Date.now()),
+      featuredImage: attributes.featuredImage as string || '',
+      categories: (attributes.categories as string[]) || [],
+      tags: (attributes.tags as string[]) || [],
+      author: (attributes.author as string) || 'Aethel',
+      featured: (attributes.featured as boolean) || false,
+      slug: getSlug(file),
+      readingTime: getReadingTime(body),
+    };
+  })
+  .sort((a, b) => b.publishDate.getTime() - a.publishDate.getTime());
+
+const allCategories = [...new Set(posts.flatMap((p) => p.categories))];
+---
+
+<BaseLayout title="Home" description="Smart tools for everyday life — no jargon, just results.">
+  <Hero posts={posts} />
+  <section class="section blog-grid">
+    <div class="container">
+      <div class="blog-grid__layout">
+        <div class="blog-grid__main">
+          <h2 class="section-title fade-in">Latest Posts</h2>
+          <div class="blog-grid__posts">
+            {posts.map((post, i) => (
+              <div class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}>
+                <PostCard
+                  title={post.title}
+                  excerpt={post.excerpt}
+                  publishDate={post.publishDate}
+                  slug={post.slug}
+                  featuredImage={post.featuredImage}
+                  categories={post.categories}
+                  author={post.author}
+                  readingTime={post.readingTime}
+                  featured={post.featured}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div class="blog-grid__sidebar">
+          <Sidebar
+            categories={allCategories}
+            recentPosts={posts.map((p) => ({
+              title: p.title,
+              slug: p.slug,
+              publishDate: p.publishDate,
+            }))}
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .blog-grid__layout {
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-width);
+    gap: var(--space-12);
+  }
+
+  .blog-grid__posts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-6);
+  }
+
+  @media (max-width: 968px) {
+    .blog-grid__layout {
+      grid-template-columns: 1fr;
+    }
+
+    .blog-grid__posts {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

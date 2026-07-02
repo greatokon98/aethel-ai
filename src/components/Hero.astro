@@ -1,0 +1,265 @@
+---
+export interface Props {
+  posts: Array<{
+    title: string;
+    excerpt: string;
+    slug: string;
+    publishDate: Date;
+    featuredImage?: string;
+    categories?: string[];
+    readingTime?: number;
+  }>;
+}
+
+const { posts } = Astro.props;
+const featured = posts.filter((p) => (p as any).featured).length ? posts.filter((p) => (p as any).featured) : posts.slice(0, 3);
+---
+
+<section class="hero">
+  <div class="container">
+    <div class="hero__slider" id="hero-slider">
+      {featured.map((post, index) => (
+        <a
+          href={`/posts/${post.slug}`}
+          class="hero__slide"
+          class:list={{ 'hero__slide--active': index === 0 }}
+          data-slide={index}
+        >
+          <div class="hero__slide-bg">
+            {post.featuredImage ? (
+              <img src={post.featuredImage} alt={post.title} class="hero__slide-image" />
+            ) : (
+              <div class="hero__slide-placeholder"></div>
+            )}
+            <div class="hero__slide-overlay"></div>
+          </div>
+          <div class="hero__slide-content">
+            {post.categories && post.categories.length > 0 && (
+              <span class="hero__slide-category">{post.categories[0]}</span>
+            )}
+            <h2 class="hero__slide-title">{post.title}</h2>
+            <p class="hero__slide-excerpt">{post.excerpt}</p>
+            <div class="hero__slide-meta">
+              {post.readingTime && (
+                <span class="hero__slide-reading">{post.readingTime} min read</span>
+              )}
+              <span class="hero__slide-cta">
+                Read article
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+        </a>
+      ))}
+    </div>
+    <div class="hero__controls">
+      <div class="hero__dots">
+        {featured.map((_, index) => (
+          <button
+            class="hero__dot"
+            class:list={{ 'hero__dot--active': index === 0 }}
+            aria-label={`Go to slide ${index + 1}`}
+            data-dot={index}
+          />
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const slider = document.getElementById('hero-slider');
+  if (slider) {
+    const slides = slider.querySelectorAll('.hero__slide');
+    const dots = slider.querySelectorAll('.hero__dot');
+    let current = 0;
+
+    function goToSlide(index) {
+      slides.forEach((s, i) => {
+        s.classList.toggle('hero__slide--active', i === index);
+      });
+      dots.forEach((d, i) => {
+        d.classList.toggle('hero__dot--active', i === index);
+      });
+      current = index;
+    }
+
+    dots.forEach((dot) => {
+      dot.addEventListener('click', () => {
+        goToSlide(parseInt(dot.dataset.dot));
+      });
+    });
+
+    let interval = setInterval(() => {
+      goToSlide((current + 1) % slides.length);
+    }, 6000);
+
+    slider.addEventListener('mouseenter', () => clearInterval(interval));
+    slider.addEventListener('mouseleave', () => {
+      interval = setInterval(() => {
+        goToSlide((current + 1) % slides.length);
+      }, 6000);
+    });
+  }
+</script>
+
+<style>
+  .hero {
+    padding: var(--space-10) 0 var(--space-6);
+  }
+
+  .hero__slider {
+    position: relative;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    min-height: 520px;
+    background-color: var(--color-surface);
+  }
+
+  .hero__slide {
+    position: absolute;
+    inset: 0;
+    text-decoration: none;
+    color: white;
+    opacity: 0;
+    transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    display: flex;
+  }
+
+  .hero__slide--active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .hero__slide-bg {
+    position: absolute;
+    inset: 0;
+  }
+
+  .hero__slide-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hero__slide-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--color-accent-dark), var(--color-accent));
+  }
+
+  .hero__slide-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(45, 45, 45, 0.85) 0%, rgba(45, 45, 45, 0.3) 50%, transparent 100%);
+  }
+
+  .hero__slide-content {
+    position: relative;
+    z-index: 1;
+    align-self: flex-end;
+    padding: var(--space-12);
+    max-width: 680px;
+  }
+
+  .hero__slide-category {
+    display: inline-block;
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    background-color: var(--color-accent);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-4);
+    font-weight: 500;
+  }
+
+  .hero__slide-title {
+    font-family: var(--font-heading);
+    font-size: var(--text-5xl);
+    color: white;
+    margin-bottom: var(--space-3);
+    font-weight: 500;
+    line-height: var(--leading-tight);
+    letter-spacing: -0.02em;
+  }
+
+  .hero__slide-excerpt {
+    font-family: var(--font-body);
+    font-size: var(--text-lg);
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: var(--space-6);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-weight: 300;
+  }
+
+  .hero__slide-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+  }
+
+  .hero__slide-reading {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .hero__slide-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: white;
+    padding-bottom: 2px;
+    border-bottom: 1.5px solid var(--color-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .hero__controls {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--space-4) 0 0;
+  }
+
+  .hero__dots {
+    display: flex;
+    gap: var(--space-3);
+  }
+
+  .hero__dot {
+    width: 32px;
+    height: 3px;
+    border-radius: 2px;
+    border: none;
+    background-color: var(--color-border);
+    cursor: pointer;
+    transition: all var(--transition);
+    padding: 0;
+  }
+
+  .hero__dot--active {
+    background-color: var(--color-accent);
+    width: 48px;
+  }
+
+  @media (max-width: 768px) {
+    .hero__slider { min-height: 380px; }
+    .hero__slide-content { padding: var(--space-6); }
+    .hero__slide-title { font-size: var(--text-3xl); }
+    .hero__slide-excerpt { display: none; }
+    .hero__slide-meta { flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+  }
+</style>

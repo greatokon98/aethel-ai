@@ -1,0 +1,73 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ContactForm from '../components/ContactForm.astro';
+---
+
+<BaseLayout title="Contact" description="Get in touch with Aethel_AI.">
+  <div class="page">
+    <div class="container">
+      <div class="page__layout">
+        <div class="page__info">
+          <h1 class="page__title">Get in Touch</h1>
+          <p>
+            Have a question, suggestion, or just want to say hello? We'd love to hear from you.
+          </p>
+          <p>
+            Whether you have a topic you'd like us to cover, a tool you think we should review, or feedback on something we've written — drop us a message.
+          </p>
+          <div class="page__contact-details">
+            <p>Email: hello@aethel-ai.com</p>
+          </div>
+        </div>
+        <div class="page__form">
+          <ContactForm />
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding: var(--space-16) 0 var(--space-24);
+  }
+
+  .page__layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-16);
+    max-width: var(--max-width);
+    margin: 0 auto;
+  }
+
+  .page__title {
+    font-size: var(--text-4xl);
+    margin-bottom: var(--space-6);
+  }
+
+  .page__info p {
+    font-size: var(--text-lg);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-6);
+  }
+
+  .page__contact-details {
+    margin-top: var(--space-8);
+    padding: var(--space-6);
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .page__contact-details p {
+    margin: 0;
+    font-size: var(--text-base);
+  }
+
+  @media (max-width: 768px) {
+    .page__layout {
+      grid-template-columns: 1fr;
+      gap: var(--space-8);
+    }
+  }
+</style>

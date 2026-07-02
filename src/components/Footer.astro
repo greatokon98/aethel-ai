@@ -1,0 +1,149 @@
+---
+
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer__grid">
+      <div class="footer__brand">
+        <a href="/" class="footer__logo">Aethel_AI</a>
+        <p class="footer__tagline">
+          Smart tools for everyday life — no jargon, just results.
+        </p>
+      </div>
+      <div class="footer__links">
+        <h4 class="footer__heading">Navigate</h4>
+        <ul class="footer__list">
+          <li><a href="/">Home</a></li>
+          <li><a href="/about">About</a></li>
+          <li><a href="/contact">Contact</a></li>
+        </ul>
+      </div>
+      <div class="footer__newsletter">
+        <h4 class="footer__heading">Stay in touch</h4>
+        <p class="footer__text">Get new posts delivered to your inbox.</p>
+        <form class="footer__form" method="post" action="/api/newsletter">
+          <input type="email" placeholder="Your email" class="footer__input" required />
+          <button type="submit" class="btn btn-primary">Subscribe</button>
+        </form>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <p>&copy; {year} Aethel_AI. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    background-color: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    padding: var(--space-16) 0 var(--space-8);
+    margin-top: var(--space-20);
+  }
+
+  .footer__grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 2fr;
+    gap: var(--space-12);
+    margin-bottom: var(--space-12);
+  }
+
+  .footer__logo {
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    font-style: italic;
+    color: var(--color-text);
+    text-decoration: none;
+    letter-spacing: -0.02em;
+  }
+
+  .footer__tagline {
+    font-family: var(--font-body);
+    color: var(--color-text-secondary);
+    font-size: var(--text-base);
+    margin-top: var(--space-3);
+    font-weight: 300;
+  }
+
+  .footer__heading {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-4);
+  }
+
+  .footer__list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .footer__list a {
+    font-family: var(--font-body);
+    color: var(--color-text-secondary);
+    font-size: var(--text-base);
+  }
+
+  .footer__list a:hover {
+    color: var(--color-accent);
+  }
+
+  .footer__text {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-4);
+  }
+
+  .footer__form {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .footer__input {
+    flex: 1;
+    padding: var(--space-3) var(--space-4);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    outline: none;
+    transition: border-color var(--transition);
+  }
+
+  .footer__input:focus {
+    border-color: var(--color-accent);
+  }
+
+  .footer__bottom {
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--color-border);
+    text-align: center;
+  }
+
+  .footer__bottom p {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .footer__grid {
+      grid-template-columns: 1fr;
+      gap: var(--space-8);
+    }
+
+    .footer__form {
+      flex-direction: column;
+    }
+  }
+</style>

@@ -1,0 +1,193 @@
+---
+export interface Props {
+  categories?: string[];
+  recentPosts?: Array<{
+    title: string;
+    slug: string;
+    publishDate: Date;
+  }>;
+}
+
+const { categories = [], recentPosts = [] } = Astro.props;
+---
+
+<aside class="sidebar">
+  <div class="sidebar__widget">
+    <h3 class="sidebar__widget-title">Categories</h3>
+    <ul class="sidebar__list">
+      {categories.length > 0 ? (
+        categories.map((cat) => (
+          <li>
+            <a href={`/category/${cat.toLowerCase().replace(/\s+/g, '-')}`} class="sidebar__link">{cat}</a>
+          </li>
+        ))
+      ) : (
+        <li><span class="sidebar__text">No categories yet</span></li>
+      )}
+    </ul>
+  </div>
+
+  <div class="sidebar__widget">
+    <h3 class="sidebar__widget-title">Recent Posts</h3>
+    <ul class="sidebar__posts">
+      {recentPosts.length > 0 ? (
+        recentPosts.slice(0, 5).map((post) => (
+          <li class="sidebar__post-item">
+            <a href={`/posts/${post.slug}`} class="sidebar__post-link">
+              {post.title}
+            </a>
+            <time datetime={post.publishDate.toISOString()} class="sidebar__post-date">
+              {post.publishDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </time>
+          </li>
+        ))
+      ) : (
+        <li><span class="sidebar__text">No posts yet</span></li>
+      )}
+    </ul>
+  </div>
+
+  <div class="sidebar__widget sidebar__newsletter">
+    <h3 class="sidebar__widget-title">Newsletter</h3>
+    <p class="sidebar__text">Get the latest posts delivered to your inbox.</p>
+    <form class="sidebar__form" method="post" action="/api/newsletter">
+      <input type="email" placeholder="Your email address" class="sidebar__input" required />
+      <button type="submit" class="btn btn-primary sidebar__btn">Subscribe</button>
+    </form>
+  </div>
+</aside>
+
+<style>
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .sidebar__widget {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+  }
+
+  .sidebar__widget-title {
+    font-family: var(--font-heading);
+    font-size: var(--text-lg);
+    font-weight: 500;
+    margin-bottom: var(--space-4);
+    position: relative;
+    padding-bottom: var(--space-3);
+  }
+
+  .sidebar__widget-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 32px;
+    height: 2px;
+    background-color: var(--color-accent);
+  }
+
+  .sidebar__list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar__list li {
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .sidebar__list li:last-child {
+    border-bottom: none;
+  }
+
+  .sidebar__link {
+    font-family: var(--font-body);
+    color: var(--color-text-secondary);
+    font-size: var(--text-base);
+    display: block;
+    transition: color var(--transition);
+  }
+
+  .sidebar__link:hover {
+    color: var(--color-accent);
+  }
+
+  .sidebar__posts {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .sidebar__post-item {
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .sidebar__post-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .sidebar__post-link {
+    font-family: var(--font-heading);
+    font-size: var(--text-base);
+    color: var(--color-text);
+    display: block;
+    margin-bottom: var(--space-1);
+    line-height: var(--leading-snug);
+    font-weight: 400;
+  }
+
+  .sidebar__post-link:hover {
+    color: var(--color-accent);
+  }
+
+  .sidebar__post-date {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .sidebar__text {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-4);
+  }
+
+  .sidebar__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .sidebar__input {
+    padding: var(--space-3);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    outline: none;
+    transition: border-color var(--transition);
+  }
+
+  .sidebar__input:focus {
+    border-color: var(--color-accent);
+  }
+
+  .sidebar__btn {
+    width: 100%;
+  }
+</style>
