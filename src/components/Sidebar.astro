@@ -6,19 +6,71 @@ export interface Props {
     slug: string;
     publishDate: Date;
   }>;
+  trending?: Array<{
+    title: string;
+    link: string;
+    source: string;
+    pubDate: string;
+    description: string;
+  }>;
 }
 
-const { categories = [], recentPosts = [] } = Astro.props;
+const { categories = [], recentPosts = [], trending = [] } = Astro.props;
 ---
 
 <aside class="sidebar">
+  <div class="sidebar__widget sidebar__search">
+    <form class="sidebar__search-form" action="/search" method="get">
+      <svg class="sidebar__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" name="q" placeholder="Search articles..." class="sidebar__search-input" />
+    </form>
+  </div>
+
+  <div class="sidebar__widget">
+    <h3 class="sidebar__widget-title">Trending Now</h3>
+    <div class="sidebar__trending">
+      {trending.length > 0 ? (
+        trending.slice(0, 4).map((item, i) => (
+          <a href={item.link} target="_blank" rel="noopener noreferrer" class="sidebar__trending-item">
+            <span class="sidebar__trending-number">{String(i + 1).padStart(2, '0')}</span>
+            <div class="sidebar__trending-content">
+              <span class="sidebar__trending-title">{item.title}</span>
+              <span class="sidebar__trending-date">{item.source}</span>
+            </div>
+          </a>
+        ))
+      ) : recentPosts.length > 0 ? (
+        recentPosts.slice(0, 4).map((post, i) => (
+          <a href={`/posts/${post.slug}`} class="sidebar__trending-item">
+            <span class="sidebar__trending-number">{String(i + 1).padStart(2, '0')}</span>
+            <div class="sidebar__trending-content">
+              <span class="sidebar__trending-title">{post.title}</span>
+              <time class="sidebar__trending-date" datetime={post.publishDate.toISOString()}>
+                {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </time>
+            </div>
+          </a>
+        ))
+      ) : (
+        <p class="sidebar__text">No trending stories right now</p>
+      )}
+    </div>
+  </div>
+
   <div class="sidebar__widget">
     <h3 class="sidebar__widget-title">Categories</h3>
     <ul class="sidebar__list">
       {categories.length > 0 ? (
         categories.map((cat) => (
           <li>
-            <a href={`/category/${cat.toLowerCase().replace(/\s+/g, '-')}`} class="sidebar__link">{cat}</a>
+            <a href={`/category/${cat.toLowerCase().replace(/\s+/g, '-')}`} class="sidebar__link">
+              <span>{cat}</span>
+              <svg class="sidebar__link-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </a>
           </li>
         ))
       ) : (
@@ -28,7 +80,7 @@ const { categories = [], recentPosts = [] } = Astro.props;
   </div>
 
   <div class="sidebar__widget">
-    <h3 class="sidebar__widget-title">Recent Posts</h3>
+    <h3 class="sidebar__widget-title">Popular Posts</h3>
     <ul class="sidebar__posts">
       {recentPosts.length > 0 ? (
         recentPosts.slice(0, 5).map((post) => (
@@ -53,7 +105,7 @@ const { categories = [], recentPosts = [] } = Astro.props;
 
   <div class="sidebar__widget sidebar__newsletter">
     <h3 class="sidebar__widget-title">Newsletter</h3>
-    <p class="sidebar__text">Get the latest posts delivered to your inbox.</p>
+    <p class="sidebar__text">Get the latest AI insights delivered to your inbox.</p>
     <form class="sidebar__form" method="post" action="/api/newsletter">
       <input type="email" placeholder="Your email address" class="sidebar__input" required />
       <button type="submit" class="btn btn-primary sidebar__btn">Subscribe</button>
@@ -65,7 +117,7 @@ const { categories = [], recentPosts = [] } = Astro.props;
   .sidebar {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: var(--space-6);
   }
 
   .sidebar__widget {
@@ -79,7 +131,7 @@ const { categories = [], recentPosts = [] } = Astro.props;
     font-family: var(--font-heading);
     font-size: var(--text-lg);
     font-weight: 500;
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-5);
     position: relative;
     padding-bottom: var(--space-3);
   }
@@ -89,9 +141,93 @@ const { categories = [], recentPosts = [] } = Astro.props;
     position: absolute;
     bottom: 0;
     left: 0;
-    width: 32px;
+    width: 28px;
     height: 2px;
     background-color: var(--color-accent);
+    border-radius: 1px;
+  }
+
+  .sidebar__search-form {
+    position: relative;
+  }
+
+  .sidebar__search-icon {
+    position: absolute;
+    left: var(--space-3);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    pointer-events: none;
+  }
+
+  .sidebar__search-input {
+    width: 100%;
+    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-10);
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    outline: none;
+    transition: border-color var(--transition);
+  }
+
+  .sidebar__search-input:focus {
+    border-color: var(--color-accent);
+  }
+
+  .sidebar__search-input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .sidebar__trending {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .sidebar__trending-item {
+    display: flex;
+    gap: var(--space-4);
+    text-decoration: none;
+    align-items: flex-start;
+  }
+
+  .sidebar__trending-number {
+    font-family: var(--font-heading);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    color: var(--color-accent);
+    line-height: 1;
+    flex-shrink: 0;
+    min-width: 28px;
+    opacity: 0.6;
+  }
+
+  .sidebar__trending-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sidebar__trending-title {
+    font-family: var(--font-heading);
+    font-size: var(--text-base);
+    color: var(--color-text);
+    display: block;
+    margin-bottom: var(--space-1);
+    line-height: var(--leading-snug);
+    transition: color var(--transition);
+  }
+
+  .sidebar__trending-item:hover .sidebar__trending-title {
+    color: var(--color-accent);
+  }
+
+  .sidebar__trending-date {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
 
   .sidebar__list {
@@ -101,7 +237,6 @@ const { categories = [], recentPosts = [] } = Astro.props;
   }
 
   .sidebar__list li {
-    padding: var(--space-2) 0;
     border-bottom: 1px solid var(--color-border);
   }
 
@@ -113,12 +248,25 @@ const { categories = [], recentPosts = [] } = Astro.props;
     font-family: var(--font-body);
     color: var(--color-text-secondary);
     font-size: var(--text-base);
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) 0;
     transition: color var(--transition);
   }
 
   .sidebar__link:hover {
     color: var(--color-accent);
+  }
+
+  .sidebar__link-arrow {
+    opacity: 0;
+    transition: opacity var(--transition), transform var(--transition);
+  }
+
+  .sidebar__link:hover .sidebar__link-arrow {
+    opacity: 1;
+    transform: translateX(2px);
   }
 
   .sidebar__posts {
@@ -146,6 +294,7 @@ const { categories = [], recentPosts = [] } = Astro.props;
     margin-bottom: var(--space-1);
     line-height: var(--leading-snug);
     font-weight: 400;
+    transition: color var(--transition);
   }
 
   .sidebar__post-link:hover {
@@ -189,5 +338,33 @@ const { categories = [], recentPosts = [] } = Astro.props;
 
   .sidebar__btn {
     width: 100%;
+  }
+
+  @media (max-width: 1024px) {
+    .sidebar__widget {
+      padding: var(--space-4);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+    }
+
+    .sidebar__newsletter {
+      grid-column: 1 / -1;
+    }
+
+    .sidebar__trending-item {
+      gap: var(--space-3);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .sidebar {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

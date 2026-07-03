@@ -17,6 +17,13 @@ export interface Props {
     publishDate: Date;
   }>;
   allCategories?: string[];
+  trending?: Array<{
+    title: string;
+    link: string;
+    source: string;
+    pubDate: string;
+    description: string;
+  }>;
 }
 
 const {
@@ -30,6 +37,7 @@ const {
   readingTime,
   recentPosts = [],
   allCategories = [],
+  trending = [],
 } = Astro.props;
 
 const formattedDate = publishDate.toLocaleDateString('en-US', {
@@ -82,7 +90,7 @@ const formattedDate = publishDate.toLocaleDateString('en-US', {
           )}
         </div>
         <div class="post-page__sidebar">
-          <Sidebar categories={allCategories} recentPosts={recentPosts} />
+          <Sidebar categories={allCategories} recentPosts={recentPosts} trending={trending} />
         </div>
       </div>
     </div>
@@ -296,13 +304,37 @@ const formattedDate = publishDate.toLocaleDateString('en-US', {
     color: var(--color-text-secondary);
   }
 
-  @media (max-width: 968px) {
+  @media (max-width: 1024px) {
+    .post-page__layout {
+      grid-template-columns: 1fr 280px;
+      gap: var(--space-8);
+    }
+
+    .post-page__title {
+      font-size: var(--text-4xl);
+    }
+  }
+
+  @media (max-width: 768px) {
     .post-page__layout {
       grid-template-columns: 1fr;
     }
 
     .post-page__title {
-      font-size: var(--text-4xl);
+      font-size: var(--text-3xl);
+    }
+
+    .post-page__image-wrapper {
+      margin: 0 calc(-1 * var(--space-4)) var(--space-8);
+      border-radius: 0;
+    }
+
+    .post-page__content {
+      font-size: var(--text-base);
+    }
+
+    .post-page__meta {
+      flex-wrap: wrap;
     }
   }
 </style>

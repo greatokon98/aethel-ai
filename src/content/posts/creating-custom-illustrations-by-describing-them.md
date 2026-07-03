@@ -2,6 +2,7 @@
 title: "Creating Custom Illustrations by Describing Them"
 excerpt: "Need an image for a presentation, blog post, or social media? Describe what you want, and get it in seconds."
 publishDate: "2026-06-10"
+featuredImage: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800"
 featured: false
 categories:
   - Smart Tools

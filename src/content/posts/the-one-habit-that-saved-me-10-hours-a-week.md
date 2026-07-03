@@ -2,7 +2,8 @@
 title: "The One Habit That Saved Me 10 Hours a Week"
 excerpt: "It wasn't a new app or a fancy tool. It was a simple question I started asking before every task."
 publishDate: "2026-06-13"
-featured: true
+featuredImage: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=800"
+featured: false
 categories:
   - Productivity
   - Workflow

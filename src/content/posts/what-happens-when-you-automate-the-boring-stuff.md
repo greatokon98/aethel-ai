@@ -2,6 +2,7 @@
 title: "What Happens When You Automate the Boring Stuff"
 excerpt: "A look beyond the time savings — how removing small burdens changes the way you work and think."
 publishDate: "2026-06-07"
+featuredImage: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800"
 featured: false
 categories:
   - Workflow

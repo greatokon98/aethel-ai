@@ -2,7 +2,8 @@
 title: "Turning Voice Notes into Written Pages"
 excerpt: "Stop typing your thoughts. Speak them instead, and watch them turn into polished text automatically."
 publishDate: "2026-06-25"
-featured: true
+featuredImage: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800"
+featured: false
 categories:
   - Productivity
 tags:

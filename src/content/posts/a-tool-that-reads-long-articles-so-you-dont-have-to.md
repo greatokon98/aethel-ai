@@ -2,7 +2,8 @@
 title: "A Tool That Reads Long Articles So You Don't Have To"
 excerpt: "Got a dozen long reports to get through? Here's how to get the gist in seconds."
 publishDate: "2026-06-22"
-featured: true
+featuredImage: "https://images.unsplash.com/photo-1491841550275-ad7854e35ca6?w=800"
+featured: false
 categories:
   - Smart Tools
 tags:

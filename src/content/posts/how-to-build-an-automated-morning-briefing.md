@@ -2,6 +2,7 @@
 title: "How to Build an Automated Morning Briefing"
 excerpt: "Start every day with a personalized summary of what matters — weather, calendar, news, and more — delivered automatically."
 publishDate: "2026-06-16"
+featuredImage: "https://images.unsplash.com/photo-1513001900722-370f803f498d?w=800"
 featured: false
 categories:
   - Productivity

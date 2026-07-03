@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
 import PostCard from '../components/PostCard.astro';
 import Sidebar from '../components/Sidebar.astro';
+import { fetchTrendingNews } from '../lib/trending';
 import fs from 'node:fs';
 import path from 'node:path';
 import parseFrontmatter from 'front-matter';
@@ -39,6 +40,7 @@ const posts = files
   .sort((a, b) => b.publishDate.getTime() - a.publishDate.getTime());
 
 const allCategories = [...new Set(posts.flatMap((p) => p.categories))];
+const trending = await fetchTrendingNews();
 ---
 
 <BaseLayout title="Home" description="Smart tools for everyday life — no jargon, just results.">
@@ -74,6 +76,7 @@ const allCategories = [...new Set(posts.flatMap((p) => p.categories))];
               slug: p.slug,
               publishDate: p.publishDate,
             }))}
+            trending={trending}
           />
         </div>
       </div>
@@ -94,7 +97,14 @@ const allCategories = [...new Set(posts.flatMap((p) => p.categories))];
     gap: var(--space-6);
   }
 
-  @media (max-width: 968px) {
+  @media (max-width: 1024px) {
+    .blog-grid__layout {
+      grid-template-columns: 1fr 280px;
+      gap: var(--space-8);
+    }
+  }
+
+  @media (max-width: 768px) {
     .blog-grid__layout {
       grid-template-columns: 1fr;
     }

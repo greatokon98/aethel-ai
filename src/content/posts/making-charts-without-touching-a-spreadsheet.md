@@ -2,6 +2,7 @@
 title: "Making Charts and Reports Without Touching a Spreadsheet"
 excerpt: "Describe the chart you want in plain words, and watch it appear. No formulas required."
 publishDate: "2026-06-19"
+featuredImage: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800"
 featured: false
 categories:
   - Smart Tools

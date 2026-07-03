@@ -2,7 +2,8 @@
 title: "Your Computer Can Answer Emails for You"
 excerpt: "Imagine never having to write another routine email from scratch. Here's how to set it up in five minutes."
 publishDate: "2026-06-28"
-featured: true
+featuredImage: "https://images.unsplash.com/photo-1596526131083-e8c633c948d2?w=800"
+featured: false
 categories:
   - Smart Tools
   - Productivity
