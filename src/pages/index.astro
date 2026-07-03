@@ -52,7 +52,10 @@ const trending = await fetchTrendingNews();
           <h2 class="section-title fade-in">Latest Posts</h2>
           <div class="blog-grid__posts">
             {posts.map((post, i) => (
-              <div class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}>
+              <div
+                class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}
+                style={post.featured ? 'grid-column: 1 / -1' : ''}
+              >
                 <PostCard
                   title={post.title}
                   excerpt={post.excerpt}

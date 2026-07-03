@@ -1,0 +1,848 @@
+---
+---
+
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Admin Panel — Aethel_AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js" is:inline></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js" is:inline></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    .admin-header {
+      background: #0F1E36;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .admin-header__brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .admin-header__brand-text {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 18px;
+      font-weight: 600;
+      font-style: italic;
+      color: #FFFFFF;
+      letter-spacing: -0.02em;
+    }
+    .admin-header__actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .admin-header__user {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+    }
+    .admin-header__btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: transparent;
+      color: rgba(255,255,255,0.8);
+      cursor: pointer;
+      transition: all 200ms;
+    }
+    .admin-header__btn:hover {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+    .admin-header__btn--primary {
+      background: #3B82F6;
+      border-color: #3B82F6;
+      color: #fff;
+    }
+    .admin-header__btn--primary:hover {
+      background: #2563EB;
+      border-color: #2563EB;
+    }
+    .admin-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+    .admin-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .admin-spinner {
+      width: 32px; height: 32px;
+      border: 3px solid #E2E8F0;
+      border-top-color: #3B82F6;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .admin-view { display: none; }
+    .admin-view--active { display: block; }
+
+    .post-list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .post-list-header h1 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 28px;
+      font-weight: 500;
+    }
+    .post-list-header .count {
+      color: #94A3B8;
+      font-size: 14px;
+      font-weight: 400;
+      margin-left: 8px;
+    }
+    .post-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      border: 1px solid #E2E8F0;
+    }
+    .post-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #94A3B8;
+      font-weight: 600;
+      background: #F8FAFC;
+      border-bottom: 1px solid #E2E8F0;
+    }
+    .post-table td {
+      padding: 14px 16px;
+      font-size: 14px;
+      border-bottom: 1px solid #F1F5F9;
+      vertical-align: middle;
+    }
+    .post-table tr:last-child td { border-bottom: none; }
+    .post-table tr:hover td { background: #F8FAFC; }
+    .post-table .post-title {
+      font-weight: 500;
+      color: #0F172A;
+      max-width: 400px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .post-table .post-date {
+      color: #64748B;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .post-table .post-cats {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .post-table .post-cat {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #DBEAFE;
+      color: #3B82F6;
+      font-weight: 500;
+    }
+    .post-table .post-featured-badge {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: #FEF3C7;
+      color: #D97706;
+      font-weight: 600;
+    }
+    .post-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .post-actions button {
+      padding: 6px 12px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      border-radius: 6px;
+      border: 1px solid #E2E8F0;
+      background: #fff;
+      color: #475569;
+      cursor: pointer;
+      transition: all 200ms;
+    }
+    .post-actions button:hover { border-color: #3B82F6; color: #3B82F6; }
+    .post-actions .btn-delete:hover { border-color: #EF4444; color: #EF4444; }
+    .post-actions .btn-edit:hover { border-color: #3B82F6; color: #3B82F6; }
+
+    .editor-form {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 800px;
+    }
+    .editor-form h1 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 24px;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+    .editor-field {
+      margin-bottom: 20px;
+    }
+    .editor-field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .editor-field input,
+    .editor-field textarea,
+    .editor-field select {
+      width: 100%;
+      padding: 10px 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 8px;
+      background: #fff;
+      color: #0F172A;
+      outline: none;
+      transition: border-color 200ms;
+    }
+    .editor-field input:focus,
+    .editor-field textarea:focus {
+      border-color: #3B82F6;
+    }
+    .editor-field textarea { resize: vertical; min-height: 100px; }
+    .editor-field textarea.editor-body { min-height: 400px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; line-height: 1.6; }
+    .editor-field .editor-hint {
+      font-size: 12px;
+      color: #94A3B8;
+      margin-top: 4px;
+    }
+    .editor-field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .editor-field .editor-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .editor-field .editor-checkbox input {
+      width: auto;
+    }
+    .editor-preview {
+      margin-top: 20px;
+      padding: 20px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .editor-preview h1, .editor-preview h2, .editor-preview h3 {
+      font-family: 'Fraunces', Georgia, serif;
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+    .editor-preview p { margin-bottom: 12px; }
+    .editor-preview code {
+      font-family: 'SF Mono', monospace;
+      font-size: 0.875em;
+      padding: 2px 6px;
+      background: #E2E8F0;
+      border-radius: 4px;
+    }
+    .editor-preview pre {
+      background: #1E293B;
+      color: #E2E8F0;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    .editor-preview pre code { background: none; padding: 0; color: inherit; }
+    .editor-preview img { max-width: 100%; border-radius: 8px; margin: 12px 0; }
+    .editor-preview blockquote {
+      border-left: 3px solid #3B82F6;
+      padding-left: 16px;
+      margin: 16px 0;
+      color: #64748B;
+      font-style: italic;
+    }
+    .editor-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #E2E8F0;
+    }
+    .editor-actions button {
+      padding: 10px 24px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 200ms;
+    }
+    .editor-actions .btn-save {
+      background: #3B82F6;
+      color: #fff;
+    }
+    .editor-actions .btn-save:hover { background: #2563EB; }
+    .editor-actions .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    .editor-actions .btn-cancel {
+      background: transparent;
+      color: #64748B;
+      border: 1.5px solid #E2E8F0;
+    }
+    .editor-actions .btn-cancel:hover { border-color: #94A3B8; color: #475569; }
+    .editor-actions .btn-delete {
+      background: #FEF2F2;
+      color: #EF4444;
+      margin-left: auto;
+    }
+    .editor-actions .btn-delete:hover { background: #FEE2E2; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #fff;
+      z-index: 200;
+      transform: translateY(120px);
+      opacity: 0;
+      transition: all 300ms ease;
+    }
+    .toast--visible { transform: translateY(0); opacity: 1; }
+    .toast--success { background: #059669; }
+    .toast--error { background: #EF4444; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #94A3B8;
+    }
+    .empty-state p { font-size: 16px; margin-top: 8px; }
+
+    @media (max-width: 768px) {
+      .admin-container { padding: 20px 16px; }
+      .post-table { font-size: 13px; }
+      .post-table td, .post-table th { padding: 10px 12px; }
+      .post-table .post-cats { display: none; }
+      .editor-form { padding: 20px 16px; }
+      .editor-field-row { grid-template-columns: 1fr; }
+      .post-list-header h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script is:inline>
+    (function() {
+      var APP = {};
+
+      // --- Utilities ---
+      function qs(s, ctx) { return (ctx || document).querySelector(s); }
+      function qsa(s, ctx) { return Array.from((ctx || document).querySelectorAll(s)); }
+
+      function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+      }
+
+      function formatDate(d) {
+        return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+
+      function slugify(text) {
+        return text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+      }
+
+      function btoa(str) {
+        return window.btoa(unescape(encodeURIComponent(str)));
+      }
+
+      function showToast(msg, type) {
+        var t = document.getElementById('toast');
+        if (!t) {
+          t = document.createElement('div');
+          t.id = 'toast';
+          t.className = 'toast';
+          document.body.appendChild(t);
+        }
+        t.textContent = msg;
+        t.className = 'toast toast--' + type + ' toast--visible';
+        clearTimeout(t._timer);
+        t._timer = setTimeout(function() { t.classList.remove('toast--visible'); }, 3000);
+      }
+
+      // --- Frontmatter Parser ---
+      function parseFrontmatter(str) {
+        var match = str.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+        if (!match) return { attrs: {}, body: str };
+        var yaml = match[1];
+        var body = (match[2] || '').trim();
+        var attrs = {};
+        var currentKey = null;
+        var currentList = null;
+        yaml.split('\n').forEach(function(line) {
+          var listMatch = line.match(/^\s+-\s+(.*)$/);
+          var kvMatch = line.match(/^(\w+):\s*(.*)$/);
+          if (kvMatch) {
+            if (currentKey && currentList !== null) {
+              attrs[currentKey] = currentList;
+              currentList = null;
+            }
+            currentKey = kvMatch[1];
+            var val = kvMatch[2].replace(/^"(.*)"$/, '$1');
+            if (val === 'true') attrs[currentKey] = true;
+            else if (val === 'false') attrs[currentKey] = false;
+            else if (val === '') { currentList = []; attrs[currentKey] = []; }
+            else attrs[currentKey] = val;
+          } else if (listMatch && currentKey) {
+            if (currentList === null) currentList = [];
+            currentList.push(listMatch[1].replace(/^"(.*)"$/, '$1'));
+          }
+        });
+        if (currentKey && currentList !== null) attrs[currentKey] = currentList;
+        return { attrs: attrs, body: body };
+      }
+
+      function buildFrontmatter(attrs, body) {
+        var lines = ['---'];
+        Object.keys(attrs).forEach(function(key) {
+          var val = attrs[key];
+          if (Array.isArray(val)) {
+            lines.push(key + ':');
+            val.forEach(function(item) { lines.push('  - ' + item); });
+          } else if (typeof val === 'boolean') {
+            lines.push(key + ': ' + (val ? 'true' : 'false'));
+          } else if (val !== undefined && val !== null) {
+            lines.push(key + ': "' + String(val).replace(/"/g, '\\"') + '"');
+          }
+        });
+        lines.push('---');
+        if (body) lines.push('', body);
+        return lines.join('\n');
+      }
+
+      // --- API ---
+      function getJwt() {
+        var user = window.netlifyIdentity && window.netlifyIdentity.currentUser();
+        return user ? user.jwt() : null;
+      }
+
+      async function apiCall(method, path, body) {
+        var jwt = getJwt();
+        if (!jwt) throw new Error('Not authenticated');
+        var opts = {
+          method: method,
+          headers: {
+            'Authorization': 'Bearer ' + jwt,
+            'Content-Type': 'application/json',
+          }
+        };
+        if (body) opts.body = JSON.stringify(body);
+        var res = await fetch('/.netlify/git/github' + path, opts);
+        if (!res.ok) {
+          var err = await res.text().catch(function() { return res.statusText; });
+          throw new Error(err);
+        }
+        return res.json();
+      }
+
+      async function listPosts() {
+        var data = await apiCall('GET', '/contents/src/content/posts');
+        var files = data.filter(function(f) { return f.name.endsWith('.md'); });
+        var posts = [];
+        for (var i = 0; i < files.length; i++) {
+          var f = files[i];
+          try {
+            var content = await apiCall('GET', '/contents/src/content/posts/' + f.name);
+            var decoded = decodeURIComponent(escape(atob(content.content)));
+            var parsed = parseFrontmatter(decoded);
+            var slug = f.name.replace(/\.md$/, '');
+            posts.push({
+              slug: slug,
+              name: f.name,
+              sha: content.sha,
+              title: parsed.attrs.title || slug,
+              excerpt: parsed.attrs.excerpt || '',
+              publishDate: parsed.attrs.publishDate || '',
+              categories: parsed.attrs.categories || [],
+              featured: parsed.attrs.featured || false,
+              author: parsed.attrs.author || 'Aethel',
+              featuredImage: parsed.attrs.featuredImage || '',
+              tags: parsed.attrs.tags || [],
+              body: parsed.body,
+            });
+          } catch(e) {
+            // skip files that fail to load
+          }
+        }
+        posts.sort(function(a, b) { return new Date(b.publishDate) - new Date(a.publishDate); });
+        return posts;
+      }
+
+      async function savePost(slug, attrs, body) {
+        var content = buildFrontmatter(attrs, body);
+        var encoded = btoa(content);
+        var path = '/contents/src/content/posts/' + slug + '.md';
+        var bodyPayload = { message: 'Update post: ' + attrs.title, content: encoded, branch: 'main' };
+        // If editing, include sha
+        if (attrs._sha) bodyPayload.sha = attrs._sha;
+        return apiCall('PUT', path, bodyPayload);
+      }
+
+      async function deletePost(slug, sha) {
+        var path = '/contents/src/content/posts/' + slug + '.md';
+        return apiCall('DELETE', path, { message: 'Delete post: ' + slug, sha: sha, branch: 'main' });
+      }
+
+      // --- Views ---
+      function renderLoading() {
+        return '<div class="admin-loading"><div class="admin-spinner"></div><p>Loading...</p></div>';
+      }
+
+      function renderLogin() {
+        return '<div class="admin-loading"><p>Please sign in</p><button class="admin-header__btn" onclick="window.location.href=\'/admin/\'">Go to Login</button></div>';
+      }
+
+      function renderPostList(posts) {
+        if (posts.length === 0) {
+          return '<div class="empty-state"><h2>No posts yet</h2><p>Create your first post to get started.</p></div>';
+        }
+        var rows = posts.map(function(p) {
+          var date = p.publishDate ? formatDate(p.publishDate) : '';
+          var cats = (p.categories || []).map(function(c) { return '<span class="post-cat">' + escapeHtml(c) + '</span>'; }).join('');
+          var featuredBadge = p.featured ? '<span class="post-featured-badge">Featured</span>' : '';
+          return '<tr>' +
+            '<td><div class="post-title">' + escapeHtml(p.title) + '</div></td>' +
+            '<td class="post-date">' + date + '</td>' +
+            '<td><div class="post-cats">' + cats + '</div></td>' +
+            '<td>' + featuredBadge + '</td>' +
+            '<td><div class="post-actions">' +
+              '<button class="btn-edit" data-slug="' + p.slug + '">Edit</button>' +
+              '<button class="btn-delete" data-slug="' + p.slug + '" data-title="' + escapeHtml(p.title) + '">Delete</button>' +
+            '</div></td>' +
+          '</tr>';
+        }).join('');
+        return '<div class="post-list-header">' +
+          '<h1>Posts <span class="count">(' + posts.length + ')</span></h1>' +
+          '<button class="admin-header__btn admin-header__btn--primary" id="btn-new-post">+ New Post</button>' +
+        '</div>' +
+        '<table class="post-table">' +
+          '<thead><tr><th>Title</th><th>Date</th><th>Categories</th><th></th><th></th></tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>';
+      }
+
+      function renderEditor(post) {
+        var isNew = !post;
+        var p = post || { title: '', excerpt: '', body: '', categories: [], tags: [], author: 'Aethel', featured: false, featuredImage: '', publishDate: new Date().toISOString().split('T')[0] };
+        var cats = (p.categories || []).join(', ');
+        var tags = (p.tags || []).join(', ');
+        var previewContent = '';
+        try { previewContent = marked.parse(p.body || ''); } catch(e) { previewContent = p.body || ''; }
+
+        return '<div class="editor-form">' +
+          '<h1>' + (isNew ? 'New Post' : 'Edit Post') + '</h1>' +
+          '<div class="editor-field"><label>Title</label><input type="text" id="ed-title" value="' + escapeHtml(p.title) + '" /></div>' +
+          '<div class="editor-field"><label>Slug</label><input type="text" id="ed-slug" value="' + (isNew ? '' : p.slug) + '"' + (isNew ? '' : ' readonly style="background:#F8FAFC;color:#94A3B8"') + ' /><div class="editor-hint">URL path (auto-generated from title if empty)</div></div>' +
+          '<div class="editor-field"><label>Excerpt</label><textarea id="ed-excerpt" rows="3">' + escapeHtml(p.excerpt) + '</textarea></div>' +
+          '<div class="editor-field-row">' +
+            '<div class="editor-field"><label>Publish Date</label><input type="date" id="ed-date" value="' + (p.publishDate || '').split('T')[0] + '" /></div>' +
+            '<div class="editor-field"><label>Author</label><input type="text" id="ed-author" value="' + escapeHtml(p.author || 'Aethel') + '" /></div>' +
+          '</div>' +
+          '<div class="editor-field-row">' +
+            '<div class="editor-field"><label>Categories (comma-separated)</label><input type="text" id="ed-categories" value="' + escapeHtml(cats) + '" /></div>' +
+            '<div class="editor-field"><label>Tags (comma-separated)</label><input type="text" id="ed-tags" value="' + escapeHtml(tags) + '" /></div>' +
+          '</div>' +
+          '<div class="editor-field"><label>Featured Image URL</label><input type="url" id="ed-image" value="' + escapeHtml(p.featuredImage || '') + '" /></div>' +
+          '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-featured" ' + (p.featured ? 'checked' : '') + ' /> Featured post</label></div>' +
+          '<div class="editor-field"><label>Body (Markdown)</label><textarea class="editor-body" id="ed-body" oninput="APP.updatePreview()">' + escapeHtml(p.body) + '</textarea></div>' +
+          '<div class="editor-field"><label>Preview</label><div class="editor-preview" id="ed-preview">' + previewContent + '</div></div>' +
+          '<div class="editor-actions">' +
+            '<button class="btn-save" id="btn-save-post">' + (isNew ? 'Create Post' : 'Save Changes') + '</button>' +
+            '<button class="btn-cancel" id="btn-cancel-edit">Cancel</button>' +
+            (!isNew ? '<button class="btn-delete" id="btn-editor-delete">Delete Post</button>' : '') +
+          '</div>' +
+        '</div>';
+      }
+
+      APP.updatePreview = function() {
+        var body = document.getElementById('ed-body');
+        var preview = document.getElementById('ed-preview');
+        if (body && preview) {
+          try { preview.innerHTML = marked.parse(body.value); } catch(e) { preview.textContent = body.value; }
+        }
+      };
+
+      // --- App State ---
+      var state = {
+        view: 'loading',
+        posts: [],
+        editingPost: null,
+      };
+
+      function render() {
+        var app = document.getElementById('app');
+        if (!app) return;
+        var html = '';
+
+        // Header
+        html += '<header class="admin-header">' +
+          '<a href="/" class="admin-header__brand">' +
+            '<svg width="24" height="24" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#3B82F6"/><path d="M8 20V8h3.5l4.5 8.5V8H19v12h-3.5L11 11.5V20H8z" fill="white"/></svg>' +
+            '<span class="admin-header__brand-text">Aethel_AI</span>' +
+          '</a>' +
+          '<div class="admin-header__actions">' +
+            '<span class="admin-header__user" id="header-user"></span>' +
+            '<button class="admin-header__btn" onclick="window.location.href=\'/\'">View Site</button>' +
+            '<button class="admin-header__btn" id="btn-logout">Sign Out</button>' +
+          '</div>' +
+        '</header>';
+
+        // Content
+        html += '<div class="admin-container">';
+        if (state.view === 'loading') {
+          html += renderLoading();
+        } else if (state.view === 'login') {
+          html += renderLogin();
+        } else if (state.view === 'list') {
+          html += renderPostList(state.posts);
+        } else if (state.view === 'editor') {
+          html += renderEditor(state.editingPost);
+        }
+        html += '</div>';
+
+        app.innerHTML = html;
+        bindEvents();
+      }
+
+      function bindEvents() {
+        var jwt = getJwt();
+        var userEl = document.getElementById('header-user');
+        if (userEl && jwt) {
+          var user = window.netlifyIdentity && window.netlifyIdentity.currentUser();
+          if (user) userEl.textContent = user.email || 'Admin';
+        }
+
+        var logoutBtn = document.getElementById('btn-logout');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', function() {
+            if (window.netlifyIdentity) window.netlifyIdentity.logout();
+            window.location.href = '/admin/';
+          });
+        }
+
+        var newBtn = document.getElementById('btn-new-post');
+        if (newBtn) {
+          newBtn.addEventListener('click', function() {
+            state.view = 'editor';
+            state.editingPost = null;
+            render();
+          });
+        }
+
+        qsa('.btn-edit').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var slug = this.dataset.slug;
+            var post = state.posts.find(function(p) { return p.slug === slug; });
+            if (post) {
+              state.editingPost = JSON.parse(JSON.stringify(post));
+              state.view = 'editor';
+              render();
+            }
+          });
+        });
+
+        qsa('.btn-delete').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var slug = this.dataset.slug;
+            var title = this.dataset.title;
+            if (confirm('Delete "' + title + '"? This cannot be undone.')) {
+              var post = state.posts.find(function(p) { return p.slug === slug; });
+              if (post) {
+                handleDelete(post);
+              }
+            }
+          });
+        });
+
+        var cancelBtn = document.getElementById('btn-cancel-edit');
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', function() { state.view = 'list'; render(); });
+        }
+
+        var saveBtn = document.getElementById('btn-save-post');
+        if (saveBtn) {
+          saveBtn.addEventListener('click', handleSave);
+        }
+
+        var deleteBtn = document.getElementById('btn-editor-delete');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', function() {
+            if (state.editingPost && confirm('Delete "' + state.editingPost.title + '"? This cannot be undone.')) {
+              handleDelete(state.editingPost);
+            }
+          });
+        }
+      }
+
+      async function handleSave() {
+        var slugEl = document.getElementById('ed-slug');
+        var titleEl = document.getElementById('ed-title');
+        var excerptEl = document.getElementById('ed-excerpt');
+        var dateEl = document.getElementById('ed-date');
+        var authorEl = document.getElementById('ed-author');
+        var catsEl = document.getElementById('ed-categories');
+        var tagsEl = document.getElementById('ed-tags');
+        var imageEl = document.getElementById('ed-image');
+        var featuredEl = document.getElementById('ed-featured');
+        var bodyEl = document.getElementById('ed-body');
+
+        if (!titleEl || !bodyEl) return;
+
+        var title = titleEl.value.trim();
+        if (!title) { showToast('Title is required', 'error'); return; }
+
+        var slug = slugEl.value.trim() || slugify(title);
+        if (!slug) { showToast('Could not generate slug', 'error'); return; }
+
+        var saveBtn = document.getElementById('btn-save-post');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+          var attrs = {
+            title: title,
+            excerpt: excerptEl ? excerptEl.value.trim() : '',
+            publishDate: dateEl ? dateEl.value : new Date().toISOString().split('T')[0],
+            featuredImage: imageEl ? imageEl.value.trim() : '',
+            featured: featuredEl ? featuredEl.checked : false,
+            categories: (catsEl ? catsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
+            tags: (tagsEl ? tagsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
+            author: authorEl ? authorEl.value.trim() || 'Aethel' : 'Aethel',
+          };
+          if (state.editingPost && state.editingPost.sha) {
+            attrs._sha = state.editingPost.sha;
+          }
+          var body = bodyEl.value;
+          await savePost(slug, attrs, body);
+          showToast('Post saved! Rebuilding site...', 'success');
+          state.view = 'list';
+          render();
+          // Refresh post list
+          loadPosts();
+        } catch(e) {
+          showToast('Error saving: ' + e.message, 'error');
+          saveBtn.disabled = false;
+          saveBtn.textContent = state.editingPost ? 'Save Changes' : 'Create Post';
+        }
+      }
+
+      async function handleDelete(post) {
+        try {
+          await deletePost(post.slug, post.sha);
+          showToast('Post deleted. Rebuilding...', 'success');
+          state.view = 'list';
+          render();
+          loadPosts();
+        } catch(e) {
+          showToast('Error deleting: ' + e.message, 'error');
+        }
+      }
+
+      async function loadPosts() {
+        state.view = 'loading';
+        render();
+        try {
+          state.posts = await listPosts();
+          state.view = 'list';
+        } catch(e) {
+          state.view = 'list';
+          state.posts = [];
+          showToast('Error loading posts: ' + e.message, 'error');
+        }
+        render();
+      }
+
+      // --- Init ---
+      async function init() {
+        render();
+        if (!window.netlifyIdentity) {
+          state.view = 'login';
+          render();
+          return;
+        }
+
+        window.netlifyIdentity.init();
+        window.netlifyIdentity.on('init', function(user) {
+          if (!user) {
+            state.view = 'login';
+            render();
+          } else {
+            loadPosts();
+          }
+        });
+
+        var user = window.netlifyIdentity.currentUser();
+        if (user) {
+          loadPosts();
+        } else {
+          state.view = 'login';
+          render();
+        }
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
