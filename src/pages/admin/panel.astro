@@ -17,7 +17,7 @@
   <meta name="robots" content="noindex" />
   <title>Admin Panel — Aethel_AI</title>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js" is:inline></script>
+
   <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/marked.min.js" is:inline></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -738,10 +738,43 @@
         return lines.join('\n');
       }
 
-      // --- API ---
+      // --- Auth (GoTrue API, no widget) ---
+      var AUTH_KEY = 'aa_auth';
+
+      function getStoredAuth() {
+        try { return JSON.parse(localStorage.getItem(AUTH_KEY)); } catch(e) { return null; }
+      }
+
+      function storeAuth(data) {
+        data.expires_at = Date.now() + (data.expires_in || 3600) * 1000;
+        localStorage.setItem(AUTH_KEY, JSON.stringify(data));
+      }
+
+      function clearAuth() {
+        localStorage.removeItem(AUTH_KEY);
+      }
+
+      async function refreshJwt(refreshToken) {
+        var res = await fetch('/.netlify/identity/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: refreshToken })
+        });
+        if (!res.ok) { clearAuth(); return null; }
+        var data = await res.json();
+        storeAuth(data);
+        return data.access_token;
+      }
+
       async function getJwt() {
-        var user = window.netlifyIdentity && window.netlifyIdentity.currentUser();
-        return user ? await user.jwt() : null;
+        var auth = getStoredAuth();
+        if (!auth || !auth.access_token) return null;
+        // Refresh if expired within 5 minutes
+        if (Date.now() > auth.expires_at - 300000) {
+          if (!auth.refresh_token) { clearAuth(); return null; }
+          return await refreshJwt(auth.refresh_token);
+        }
+        return auth.access_token;
       }
 
       async function apiCall(method, path, body) {
@@ -1165,15 +1198,16 @@
 
       function bindEvents() {
         var userEl = document.getElementById('header-user');
-        var user = window.netlifyIdentity && window.netlifyIdentity.currentUser();
-        if (userEl && user) {
-          userEl.textContent = user.email || 'Admin';
+        var auth = getStoredAuth();
+        var userEmail = (auth && auth.user && auth.user.email) || 'Admin';
+        if (userEl) {
+          userEl.textContent = userEmail;
         }
 
         var logoutBtn = document.getElementById('btn-logout');
         if (logoutBtn) {
           logoutBtn.addEventListener('click', function() {
-            if (window.netlifyIdentity) window.netlifyIdentity.logout();
+            clearAuth();
             window.location.href = '/admin/';
           });
         }
@@ -1406,29 +1440,28 @@
       // --- Init ---
       async function init() {
         render();
-        if (!window.netlifyIdentity) {
+        var auth = getStoredAuth();
+        if (!auth || !auth.access_token) {
+          // Try URL hash (OAuth callback)
+          if (window.location.hash) {
+            var hash = window.location.hash.replace('#', '');
+            var params = {};
+            hash.split('&').forEach(function(p) {
+              var parts = p.split('=');
+              if (parts.length === 2) params[parts[0]] = decodeURIComponent(parts[1]);
+            });
+            if (params.access_token) {
+              storeAuth(params);
+              window.location.hash = '';
+              loadPosts();
+              return;
+            }
+          }
           state.view = 'login';
           render();
           return;
         }
-
-        window.netlifyIdentity.init();
-        window.netlifyIdentity.on('init', function(user) {
-          if (!user) {
-            state.view = 'login';
-            render();
-          } else {
-            loadPosts();
-          }
-        });
-
-        var user = window.netlifyIdentity.currentUser();
-        if (user) {
-          loadPosts();
-        } else {
-          state.view = 'login';
-          render();
-        }
+        loadPosts();
       }
 
       init();
