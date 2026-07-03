@@ -38,8 +38,10 @@ const cardClass = featured ? 'post-card post-card--featured' : 'post-card';
           ))}
         </div>
       )}
-      <h3 class="post-card__title">{title}</h3>
-      <p class="post-card__excerpt">{excerpt}</p>
+      <div class="post-card__body">
+        <h3 class="post-card__title">{title}</h3>
+        <p class="post-card__excerpt">{excerpt}</p>
+      </div>
       <div class="post-card__meta">
         <svg class="post-card__meta-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -186,6 +188,10 @@ const cardClass = featured ? 'post-card post-card--featured' : 'post-card';
 
   .post-card:hover .post-card__title {
     color: var(--color-accent);
+  }
+
+  .post-card__body {
+    flex: 1;
   }
 
   .post-card__excerpt {
