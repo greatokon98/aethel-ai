@@ -643,6 +643,32 @@
       .editor-field-row { grid-template-columns: 1fr; }
       .post-list-header h1 { font-size: 22px; }
     }
+    .error-card__pat { margin: 16px 0; text-align: left; }
+    .error-card__pat label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; }
+    .error-card__pat-row { display: flex; gap: 8px; }
+    .error-card__pat-row input { flex: 1; padding: 10px 12px; border: 1.5px solid #E2E8F0; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; }
+    .error-card__pat-row input:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+    .error-card__actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
+    .diag { text-align: left; max-width: 700px; margin: 0 auto; }
+    .diag h2 { font-family: 'Fraunces', Georgia, serif; font-size: 18px; margin-bottom: 16px; }
+    .diag-section { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    [data-theme="dark"] .diag-section { background: #1E293B; border-color: #334155; }
+    .diag-section h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748B; margin-bottom: 12px; }
+    .diag-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; border-bottom: 1px solid #F1F5F9; }
+    [data-theme="dark"] .diag-row { border-color: #1E293B; }
+    .diag-row:last-child { border-bottom: none; }
+    .diag-label { color: #64748B; font-weight: 500; }
+    .diag-value { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; word-break: break-all; max-width: 60%; text-align: right; }
+    .diag-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .diag-badge--ok { background: #DCFCE7; color: #166534; }
+    .diag-badge--fail { background: #FEE2E2; color: #991B1B; }
+    .diag-badge--warn { background: #FEF9C3; color: #854D0E; }
+    [data-theme="dark"] .diag-badge--ok { background: #052E16; color: #86EFAC; }
+    [data-theme="dark"] .diag-badge--fail { background: #450A0A; color: #FCA5A5; }
+    [data-theme="dark"] .diag-badge--warn { background: #422006; color: #FDE68A; }
+    .diag-code { background: #1E293B; color: #E2E8F0; border-radius: 6px; padding: 12px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; overflow-x: auto; white-space: pre-wrap; margin-top: 8px; }
+    .diag-progress { display: flex; align-items: center; gap: 8px; padding: 8px 0; font-size: 14px; color: #64748B; }
+    .diag-progress .spinner { width: 16px; height: 16px; border: 2px solid #E2E8F0; border-top-color: #3B82F6; border-radius: 50%; animation: spin 0.6s linear infinite; flex-shrink: 0; }
   </style>
 </head>
 <body>
@@ -769,7 +795,6 @@
       async function getJwt() {
         var auth = getStoredAuth();
         if (!auth || !auth.access_token) return null;
-        // Refresh if expired within 5 minutes
         if (Date.now() > auth.expires_at - 300000) {
           if (!auth.refresh_token) { clearAuth(); return null; }
           return await refreshJwt(auth.refresh_token);
@@ -777,21 +802,49 @@
         return auth.access_token;
       }
 
+      function decodeJwt(token) {
+        try { return JSON.parse(atob(token.split('.')[1])); } catch(e) { return null; }
+      }
+
+      // --- GitHub API fallback (bypasses Git Gateway) ---
+      var GITHUB_PAT_KEY = 'aa_github_pat';
+      var GITHUB_OWNER = 'greatokon98';
+      var GITHUB_REPO = 'aethel-ai';
+      var GITHUB_API = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO;
+
+      function getGithubPat() { return localStorage.getItem(GITHUB_PAT_KEY); }
+      function storeGithubPat(token) { localStorage.setItem(GITHUB_PAT_KEY, token); }
+      function removeGithubPat() { localStorage.removeItem(GITHUB_PAT_KEY); }
+
       async function apiCall(method, path, body) {
         var jwt = await getJwt();
         if (!jwt) throw new Error('Not authenticated');
         var opts = {
           method: method,
-          headers: {
-            'Authorization': 'Bearer ' + jwt,
-            'Content-Type': 'application/json',
-          }
+          headers: { 'Authorization': 'Bearer ' + jwt, 'Content-Type': 'application/json' }
         };
         if (body) opts.body = JSON.stringify(body);
         var res = await fetch('/.netlify/git/github' + path, opts);
         if (!res.ok) {
-          var err = await res.text().catch(function() { return res.statusText; });
-          throw new Error(err);
+          var errText = await res.text().catch(function() { return res.statusText; });
+          // If Git Gateway fails with microservice error, try GitHub API directly
+          if (errText.indexOf('microservice') !== -1) {
+            var pat = getGithubPat();
+            if (pat) {
+              var ghOpts = {
+                method: method,
+                headers: { 'Authorization': 'Bearer ' + pat, 'Content-Type': 'application/json' }
+              };
+              if (body) ghOpts.body = JSON.stringify(body);
+              var ghRes = await fetch(GITHUB_API + path, ghOpts);
+              if (!ghRes.ok) {
+                var ghErr = await ghRes.text().catch(function() { return ghRes.statusText; });
+                throw new Error(ghErr);
+              }
+              return ghRes.json();
+            }
+          }
+          throw new Error(errText);
         }
         return res.json();
       }
@@ -858,18 +911,24 @@
       function renderError() {
         var msg = state.error || 'Something went wrong.';
         var isGateway = msg.indexOf('microservice') !== -1 || msg.indexOf('Gateway') !== -1;
+        var hasPat = !!getGithubPat();
+        var showPatRow = isGateway;
         return '<div class="error-card">' +
           '<div class="error-card__icon">⚠️</div>' +
-          '<h2 class="error-card__title">' + (isGateway ? 'Git Gateway Not Enabled' : 'Connection Error') + '</h2>' +
+          '<h2 class="error-card__title">' + (isGateway ? 'Git Gateway Connection Issue' : 'Connection Error') + '</h2>' +
           '<p class="error-card__message">' + escapeHtml(msg) + '</p>' +
-          (isGateway ? '<div class="error-card__steps">' +
-            '<strong>To fix this:</strong><br />' +
-            '1. Go to your <a href="https://app.netlify.com/sites/aethel-ai/settings/deploys" target="_blank" style="color:#3B82F6">Netlify Dashboard</a><br />' +
-            '2. Navigate to <strong>Services → Git Gateway</strong><br />' +
-            '3. Click <strong>Enable Git Gateway</strong><br />' +
-            '4. Return here and refresh' +
+          (showPatRow ? '<div class="error-card__pat">' +
+            '<label>GitHub Personal Access Token (bypasses Git Gateway):</label>' +
+            '<div class="error-card__pat-row">' +
+              '<input type="password" id="diag-pat-input" value="' + escapeHtml(hasPat ? '••••••••' : '') + '" placeholder="ghp_..." />' +
+              '<button class="admin-header__btn" id="diag-pat-save">' + (hasPat ? 'Update' : 'Save') + '</button>' +
+            '</div>' +
+            '<div style="margin-top:8px;font-size:13px;color:#64748B">Needs <strong>repo</strong> scope. <a href="https://github.com/settings/tokens" target="_blank" style="color:#3B82F6">Create one</a></div>' +
           '</div>' : '') +
-          '<button class="admin-header__btn admin-header__btn--primary" onclick="window.location.reload()">Try Again</button>' +
+          '<div class="error-card__actions">' +
+            '<button class="admin-header__btn" onclick="APP.runDiagnostics()">Diagnose</button>' +
+            '<button class="admin-header__btn admin-header__btn--primary" onclick="window.location.reload()">Try Again</button>' +
+          '</div>' +
         '</div>';
       }
 
@@ -1066,6 +1125,165 @@
         '</div>';
       }
 
+      // --- Diagnostics ---
+      function renderDiagnostics() {
+        var d = state.diag || {};
+        var badge = function(ok, text) { return '<span class="diag-badge diag-badge--' + (ok ? 'ok' : 'fail') + '">' + (text || (ok ? 'PASS' : 'FAIL')) + '</span>'; };
+        var row = function(label, val, badgeHtml) { return '<div class="diag-row"><span class="diag-label">' + label + '</span>' + (badgeHtml ? badgeHtml : '<span class="diag-value">' + val + '</span>') + '</div>'; };
+
+        return '<div class="diag">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+            '<h2>Diagnostics</h2>' +
+            '<button class="admin-header__btn admin-header__btn--primary" onclick="APP.runDiagnostics()">Run Again</button>' +
+          '</div>' +
+
+          // JWT claims
+          '<div class="diag-section">' +
+            '<h3>JWT Token Claims</h3>' +
+            (d.jwt ? (
+              row('Email', escapeHtml(d.jwt.email || 'none')) +
+              row('Issuer', escapeHtml(d.jwt.iss || 'none')) +
+              row('Expires', new Date((d.jwt.exp || 0) * 1000).toLocaleString()) +
+              row('App Metadata', '<pre style="font-size:11px;max-height:100px;overflow:auto">' + escapeHtml(JSON.stringify(d.jwt.app_metadata || {}, null, 2)) + '</pre>') +
+              row('Gateway Roles', (d.jwt.app_metadata && d.jwt.app_metadata.gateway && d.jwt.app_metadata.gateway.roles) ? badge(true, d.jwt.app_metadata.gateway.roles.join(', ')) : badge(false, 'MISSING')) +
+              ''
+            ) : '<div class="diag-progress"><div class="spinner"></div> Decoding JWT...</div>') +
+          '</div>' +
+
+          // Auth Storage
+          '<div class="diag-section">' +
+            '<h3>Auth Storage</h3>' +
+            row('aa_auth in localStorage', d.hasAuth ? badge(true, 'Present') : badge(false, 'Missing')) +
+            (d.authInfo ? row('Email', escapeHtml(d.authInfo.email || 'unknown')) + row('Token Expires', new Date(d.authInfo.expires_at).toLocaleString()) : '') +
+          '</div>' +
+
+          // GitHub PAT
+          '<div class="diag-section">' +
+            '<h3>GitHub API Token</h3>' +
+            row('aa_github_pat', d.hasPat ? badge(true, 'Configured') : badge(false, 'Not set')) +
+            (d.hasPat ? row('Token Preview', escapeHtml((d.patPreview || '') + '...')) : '') +
+          '</div>' +
+
+          // Git Gateway Probe
+          '<div class="diag-section">' +
+            '<h3>Git Gateway Probe</h3>' +
+            (d.gwDone ? (
+              row('Endpoint', '/.netlify/git/github/') +
+              row('Status', d.gwStatus ? badge(d.gwOk, d.gwStatus) : badge(false, 'No response')) +
+              (d.gwBody ? '<div class="diag-code">' + escapeHtml(d.gwBody) + '</div>' : '')
+            ) : '<div class="diag-progress"><div class="spinner"></div> Probing Git Gateway...</div>') +
+          '</div>' +
+
+          // GitHub API Probe
+          (d.hasPat ? '<div class="diag-section">' +
+            '<h3>GitHub API Probe</h3>' +
+            (d.ghDone ? (
+              row('Endpoint', 'api.github.com/repos/.../') +
+              row('Status', d.ghStatus ? badge(d.ghOk, d.ghStatus) : badge(false, 'No response')) +
+              (d.ghBody ? '<div class="diag-code">' + escapeHtml(d.ghBody) + '</div>' : '')
+            ) : '<div class="diag-progress"><div class="spinner"></div> Probing GitHub API...</div>') +
+          '</div>' : '') +
+
+          // Recommendation
+          '<div class="diag-section" style="background:#EFF6FF;border-color:#93C5FD">' +
+            '<h3 style="color:#1D4ED8">Recommendation</h3>' +
+            '<div style="font-size:14px;line-height:1.6">' +
+              (d.recommendation || 'Run diagnostics to see recommendations.') +
+            '</div>' +
+          '</div>' +
+
+        '</div>';
+      }
+
+      async function runDiagnostics() {
+        state.view = 'diagnostics';
+        state.diag = {};
+        render();
+
+        var diag = {};
+
+        // 1. Decode JWT
+        var auth = getStoredAuth();
+        diag.hasAuth = !!auth;
+        diag.authInfo = auth ? (auth.user || { email: 'present' }) : null;
+        if (auth && auth.access_token) {
+          diag.jwt = decodeJwt(auth.access_token);
+        }
+
+        // 2. Check PAT
+        var pat = getGithubPat();
+        diag.hasPat = !!pat;
+        diag.patPreview = pat ? pat.substring(0, 8) : '';
+
+        state.diag = diag;
+        render();
+
+        // 3. Probe Git Gateway (in parallel with GitHub if PAT exists)
+        try {
+          var gwRes = await fetch('/.netlify/git/github/', {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + (auth ? auth.access_token : ''), 'Content-Type': 'application/json' }
+          });
+          diag.gwStatus = gwRes.status + ' ' + gwRes.statusText;
+          diag.gwOk = gwRes.ok;
+          diag.gwBody = await gwRes.text().catch(function() { return ''; });
+        } catch(e) {
+          diag.gwStatus = 'Error: ' + e.message;
+          diag.gwOk = false;
+        }
+        diag.gwDone = true;
+        state.diag = diag;
+        render();
+
+        // 4. Probe GitHub API (if PAT exists)
+        if (pat) {
+          try {
+            var ghRes = await fetch(GITHUB_API + '/contents/src/content/posts?ref=main', {
+              method: 'GET',
+              headers: { 'Authorization': 'Bearer ' + pat, 'Accept': 'application/vnd.github.v3+json' }
+            });
+            diag.ghStatus = ghRes.status + ' ' + ghRes.statusText;
+            diag.ghOk = ghRes.ok;
+            var ghBody = await ghRes.text().catch(function() { return ''; });
+            if (diag.ghOk) {
+              var ghData = JSON.parse(ghBody);
+              diag.ghBody = '✅ Success! Found ' + ghData.length + ' files in src/content/posts/';
+            } else {
+              diag.ghBody = ghBody;
+            }
+          } catch(e) {
+            diag.ghStatus = 'Error: ' + e.message;
+            diag.ghOk = false;
+          }
+          diag.ghDone = true;
+          state.diag = diag;
+          render();
+        }
+
+        // 5. Generate recommendation
+        var recs = [];
+        if (!diag.jwt || !diag.jwt.app_metadata || !diag.jwt.app_metadata.gateway) {
+          recs.push('JWT missing gateway roles. Go to Netlify Dashboard → Identity → Users → click your user → add role <strong>admin</strong>, then sign out and sign back in.');
+        }
+        if (!diag.gwOk && !pat) {
+          recs.push('Git Gateway failed AND no GitHub PAT configured. <strong>Enter your GitHub PAT above</strong> to bypass Git Gateway and use the GitHub API directly.');
+        }
+        if (!diag.gwOk && pat && diag.ghOk) {
+          recs.push('Git Gateway failed but GitHub API works with your PAT! The admin panel will automatically fall back to the GitHub API.');
+        }
+        if (!diag.gwOk && pat && !diag.ghOk) {
+          recs.push('Both Git Gateway and GitHub API failed. Your PAT may be invalid or missing the <strong>repo</strong> scope. Generate a new one at github.com/settings/tokens.');
+        }
+        if (diag.gwOk) {
+          recs.push('Git Gateway is working and responding correctly. The admin panel should function normally. Refresh to try again.');
+        }
+        diag.recommendation = recs.length ? recs.join('<br /><br />') : 'All checks passed. The admin panel should work.';
+        state.diag = diag;
+        render();
+      }
+
+      APP.runDiagnostics = runDiagnostics;
+
       async function saveSettings() {
         var s = state.settings || JSON.parse(JSON.stringify(defaultSettings));
 
@@ -1189,6 +1407,8 @@
           html += renderTrendingList();
         } else if (state.view === 'settings') {
           html += renderSettingsForm();
+        } else if (state.view === 'diagnostics') {
+          html += renderDiagnostics();
         }
         html += '</div>';
 
@@ -1357,6 +1577,25 @@
         var saveSettingsBtn = document.getElementById('btn-save-settings');
         if (saveSettingsBtn) {
           saveSettingsBtn.addEventListener('click', saveSettings);
+        }
+
+        // Diagnostics: save PAT
+        var patSaveBtn = document.getElementById('diag-pat-save');
+        var patInput = document.getElementById('diag-pat-input');
+        if (patSaveBtn && patInput) {
+          patSaveBtn.addEventListener('click', function() {
+            var val = patInput.value.trim();
+            if (val && val !== '••••••••') {
+              storeGithubPat(val);
+              showToast('GitHub token saved. Retrying...', 'success');
+              loadPosts();
+            } else if (val === '••••••••') {
+              showToast('Token already saved. Running diagnostics...', 'info');
+              runDiagnostics();
+            } else {
+              showToast('Please enter a valid token', 'error');
+            }
+          });
         }
       }
 
