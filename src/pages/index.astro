@@ -63,12 +63,19 @@ const trending = await fetchTrendingNews();
               <input type="text" name="q" placeholder="Search articles..." class="mobile-search-input" />
             </form>
             <div class="mobile-category-wrapper">
-              <select class="mobile-category-select" onchange="if(this.value) window.location.href=this.value">
-                <option value="">All Categories</option>
-                {allCategories.map(cat => (
-                  <option value={`/category/${cat.toLowerCase().replace(/\s+/g, '-')}`}>{cat}</option>
-                ))}
-              </select>
+              <button type="button" class="mobile-category-trigger" data-category-toggle>
+                <span data-category-label>All Categories</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              <ul class="mobile-category-menu" data-category-menu>
+                <li><a href="/">All Categories</a></li>
+                {allCategories.map(cat => {
+                  const catSlug = cat.toLowerCase().replace(/\s+/g, '-');
+                  return <li><a href={`/category/${catSlug}`}>{cat}</a></li>;
+                })}
+              </ul>
             </div>
           </div>
           <h2 class="section-title fade-in">Latest Posts</h2>
@@ -207,12 +214,17 @@ const trending = await fetchTrendingNews();
     }
 
     .mobile-category-wrapper {
-      min-width: 140px;
+      position: relative;
+      min-width: 160px;
     }
 
-    .mobile-category-select {
+    .mobile-category-trigger {
       width: 100%;
       height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-2);
       padding: var(--space-3);
       font-family: var(--font-body);
       font-size: var(--text-base);
@@ -220,20 +232,68 @@ const trending = await fetchTrendingNews();
       border-radius: var(--radius-md);
       background-color: var(--color-bg);
       color: var(--color-text);
-      outline: none;
       cursor: pointer;
       transition: border-color var(--transition);
-      appearance: none;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right var(--space-3) center;
-      padding-right: var(--space-10);
+      white-space: nowrap;
     }
 
-    .mobile-category-select:focus {
+    .mobile-category-trigger:hover,
+    .mobile-category-trigger:focus {
       border-color: var(--color-accent);
+      outline: none;
+    }
+
+    .mobile-category-trigger svg {
+      flex-shrink: 0;
+      color: var(--color-text-muted);
+      transition: transform var(--transition);
+    }
+
+    .mobile-category-trigger[aria-expanded="true"] svg {
+      transform: rotate(180deg);
+    }
+
+    .mobile-category-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      display: none;
+      margin-top: 4px;
+      list-style: none;
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+
+    .mobile-category-menu--open {
+      display: block;
+    }
+
+    .mobile-category-menu li {
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .mobile-category-menu li:last-child {
+      border-bottom: none;
+    }
+
+    .mobile-category-menu a {
+      display: block;
+      padding: var(--space-3);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
+      color: var(--color-text);
+      text-decoration: none;
+      transition: background-color var(--transition);
+    }
+
+    .mobile-category-menu a:hover {
+      background-color: var(--color-surface-hover);
+      color: var(--color-accent);
     }
   }
 
@@ -278,3 +338,37 @@ const trending = await fetchTrendingNews();
     }
   }
 </style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const toggle = document.querySelector('[data-category-toggle]');
+    const menu = document.querySelector('[data-category-menu]');
+    const label = document.querySelector('[data-category-label]');
+
+    if (!toggle || !menu) return;
+
+    function close() {
+      menu.classList.remove('mobile-category-menu--open');
+      toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = menu.classList.toggle('mobile-category-menu--open');
+      toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+
+    menu.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => {
+        if (label) label.textContent = link.textContent;
+        close();
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!toggle.contains(e.target) && !menu.contains(e.target)) {
+        close();
+      }
+    });
+  });
+</script>

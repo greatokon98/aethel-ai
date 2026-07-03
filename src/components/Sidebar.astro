@@ -103,9 +103,11 @@ const { categories = [], recentPosts = [], trendingPosts = [], trending = [] } =
       {recentPosts.length > 0 ? (
         recentPosts.slice(0, 5).map((post) => (
           <li class="sidebar__post-item">
-            <a href={`/posts/${post.slug}`} class="sidebar__post-link">
-              {post.title}
-            </a>
+            <div class="sidebar__post-body">
+              <a href={`/posts/${post.slug}`} class="sidebar__post-link">
+                {post.title}
+              </a>
+            </div>
             <time datetime={post.publishDate.toISOString()} class="sidebar__post-date">
               {post.publishDate.toLocaleDateString('en-US', {
                 month: 'short',
@@ -295,6 +297,9 @@ const { categories = [], recentPosts = [], trendingPosts = [], trending = [] } =
   }
 
   .sidebar__post-item {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     padding-bottom: var(--space-4);
     border-bottom: 1px solid var(--color-border);
   }
@@ -302,6 +307,10 @@ const { categories = [], recentPosts = [], trendingPosts = [], trending = [] } =
   .sidebar__post-item:last-child {
     border-bottom: none;
     padding-bottom: 0;
+  }
+
+  .sidebar__post-body {
+    flex: 1;
   }
 
   .sidebar__post-link {
@@ -323,6 +332,7 @@ const { categories = [], recentPosts = [], trendingPosts = [], trending = [] } =
     font-family: var(--font-body);
     font-size: var(--text-sm);
     color: var(--color-text-muted);
+    margin-top: auto;
   }
 
   .sidebar__text {
