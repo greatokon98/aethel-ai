@@ -7,17 +7,13 @@ const navLinks = config.navigation.links;
 <header class="header">
   <div class="container header__inner">
     <a href="/" class="header__logo" aria-label="Aethel_AI Home">
-      <svg class="header__logo-icon" width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-        <rect width="28" height="28" rx="6" fill="var(--color-accent)"/>
-        <path d="M8 22 L11 7 Q11.3 5.5 13 5.5 Q14.7 5.5 15 7 L18 22 L16 22 L15 16.5 H10 L9 22 Z M10.5 14.5 H14.5 L12.5 9.5 Z" fill="white"/>
-      </svg>
-      <span class="header__logo-text">Aethel_AI</span>
+      <img src="/favicon.svg" alt="Aethel_AI" class="header__logo-icon" width="32" height="32" />
     </a>
     <nav class="header__nav" aria-label="Main navigation">
       <ul class="header__nav-list">
         {navLinks.map((link) => (
           <li>
-            <a href={link.url} class="header__nav-link">
+            <a href={link.url} class={'header__nav-link' + (link.url === Astro.url.pathname ? ' header__nav-link--active' : '')}>
               {link.label}
             </a>
           </li>
@@ -75,12 +71,12 @@ const navLinks = config.navigation.links;
   .header {
     padding: 0;
     border-bottom: 1px solid var(--color-border);
-    background-color: var(--color-bg);
+    background-color: rgba(255, 255, 255, 0.88);
     position: sticky;
     top: 0;
     z-index: 100;
-    backdrop-filter: blur(12px);
-    background-color: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     transition: background-color var(--transition-slow);
   }
 
@@ -102,20 +98,8 @@ const navLinks = config.navigation.links;
   .header__logo-icon {
     display: block;
     flex-shrink: 0;
-  }
-
-  .header__logo-text {
-    font-family: var(--font-heading);
-    font-size: var(--text-xl);
-    font-weight: 600;
-    color: var(--color-text);
-    font-style: italic;
-    letter-spacing: -0.02em;
-    transition: color var(--transition);
-  }
-
-  [data-theme="dark"] .header__logo-text {
-    color: #FFFFFF;
+    height: 32px;
+    width: auto;
   }
 
   .header__nav-list {
@@ -128,11 +112,11 @@ const navLinks = config.navigation.links;
   .header__nav-link {
     font-family: var(--font-body);
     font-size: var(--text-sm);
-    color: var(--color-text-secondary);
+    color: var(--color-text);
     text-decoration: none;
     transition: color var(--transition);
     position: relative;
-    font-weight: 500;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     padding: var(--space-2) 0;
@@ -149,11 +133,13 @@ const navLinks = config.navigation.links;
     transition: width var(--transition);
   }
 
-  .header__nav-link:hover {
+  .header__nav-link:hover,
+  .header__nav-link--active {
     color: var(--color-accent);
   }
 
-  .header__nav-link:hover::after {
+  .header__nav-link:hover::after,
+  .header__nav-link--active::after {
     width: 100%;
   }
 

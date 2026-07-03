@@ -38,7 +38,10 @@ const posts = files
       readingTime: getReadingTime(body),
     };
   })
-  .sort((a, b) => b.publishDate.getTime() - a.publishDate.getTime());
+  .sort((a, b) => {
+    if (a.featured !== b.featured) return a.featured ? -1 : 1;
+    return b.publishDate.getTime() - a.publishDate.getTime();
+  });
 
 const allCategories = [...new Set(posts.flatMap((p) => p.categories))];
 const trendingPosts = posts.filter((p) => p.tags && p.tags.includes('trending'));
@@ -56,7 +59,6 @@ const trending = await fetchTrendingNews();
             {posts.map((post, i) => (
               <div
                 class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}
-                style={post.featured ? 'grid-column: 1 / -1' : ''}
               >
                 <PostCard
                   title={post.title}
@@ -95,12 +97,20 @@ const trending = await fetchTrendingNews();
     display: grid;
     grid-template-columns: 1fr var(--sidebar-width);
     gap: var(--space-12);
+    align-items: start;
+  }
+
+  .blog-grid__sidebar {
+    position: sticky;
+    top: 88px;
+    align-self: start;
   }
 
   .blog-grid__posts {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-6);
+    align-content: start;
   }
 
   @media (max-width: 1024px) {
@@ -113,6 +123,10 @@ const trending = await fetchTrendingNews();
   @media (max-width: 768px) {
     .blog-grid__layout {
       grid-template-columns: 1fr;
+    }
+
+    .blog-grid__sidebar {
+      position: static;
     }
 
     .blog-grid__posts {

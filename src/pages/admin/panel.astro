@@ -4,6 +4,14 @@
 <!doctype html>
 <html lang="en" data-theme="light">
 <head>
+  <script is:inline>
+    (function() {
+      var saved = localStorage.getItem('theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex" />
@@ -15,11 +23,42 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: #F8FAFC;
+      background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
       color: #0F172A;
       -webkit-font-smoothing: antialiased;
       min-height: 100vh;
     }
+    [data-theme="dark"] body {
+      background: linear-gradient(135deg, #0B1120 0%, #0F172A 100%);
+      color: #F1F5F9;
+    }
+    [data-theme="dark"] .post-table,
+    [data-theme="dark"] .editor-form,
+    [data-theme="dark"] .settings-section,
+    [data-theme="dark"] .trending-card {
+      background: #1E293B;
+      border-color: #334155;
+    }
+    [data-theme="dark"] .post-table th { background: #0F172A; color: #64748B; border-color: #334155; }
+    [data-theme="dark"] .post-table td { border-color: #1E293B; color: #CBD5E1; }
+    [data-theme="dark"] .post-table tr:hover td { background: #0F172A; }
+    [data-theme="dark"] .post-table .post-title { color: #F1F5F9; }
+    [data-theme="dark"] .admin-tabs { background: #0B1120; border-color: #1E293B; }
+    [data-theme="dark"] .admin-tab { color: #94A3B8; }
+    [data-theme="dark"] .admin-tab:hover { color: #F1F5F9; }
+    [data-theme="dark"] .admin-tab--active { color: #60A5FA; border-color: #60A5FA; }
+    [data-theme="dark"] .editor-field input,
+    [data-theme="dark"] .editor-field textarea,
+    [data-theme="dark"] .editor-field select { background: #0F172A; border-color: #334155; color: #F1F5F9; }
+    [data-theme="dark"] .editor-preview { background: #0F172A; border-color: #334155; }
+    [data-theme="dark"] .settings-nav-row input { background: #0F172A; border-color: #334155; color: #F1F5F9; }
+    [data-theme="dark"] .settings-section-title { border-color: #1E293B; }
+    [data-theme="dark"] .trending-card__title { color: #F1F5F9; }
+    [data-theme="dark"] .trending-card__desc { color: #94A3B8; }
+    [data-theme="dark"] .admin-header__user { color: rgba(255,255,255,0.5); }
+    [data-theme="dark"] .error-card { background: #1E293B; border-color: #334155; }
+    [data-theme="dark"] .error-card__message { color: #94A3B8; }
+    [data-theme="dark"] .empty-state { color: #64748B; }
     .admin-header {
       background: #0F1E36;
       padding: 0 24px;
@@ -124,9 +163,9 @@
       width: 100%;
       border-collapse: collapse;
       background: #fff;
-      border-radius: 12px;
+      border-radius: 14px;
       overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
       border: 1px solid #E2E8F0;
     }
     .post-table th {
@@ -499,12 +538,101 @@
       flex: 1;
     }
 
+    .error-card {
+      text-align: center;
+      padding: 60px 40px;
+      background: #fff;
+      border: 1px solid #FECACA;
+      border-radius: 16px;
+      max-width: 520px;
+      margin: 40px auto;
+    }
+    .error-card__icon {
+      width: 56px;
+      height: 56px;
+      background: #FEF2F2;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 24px;
+    }
+    .error-card__title {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 20px;
+      font-weight: 500;
+      color: #0F172A;
+      margin-bottom: 8px;
+    }
+    .error-card__message {
+      font-size: 15px;
+      color: #64748B;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .error-card__steps {
+      text-align: left;
+      background: #F8FAFC;
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #475569;
+    }
+    .error-card__steps code {
+      background: #E2E8F0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .skeleton__bar {
+      height: 20px;
+      background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
+      background-size: 200% 100%;
+      border-radius: 6px;
+      animation: shimmer 1.5s ease-in-out infinite;
+    }
+    .skeleton__bar--short { width: 40%; }
+    .skeleton__bar--medium { width: 70%; }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
     .empty-state {
       text-align: center;
-      padding: 60px 20px;
+      padding: 80px 20px;
       color: #94A3B8;
+      max-width: 400px;
+      margin: 0 auto;
     }
-    .empty-state p { font-size: 16px; margin-top: 8px; }
+    .empty-state__icon {
+      width: 64px;
+      height: 64px;
+      background: #F1F5F9;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 28px;
+    }
+    .empty-state h2 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 22px;
+      font-weight: 500;
+      color: #0F172A;
+      margin-bottom: 8px;
+    }
+    .empty-state p { font-size: 15px; line-height: 1.6; color: #94A3B8; }
 
     @media (max-width: 768px) {
       .admin-container { padding: 20px 16px; }
@@ -685,7 +813,31 @@
 
       // --- Views ---
       function renderLoading() {
-        return '<div class="admin-loading"><div class="admin-spinner"></div><p>Loading...</p></div>';
+        return '<div class="admin-loading"><div class="skeleton">' +
+          '<div class="skeleton__bar skeleton__bar--short"></div>' +
+          '<div class="skeleton__bar skeleton__bar--medium"></div>' +
+          '<div class="skeleton__bar"></div>' +
+          '<div class="skeleton__bar skeleton__bar--medium"></div>' +
+          '<div class="skeleton__bar"></div>' +
+        '</div></div>';
+      }
+
+      function renderError() {
+        var msg = state.error || 'Something went wrong.';
+        var isGateway = msg.indexOf('microservice') !== -1 || msg.indexOf('Gateway') !== -1;
+        return '<div class="error-card">' +
+          '<div class="error-card__icon">⚠️</div>' +
+          '<h2 class="error-card__title">' + (isGateway ? 'Git Gateway Not Enabled' : 'Connection Error') + '</h2>' +
+          '<p class="error-card__message">' + escapeHtml(msg) + '</p>' +
+          (isGateway ? '<div class="error-card__steps">' +
+            '<strong>To fix this:</strong><br />' +
+            '1. Go to your <a href="https://app.netlify.com/sites/aethel-ai/settings/deploys" target="_blank" style="color:#3B82F6">Netlify Dashboard</a><br />' +
+            '2. Navigate to <strong>Services → Git Gateway</strong><br />' +
+            '3. Click <strong>Enable Git Gateway</strong><br />' +
+            '4. Return here and refresh' +
+          '</div>' : '') +
+          '<button class="admin-header__btn admin-header__btn--primary" onclick="window.location.reload()">Try Again</button>' +
+        '</div>';
       }
 
       function renderLogin() {
@@ -694,7 +846,11 @@
 
       function renderPostList(posts) {
         if (posts.length === 0) {
-          return '<div class="empty-state"><h2>No posts yet</h2><p>Create your first post to get started.</p></div>';
+          return '<div class="empty-state">' +
+            '<div class="empty-state__icon">✍️</div>' +
+            '<h2>No posts yet</h2>' +
+            '<p>Your first article is waiting to be written. Click "New Post" to get started.</p>' +
+          '</div>';
         }
         var rows = posts.map(function(p) {
           var date = p.publishDate ? formatDate(p.publishDate) : '';
@@ -947,6 +1103,7 @@
         editingPost: null,
         trendingItems: [],
         settings: null,
+        error: null,
       };
 
       function renderTabNav() {
@@ -987,6 +1144,8 @@
         html += '<div class="admin-container">';
         if (state.view === 'loading') {
           html += renderLoading();
+        } else if (state.view === 'error') {
+          html += renderError();
         } else if (state.view === 'login') {
           html += renderLogin();
         } else if (state.view === 'list') {
@@ -1238,9 +1397,8 @@
           state.posts = await listPosts();
           state.view = 'list';
         } catch(e) {
-          state.view = 'list';
-          state.posts = [];
-          showToast('Error loading posts: ' + e.message, 'error');
+          state.view = 'error';
+          state.error = e.message;
         }
         render();
       }
