@@ -8,13 +8,7 @@ const year = new Date().getFullYear();
   <div class="container">
     <div class="footer__grid">
       <div class="footer__brand">
-        <a href="/" class="footer__logo">
-          <svg class="footer__logo-icon" width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-            <rect width="28" height="28" rx="6" fill="var(--color-accent)"/>
-            <path d="M8 22 L11 7 Q11.3 5.5 13 5.5 Q14.7 5.5 15 7 L18 22 L16 22 L15 16.5 H10 L9 22 Z M10.5 14.5 H14.5 L12.5 9.5 Z" fill="white"/>
-          </svg>
-          Aethel_AI
-        </a>
+        <a href="/" class="footer__logo">Aethel_AI</a>
         <p class="footer__tagline">
           {config.site.tagline}
         </p>
@@ -36,7 +30,6 @@ const year = new Date().getFullYear();
           <li><a href="/">Home</a></li>
           <li><a href="/about">About</a></li>
           <li><a href="/contact">Contact</a></li>
-          <li><a href="/admin">Admin</a></li>
         </ul>
       </div>
       <div class="footer__links">
@@ -84,19 +77,17 @@ const year = new Date().getFullYear();
 
   .footer__logo {
     font-family: var(--font-heading);
-    font-size: var(--text-2xl);
-    font-weight: 600;
+    font-size: 1.375rem;
+    font-weight: 700;
     font-style: italic;
-    color: var(--color-bg);
+    letter-spacing: -0.5px;
+    color: var(--color-text);
     text-decoration: none;
-    letter-spacing: -0.02em;
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
+    transition: color var(--transition-slow);
   }
 
-  .footer__logo-icon {
-    flex-shrink: 0;
+  [data-theme="dark"] .footer__logo {
+    color: #F1F5F9;
   }
 
   .footer__tagline {
@@ -173,9 +164,10 @@ const year = new Date().getFullYear();
 
   .footer__input {
     flex: 1;
-    padding: var(--space-3) var(--space-4);
+    padding: 0.75rem 1rem;
     font-family: var(--font-body);
     font-size: var(--text-base);
+    line-height: 1.5;
     border: 1.5px solid rgba(255, 255, 255, 0.2);
     border-radius: var(--radius-md);
     background-color: rgba(255, 255, 255, 0.08);

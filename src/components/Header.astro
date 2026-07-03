@@ -7,7 +7,7 @@ const navLinks = config.navigation.links;
 <header class="header">
   <div class="container header__inner">
     <a href="/" class="header__logo" aria-label="Aethel_AI Home">
-      <img src="/favicon.svg" alt="Aethel_AI" class="header__logo-icon" width="32" height="32" />
+      <span class="header__logo-text">Aethel_AI</span>
     </a>
     <nav class="header__nav" aria-label="Main navigation">
       <ul class="header__nav-list">
@@ -93,11 +93,14 @@ const navLinks = config.navigation.links;
     flex-shrink: 0;
   }
 
-  .header__logo-icon {
-    display: block;
-    flex-shrink: 0;
-    height: 32px;
-    width: auto;
+  .header__logo-text {
+    font-family: var(--font-heading);
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--color-text);
+    font-style: italic;
+    transition: color var(--transition-slow);
   }
 
   .header__nav-list {
