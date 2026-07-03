@@ -50,13 +50,37 @@ const trending = await fetchTrendingNews();
 
 <BaseLayout title="Home" description="Smart tools for everyday life — no jargon, just results.">
   <Hero posts={posts} />
+
+  <section class="section featured-section">
+    <div class="container">
+      <h2 class="section-title fade-in">Featured Stories</h2>
+      <div class="featured-grid">
+        {posts.filter(p => p.featured).map((post, i) => (
+          <div class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}>
+            <PostCard
+              title={post.title}
+              excerpt={post.excerpt}
+              publishDate={post.publishDate}
+              slug={post.slug}
+              featuredImage={post.featuredImage}
+              categories={post.categories}
+              author={post.author}
+              readingTime={post.readingTime}
+              featured={true}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
   <section class="section blog-grid">
     <div class="container">
       <div class="blog-grid__layout">
         <div class="blog-grid__main">
           <h2 class="section-title fade-in">Latest Posts</h2>
           <div class="blog-grid__posts">
-            {posts.map((post, i) => (
+            {posts.filter(p => !p.featured).map((post, i) => (
               <div
                 class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}
               >
@@ -69,7 +93,7 @@ const trending = await fetchTrendingNews();
                   categories={post.categories}
                   author={post.author}
                   readingTime={post.readingTime}
-                  featured={post.featured}
+                  featured={false}
                 />
               </div>
             ))}
@@ -93,6 +117,16 @@ const trending = await fetchTrendingNews();
 </BaseLayout>
 
 <style>
+  .featured-section {
+    padding-top: 0;
+  }
+
+  .featured-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
   .blog-grid__layout {
     display: grid;
     grid-template-columns: 1fr var(--sidebar-width);
