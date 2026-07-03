@@ -53,8 +53,22 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
 
-      - name: Deploy to Netlify
-        run: ./node_modules/.bin/netlify deploy --dir=./dist --prod --message="Deploy from GitHub Actions ${{ github.sha }}" --debug 2>&1
+      - name: Deploy to Netlify via API
+        run: |
+          echo "Creating deploy..."
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"required":[]}' \
+            "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys")
+          echo "Response:"
+          echo "$RESPONSE" | head -c 1000
+          if echo "$RESPONSE" | grep -q '"id"'; then
+            echo -e "\nDeploy created successfully."
+          else
+            echo -e "\nDeploy creation failed."
+            exit 1
+          fi
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
