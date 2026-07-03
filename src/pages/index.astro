@@ -51,29 +51,6 @@ const trending = await fetchTrendingNews();
 <BaseLayout title="Home" description="Smart tools for everyday life — no jargon, just results.">
   <Hero posts={posts} />
 
-  <section class="section featured-section">
-    <div class="container">
-      <h2 class="section-title fade-in">Featured Stories</h2>
-      <div class="featured-grid">
-        {posts.filter(p => p.featured).map((post, i) => (
-          <div class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}>
-            <PostCard
-              title={post.title}
-              excerpt={post.excerpt}
-              publishDate={post.publishDate}
-              slug={post.slug}
-              featuredImage={post.featuredImage}
-              categories={post.categories}
-              author={post.author}
-              readingTime={post.readingTime}
-              featured={true}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
   <section class="section blog-grid">
     <div class="container">
       <div class="blog-grid__layout">
@@ -114,17 +91,55 @@ const trending = await fetchTrendingNews();
       </div>
     </div>
   </section>
+
+  <section class="section featured-section">
+    <div class="container">
+      <h2 class="section-title fade-in">Featured Stories</h2>
+      <div class="featured-grid">
+        {posts.filter(p => p.featured).map((post, i) => (
+          <div class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}>
+            <PostCard
+              title={post.title}
+              excerpt={post.excerpt}
+              publishDate={post.publishDate}
+              slug={post.slug}
+              featuredImage={post.featuredImage}
+              categories={post.categories}
+              author={post.author}
+              readingTime={post.readingTime}
+              featured={false}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
 </BaseLayout>
 
 <style>
   .featured-section {
-    padding-top: 0;
+    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-8);
   }
 
   .featured-grid {
     display: flex;
-    flex-direction: column;
     gap: var(--space-6);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--space-4);
+    scrollbar-width: thin;
+  }
+
+  .featured-grid > * {
+    flex: 0 0 360px;
+    scroll-snap-align: start;
+  }
+
+  @media (max-width: 768px) {
+    .featured-grid { gap: var(--space-4); }
+    .featured-grid > * { flex: 0 0 300px; }
   }
 
   .blog-grid__layout {
