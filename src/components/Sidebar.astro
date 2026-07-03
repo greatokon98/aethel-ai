@@ -77,7 +77,7 @@ const { categories = [], recentPosts = [], trendingPosts = [], trending = [] } =
     </div>
   </div>
 
-  <div class="sidebar__widget">
+  <div class="sidebar__widget sidebar__categories">
     <h3 class="sidebar__widget-title">Categories</h3>
     <ul class="sidebar__list">
       {categories.length > 0 ? (
@@ -379,6 +379,11 @@ const { categories = [], recentPosts = [], trendingPosts = [], trending = [] } =
 
     .sidebar__trending-item {
       gap: var(--space-3);
+    }
+
+    .sidebar__search,
+    .sidebar__categories {
+      display: none;
     }
   }
 
