@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Hero from '../components/Hero.astro';
 import PostCard from '../components/PostCard.astro';
 import Sidebar from '../components/Sidebar.astro';
+import { getConfig } from '../lib/site-config';
 import { fetchTrendingNews } from '../lib/trending';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -40,6 +41,7 @@ const posts = files
   .sort((a, b) => b.publishDate.getTime() - a.publishDate.getTime());
 
 const allCategories = [...new Set(posts.flatMap((p) => p.categories))];
+const trendingPosts = posts.filter((p) => p.tags && p.tags.includes('trending'));
 const trending = await fetchTrendingNews();
 ---
 
@@ -79,6 +81,7 @@ const trending = await fetchTrendingNews();
               slug: p.slug,
               publishDate: p.publishDate,
             }))}
+            trendingPosts={trendingPosts}
             trending={trending}
           />
         </div>

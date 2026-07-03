@@ -1,9 +1,7 @@
 ---
-const navLinks = [
-  { label: 'Home', url: '/' },
-  { label: 'About', url: '/about' },
-  { label: 'Contact', url: '/contact' },
-];
+import { getConfig } from '../lib/site-config';
+const config = getConfig();
+const navLinks = config.navigation.links;
 ---
 
 <header class="header">
@@ -11,7 +9,7 @@ const navLinks = [
     <a href="/" class="header__logo" aria-label="Aethel_AI Home">
       <svg class="header__logo-icon" width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
         <rect width="28" height="28" rx="6" fill="var(--color-accent)"/>
-        <path d="M8 20V8h3.5l4.5 8.5V8H19v12h-3.5L11 11.5V20H8z" fill="white"/>
+        <path d="M8 22 L11 7 Q11.3 5.5 13 5.5 Q14.7 5.5 15 7 L18 22 L16 22 L15 16.5 H10 L9 22 Z M10.5 14.5 H14.5 L12.5 9.5 Z" fill="white"/>
       </svg>
       <span class="header__logo-text">Aethel_AI</span>
     </a>
@@ -84,10 +82,6 @@ const navLinks = [
     backdrop-filter: blur(12px);
     background-color: rgba(255, 255, 255, 0.92);
     transition: background-color var(--transition-slow);
-  }
-
-  [data-theme="dark"] .header {
-    background-color: rgba(11, 17, 32, 0.92);
   }
 
   .header__inner {

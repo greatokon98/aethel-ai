@@ -360,6 +360,145 @@
     .toast--success { background: #059669; }
     .toast--error { background: #EF4444; }
 
+    .admin-tabs {
+      display: flex;
+      gap: 0;
+      background: #fff;
+      border-bottom: 1px solid #E2E8F0;
+      padding: 0 24px;
+      position: sticky;
+      top: 56px;
+      z-index: 99;
+    }
+    .admin-tab {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 12px 20px;
+      border: none;
+      background: none;
+      color: #64748B;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 200ms;
+      margin-bottom: -1px;
+    }
+    .admin-tab:hover { color: #0F172A; }
+    .admin-tab--active {
+      color: #3B82F6;
+      border-bottom-color: #3B82F6;
+    }
+
+    .trending-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .trending-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 16px 20px;
+      transition: box-shadow 200ms;
+    }
+    .trending-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .trending-card__num {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 28px;
+      font-weight: 600;
+      color: #3B82F6;
+      opacity: 0.4;
+      min-width: 40px;
+      flex-shrink: 0;
+    }
+    .trending-card__body { flex: 1; min-width: 0; }
+    .trending-card__title {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 16px;
+      font-weight: 500;
+      color: #0F172A;
+      margin-bottom: 4px;
+      line-height: 1.35;
+    }
+    .trending-card__meta {
+      font-size: 13px;
+      color: #94A3B8;
+      margin-bottom: 4px;
+    }
+    .trending-card__desc {
+      font-size: 13px;
+      color: #64748B;
+      line-height: 1.4;
+    }
+    .trending-card__actions { flex-shrink: 0; }
+    .trending-write { white-space: nowrap; }
+
+    .settings-form { max-width: 800px; }
+    .settings-section {
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .settings-section-title {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+    .settings-nav-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .settings-nav-row input {
+      flex: 1;
+      padding: 8px 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 6px;
+      outline: none;
+    }
+    .settings-nav-row input:focus { border-color: #3B82F6; }
+    .settings-nav-remove {
+      width: 32px;
+      height: 32px;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      background: #fff;
+      color: #EF4444;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .settings-nav-remove:hover { background: #FEF2F2; }
+    .settings-color-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .settings-color-row input[type="color"] {
+      width: 40px;
+      height: 40px;
+      padding: 2px;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .settings-color-row input[type="text"] {
+      flex: 1;
+    }
+
     .empty-state {
       text-align: center;
       padding: 60px 20px;
@@ -472,13 +611,13 @@
       }
 
       // --- API ---
-      function getJwt() {
+      async function getJwt() {
         var user = window.netlifyIdentity && window.netlifyIdentity.currentUser();
-        return user ? user.jwt() : null;
+        return user ? await user.jwt() : null;
       }
 
       async function apiCall(method, path, body) {
-        var jwt = getJwt();
+        var jwt = await getJwt();
         if (!jwt) throw new Error('Not authenticated');
         var opts = {
           method: method,
@@ -615,6 +754,184 @@
         '</div>';
       }
 
+      function renderTrendingList() {
+        var items = state.trendingItems;
+        if (items.length === 0) {
+          return '<div class="admin-loading"><div class="admin-spinner"></div><p>Loading trending stories...</p></div>';
+        }
+        var rows = items.map(function(item, i) {
+          var date = item.pubDate ? formatDate(item.pubDate) : '';
+          var desc = (item.description || '').replace(/<[^>]*>/g, '').slice(0, 120);
+          var slug = slugify(item.title);
+          return '<div class="trending-card">' +
+            '<div class="trending-card__num">' + String(i + 1).padStart(2, '0') + '</div>' +
+            '<div class="trending-card__body">' +
+              '<div class="trending-card__title">' + escapeHtml(item.title) + '</div>' +
+              '<div class="trending-card__meta">' + escapeHtml(item.source) + ' · ' + date + '</div>' +
+              (desc ? '<div class="trending-card__desc">' + escapeHtml(desc) + '…</div>' : '') +
+            '</div>' +
+            '<div class="trending-card__actions">' +
+              '<button class="admin-header__btn admin-header__btn--primary trending-write" data-title="' + escapeHtml(item.title) + '" data-slug="' + slug + '">Write Post</button>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+        return '<div class="post-list-header">' +
+          '<h1>Trending Now <span class="count">(' + items.length + ')</span></h1>' +
+          '<button class="admin-header__btn" id="btn-refresh-trending">Refresh</button>' +
+        '</div>' +
+        '<div class="trending-list">' + rows + '</div>';
+      }
+
+      async function loadTrending() {
+        try {
+          var res = await fetch('/.netlify/functions/trending');
+          if (!res.ok) throw new Error('Failed to fetch trending');
+          state.trendingItems = await res.json();
+        } catch(e) {
+          state.trendingItems = [];
+        }
+        render();
+      }
+
+      // --- Settings ---
+      var defaultSettings = {
+        site: { title: 'Aethel_AI', tagline: 'Smart tools for everyday life — no jargon, just results.', description: 'A blog about AI, automation, and smart tools for everyday life.', copyright: 'All rights reserved.' },
+        navigation: { links: [{ label: 'Home', url: '/' }, { label: 'About', url: '/about' }, { label: 'Contact', url: '/contact' }] },
+        social: { twitter: '#', github: '#', linkedin: '#' },
+        design: { accentColor: '#3B82F6', accentHover: '#2563EB', primaryColor: '#0F1E36' },
+        content: { heroCount: 3, postsPerPage: 12, sidebarWidgets: { search: true, trending: true, categories: true, popular: true, newsletter: true } },
+      };
+
+      async function loadSettings() {
+        try {
+          var data = await apiCall('GET', '/contents/src/config/site.json');
+          var decoded = decodeURIComponent(escape(atob(data.content)));
+          state.settings = JSON.parse(decoded);
+          state.settings._sha = data.sha;
+        } catch(e) {
+          state.settings = JSON.parse(JSON.stringify(defaultSettings));
+          state.settings._sha = null;
+        }
+        render();
+      }
+
+      function renderSettingsForm() {
+        var s = state.settings || defaultSettings;
+        var navLinksHtml = (s.navigation.links || []).map(function(l, i) {
+          return '<div class="settings-nav-row" data-idx="' + i + '">' +
+            '<input type="text" class="settings-nav-label" value="' + escapeHtml(l.label) + '" placeholder="Label" />' +
+            '<input type="text" class="settings-nav-url" value="' + escapeHtml(l.url) + '" placeholder="/page" />' +
+            '<button class="settings-nav-remove" data-idx="' + i + '">×</button>' +
+          '</div>';
+        }).join('');
+
+        return '<div class="settings-form">' +
+          '<div class="post-list-header"><h1>Site Settings</h1></div>' +
+
+          '<section class="settings-section">' +
+            '<h2 class="settings-section-title">General</h2>' +
+            '<div class="editor-field"><label>Site Title</label><input type="text" id="set-title" value="' + escapeHtml(s.site.title) + '" /></div>' +
+            '<div class="editor-field"><label>Tagline</label><input type="text" id="set-tagline" value="' + escapeHtml(s.site.tagline) + '" /></div>' +
+            '<div class="editor-field"><label>Description</label><textarea id="set-description" rows="2">' + escapeHtml(s.site.description) + '</textarea></div>' +
+            '<div class="editor-field"><label>Copyright</label><input type="text" id="set-copyright" value="' + escapeHtml(s.site.copyright) + '" /></div>' +
+          '</section>' +
+
+          '<section class="settings-section">' +
+            '<h2 class="settings-section-title">Navigation</h2>' +
+            '<div class="settings-nav-list" id="settings-nav-list">' + navLinksHtml + '</div>' +
+            '<button class="admin-header__btn" id="btn-add-nav-link">+ Add Link</button>' +
+          '</section>' +
+
+          '<section class="settings-section">' +
+            '<h2 class="settings-section-title">Social Links</h2>' +
+            '<div class="editor-field"><label>Twitter URL</label><input type="url" id="set-twitter" value="' + escapeHtml(s.social.twitter) + '" /></div>' +
+            '<div class="editor-field"><label>GitHub URL</label><input type="url" id="set-github" value="' + escapeHtml(s.social.github) + '" /></div>' +
+            '<div class="editor-field"><label>LinkedIn URL</label><input type="url" id="set-linkedin" value="' + escapeHtml(s.social.linkedin) + '" /></div>' +
+          '</section>' +
+
+          '<section class="settings-section">' +
+            '<h2 class="settings-section-title">Design</h2>' +
+            '<div class="editor-field-row">' +
+              '<div class="editor-field"><label>Accent Color</label><div class="settings-color-row"><input type="color" id="set-accent" value="' + s.design.accentColor + '" /><input type="text" id="set-accent-text" value="' + s.design.accentColor + '" /></div></div>' +
+              '<div class="editor-field"><label>Accent Hover</label><div class="settings-color-row"><input type="color" id="set-accent-hover" value="' + s.design.accentHover + '" /><input type="text" id="set-accent-hover-text" value="' + s.design.accentHover + '" /></div></div>' +
+            '</div>' +
+            '<div class="editor-field"><label>Primary Color</label><div class="settings-color-row"><input type="color" id="set-primary" value="' + s.design.primaryColor + '" /><input type="text" id="set-primary-text" value="' + s.design.primaryColor + '" /></div></div>' +
+          '</section>' +
+
+          '<section class="settings-section">' +
+            '<h2 class="settings-section-title">Content</h2>' +
+            '<div class="editor-field-row">' +
+              '<div class="editor-field"><label>Hero Slides</label><input type="number" id="set-hero-count" value="' + s.content.heroCount + '" min="1" max="5" /></div>' +
+              '<div class="editor-field"><label>Posts Per Page</label><input type="number" id="set-posts-per-page" value="' + s.content.postsPerPage + '" min="6" max="50" /></div>' +
+            '</div>' +
+            '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="set-widget-search" ' + (s.content.sidebarWidgets.search ? 'checked' : '') + ' /> Search Widget</label></div>' +
+            '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="set-widget-trending" ' + (s.content.sidebarWidgets.trending ? 'checked' : '') + ' /> Trending Widget</label></div>' +
+            '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="set-widget-categories" ' + (s.content.sidebarWidgets.categories ? 'checked' : '') + ' /> Categories Widget</label></div>' +
+            '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="set-widget-popular" ' + (s.content.sidebarWidgets.popular ? 'checked' : '') + ' /> Popular Posts Widget</label></div>' +
+            '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="set-widget-newsletter" ' + (s.content.sidebarWidgets.newsletter ? 'checked' : '') + ' /> Newsletter Widget</label></div>' +
+          '</section>' +
+
+          '<div class="editor-actions">' +
+            '<button class="btn-save" id="btn-save-settings">Save Settings</button>' +
+          '</div>' +
+        '</div>';
+      }
+
+      async function saveSettings() {
+        var s = state.settings || JSON.parse(JSON.stringify(defaultSettings));
+
+        s.site.title = document.getElementById('set-title').value.trim() || s.site.title;
+        s.site.tagline = document.getElementById('set-tagline').value.trim() || s.site.tagline;
+        s.site.description = document.getElementById('set-description').value.trim() || s.site.description;
+        s.site.copyright = document.getElementById('set-copyright').value.trim() || s.site.copyright;
+
+        // Navigation links
+        var navLabelEls = qsa('.settings-nav-label');
+        var navUrlEls = qsa('.settings-nav-url');
+        s.navigation.links = [];
+        for (var ni = 0; ni < navLabelEls.length; ni++) {
+          var label = navLabelEls[ni].value.trim();
+          var url = navUrlEls[ni].value.trim();
+          if (label && url) s.navigation.links.push({ label: label, url: url });
+        }
+
+        s.social.twitter = document.getElementById('set-twitter').value.trim() || '#';
+        s.social.github = document.getElementById('set-github').value.trim() || '#';
+        s.social.linkedin = document.getElementById('set-linkedin').value.trim() || '#';
+
+        s.design.accentColor = document.getElementById('set-accent-text').value.trim() || '#3B82F6';
+        s.design.accentHover = document.getElementById('set-accent-hover-text').value.trim() || '#2563EB';
+        s.design.primaryColor = document.getElementById('set-primary-text').value.trim() || '#0F1E36';
+
+        s.content.heroCount = parseInt(document.getElementById('set-hero-count').value) || 3;
+        s.content.postsPerPage = parseInt(document.getElementById('set-posts-per-page').value) || 12;
+        s.content.sidebarWidgets = {
+          search: document.getElementById('set-widget-search').checked,
+          trending: document.getElementById('set-widget-trending').checked,
+          categories: document.getElementById('set-widget-categories').checked,
+          popular: document.getElementById('set-widget-popular').checked,
+          newsletter: document.getElementById('set-widget-newsletter').checked,
+        };
+
+        var content = JSON.stringify(s, null, 2);
+        var encoded = btoa(content);
+        var bodyPayload = {
+          message: 'Update site settings',
+          content: encoded,
+          branch: 'main',
+        };
+        if (s._sha) bodyPayload.sha = s._sha;
+
+        try {
+          var data = await apiCall('PUT', '/contents/src/config/site.json', bodyPayload);
+          s._sha = data.content.sha;
+          state.settings = s;
+          showToast('Settings saved! Rebuilding site...', 'success');
+        } catch(e) {
+          showToast('Error saving settings: ' + e.message, 'error');
+        }
+      }
+
       APP.updatePreview = function() {
         var body = document.getElementById('ed-body');
         var preview = document.getElementById('ed-preview');
@@ -628,7 +945,20 @@
         view: 'loading',
         posts: [],
         editingPost: null,
+        trendingItems: [],
+        settings: null,
       };
+
+      function renderTabNav() {
+        var tabs = [
+          { id: 'list', label: 'Posts' },
+          { id: 'trending', label: 'Trending' },
+          { id: 'settings', label: 'Settings' },
+        ];
+        return '<nav class="admin-tabs">' + tabs.map(function(t) {
+          return '<button class="admin-tab' + (state.view === t.id ? ' admin-tab--active' : '') + '" data-tab="' + t.id + '">' + t.label + '</button>';
+        }).join('') + '</nav>';
+      }
 
       function render() {
         var app = document.getElementById('app');
@@ -638,7 +968,7 @@
         // Header
         html += '<header class="admin-header">' +
           '<a href="/" class="admin-header__brand">' +
-            '<svg width="24" height="24" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#3B82F6"/><path d="M8 20V8h3.5l4.5 8.5V8H19v12h-3.5L11 11.5V20H8z" fill="white"/></svg>' +
+            '<svg width="24" height="24" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#3B82F6"/><path d="M8 22 L11 7 Q11.3 5.5 13 5.5 Q14.7 5.5 15 7 L18 22 L16 22 L15 16.5 H10 L9 22 Z M10.5 14.5 H14.5 L12.5 9.5 Z" fill="white"/></svg>' +
             '<span class="admin-header__brand-text">Aethel_AI</span>' +
           '</a>' +
           '<div class="admin-header__actions">' +
@@ -647,6 +977,11 @@
             '<button class="admin-header__btn" id="btn-logout">Sign Out</button>' +
           '</div>' +
         '</header>';
+
+        // Tab navigation (only when logged in)
+        if (state.view !== 'loading' && state.view !== 'login') {
+          html += renderTabNav();
+        }
 
         // Content
         html += '<div class="admin-container">';
@@ -658,6 +993,10 @@
           html += renderPostList(state.posts);
         } else if (state.view === 'editor') {
           html += renderEditor(state.editingPost);
+        } else if (state.view === 'trending') {
+          html += renderTrendingList();
+        } else if (state.view === 'settings') {
+          html += renderSettingsForm();
         }
         html += '</div>';
 
@@ -666,11 +1005,10 @@
       }
 
       function bindEvents() {
-        var jwt = getJwt();
         var userEl = document.getElementById('header-user');
-        if (userEl && jwt) {
-          var user = window.netlifyIdentity && window.netlifyIdentity.currentUser();
-          if (user) userEl.textContent = user.email || 'Admin';
+        var user = window.netlifyIdentity && window.netlifyIdentity.currentUser();
+        if (userEl && user) {
+          userEl.textContent = user.email || 'Admin';
         }
 
         var logoutBtn = document.getElementById('btn-logout');
@@ -732,6 +1070,100 @@
               handleDelete(state.editingPost);
             }
           });
+        }
+
+        // Tab navigation
+        qsa('.admin-tab').forEach(function(tab) {
+          tab.addEventListener('click', function() {
+            var view = this.dataset.tab;
+            state.view = view;
+            if (view === 'trending' && state.trendingItems.length === 0) {
+              loadTrending();
+            } else if (view === 'settings') {
+              loadSettings();
+            } else {
+              render();
+            }
+          });
+        });
+
+        // Trending write buttons
+        qsa('.trending-write').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var title = this.dataset.title;
+            var slug = this.dataset.slug;
+            state.editingPost = {
+              title: title,
+              slug: slug,
+              excerpt: '',
+              body: '<!-- Rewrite this trending story in your own voice. Expand, add insight, make it yours. -->\n\n## Key Points\n\n- \n- \n- \n\n## The Story\n\n\n\n## Why It Matters\n\n',
+              categories: ['AI News'],
+              tags: ['trending'],
+              author: 'Aethel',
+              featured: false,
+              featuredImage: '',
+              publishDate: new Date().toISOString().split('T')[0],
+              sha: null,
+            };
+            state.view = 'editor';
+            render();
+          });
+        });
+
+        // Refresh trending
+        var refreshBtn = document.getElementById('btn-refresh-trending');
+        if (refreshBtn) {
+          refreshBtn.addEventListener('click', function() {
+            state.trendingItems = [];
+            render();
+            loadTrending();
+          });
+        }
+
+        // Settings: add nav link
+        var addNavBtn = document.getElementById('btn-add-nav-link');
+        if (addNavBtn) {
+          addNavBtn.addEventListener('click', function() {
+            var list = document.getElementById('settings-nav-list');
+            if (!list) return;
+            var div = document.createElement('div');
+            div.className = 'settings-nav-row';
+            div.innerHTML = '<input type="text" class="settings-nav-label" value="" placeholder="Label" />' +
+              '<input type="text" class="settings-nav-url" value="" placeholder="/page" />' +
+              '<button class="settings-nav-remove">×</button>';
+            list.appendChild(div);
+            // Bind remove for new row
+            div.querySelector('.settings-nav-remove').addEventListener('click', function() {
+              div.remove();
+            });
+          });
+        }
+
+        // Settings: remove nav link
+        qsa('.settings-nav-remove').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var row = this.closest('.settings-nav-row');
+            if (row) row.remove();
+          });
+        });
+
+        // Settings: color picker sync
+        function syncColor(pickerId, textId) {
+          var picker = document.getElementById(pickerId);
+          var text = document.getElementById(textId);
+          if (picker && text) {
+            picker.addEventListener('input', function() { text.value = this.value; });
+            text.addEventListener('input', function() { picker.value = this.value; });
+          }
+        }
+        syncColor('set-accent', 'set-accent-text');
+        syncColor('set-accent-hover', 'set-accent-hover-text');
+        syncColor('set-primary', 'set-primary-text');
+
+        // Settings: save
+        var saveSettingsBtn = document.getElementById('btn-save-settings');
+        if (saveSettingsBtn) {
+          saveSettingsBtn.addEventListener('click', saveSettings);
         }
       }
 

@@ -6,6 +6,12 @@ export interface Props {
     slug: string;
     publishDate: Date;
   }>;
+  trendingPosts?: Array<{
+    title: string;
+    slug: string;
+    publishDate: Date;
+    readingTime?: number;
+  }>;
   trending?: Array<{
     title: string;
     link: string;
@@ -15,7 +21,7 @@ export interface Props {
   }>;
 }
 
-const { categories = [], recentPosts = [], trending = [] } = Astro.props;
+const { categories = [], recentPosts = [], trendingPosts = [], trending = [] } = Astro.props;
 ---
 
 <aside class="sidebar">
@@ -31,7 +37,19 @@ const { categories = [], recentPosts = [], trending = [] } = Astro.props;
   <div class="sidebar__widget">
     <h3 class="sidebar__widget-title">Trending Now</h3>
     <div class="sidebar__trending">
-      {trending.length > 0 ? (
+      {trendingPosts.length > 0 ? (
+        trendingPosts.slice(0, 4).map((post, i) => (
+          <a href={`/posts/${post.slug}`} class="sidebar__trending-item">
+            <span class="sidebar__trending-number">{String(i + 1).padStart(2, '0')}</span>
+            <div class="sidebar__trending-content">
+              <span class="sidebar__trending-title">{post.title}</span>
+              <time class="sidebar__trending-date" datetime={post.publishDate.toISOString()}>
+                {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </time>
+            </div>
+          </a>
+        ))
+      ) : trending.length > 0 ? (
         trending.slice(0, 4).map((item, i) => (
           <a href={item.link} target="_blank" rel="noopener noreferrer" class="sidebar__trending-item">
             <span class="sidebar__trending-number">{String(i + 1).padStart(2, '0')}</span>

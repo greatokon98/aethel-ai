@@ -3,7 +3,7 @@ title: "AI in Healthcare: What's Actually Working Right Now"
 excerpt: "Beyond the headlines, AI is already improving diagnostics, streamlining hospital operations, and helping doctors spend more time with patients."
 publishDate: "2026-06-22"
 featuredImage: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800"
-featured: false
+featured: true
 categories:
   - AI in Healthcare
   - Industry

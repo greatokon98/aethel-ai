@@ -3,7 +3,7 @@ title: "The Complete Guide to AI Writing Assistants (and When Not to Use Them)"
 excerpt: "A practical, honest look at what AI writing tools excel at — and where they still fall short for serious writers."
 publishDate: "2026-06-25"
 featuredImage: "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800"
-featured: false
+featured: true
 categories:
   - AI Tools
   - Content Creation

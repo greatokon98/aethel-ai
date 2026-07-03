@@ -1,0 +1,93 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+interface NavLink {
+  label: string;
+  url: string;
+}
+
+interface SidebarWidgets {
+  search: boolean;
+  trending: boolean;
+  categories: boolean;
+  popular: boolean;
+  newsletter: boolean;
+}
+
+interface SiteConfig {
+  site: {
+    title: string;
+    tagline: string;
+    description: string;
+    copyright: string;
+  };
+  navigation: {
+    links: NavLink[];
+  };
+  social: {
+    twitter: string;
+    github: string;
+    linkedin: string;
+  };
+  design: {
+    accentColor: string;
+    accentHover: string;
+    primaryColor: string;
+  };
+  content: {
+    heroCount: number;
+    postsPerPage: number;
+    sidebarWidgets: SidebarWidgets;
+  };
+}
+
+let cachedConfig: SiteConfig | null = null;
+
+export function getConfig(): SiteConfig {
+  if (cachedConfig) return cachedConfig;
+
+  try {
+    const configPath = path.resolve('src/config/site.json');
+    const raw = fs.readFileSync(configPath, 'utf-8');
+    cachedConfig = JSON.parse(raw) as SiteConfig;
+    return cachedConfig;
+  } catch {
+    // Return defaults if config file not found
+    return {
+      site: {
+        title: 'Aethel_AI',
+        tagline: 'Smart tools for everyday life — no jargon, just results.',
+        description: 'A blog about AI, automation, and smart tools for everyday life.',
+        copyright: 'All rights reserved.',
+      },
+      navigation: {
+        links: [
+          { label: 'Home', url: '/' },
+          { label: 'About', url: '/about' },
+          { label: 'Contact', url: '/contact' },
+        ],
+      },
+      social: {
+        twitter: '#',
+        github: '#',
+        linkedin: '#',
+      },
+      design: {
+        accentColor: '#3B82F6',
+        accentHover: '#2563EB',
+        primaryColor: '#0F1E36',
+      },
+      content: {
+        heroCount: 3,
+        postsPerPage: 12,
+        sidebarWidgets: {
+          search: true,
+          trending: true,
+          categories: true,
+          popular: true,
+          newsletter: true,
+        },
+      },
+    };
+  }
+}
