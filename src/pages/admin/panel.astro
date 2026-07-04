@@ -4,11 +4,384 @@ import AdminLayout from '../../components/admin/AdminLayout.astro';
 
 <AdminLayout>
   <div id="app"></div>
-</AdminLayout>
-
-<script src="/src/components/admin/AdminAPI.js" is:inline></script>
 <script is:inline>
-  (function() {
+window.AdminAPI = (function() {
+  var CONFIG = {
+    type: 'github',
+    owner: 'greatokon98',
+    repo: 'aethel-ai',
+    branch: 'main',
+    renderUrl: '',
+  };
+
+  var GITHUB_PAT_KEY = 'aa_github_pat';
+  var GITHUB_API = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo;
+
+  function getPat() { return localStorage.getItem(GITHUB_PAT_KEY); }
+  function storePat(token) { localStorage.setItem(GITHUB_PAT_KEY, token); }
+  function removePat() { localStorage.removeItem(GITHUB_PAT_KEY); }
+  function hasPat() { return !!getPat(); }
+
+  function btoa(str) {
+    return window.btoa(unescape(encodeURIComponent(str)));
+  }
+
+  function atob(str) {
+    try { return decodeURIComponent(escape(window.atob(str))); } catch(e) { return window.atob(str); }
+  }
+
+  async function githubFetch(method, path, body) {
+    var pat = getPat();
+    if (!pat) throw new Error('GitHub token not configured');
+    var opts = {
+      method: method,
+      headers: {
+        'Authorization': 'Bearer ' + pat,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+    };
+    if (body) opts.body = JSON.stringify(body);
+    var url = GITHUB_API + path;
+    if (path.startsWith('/repos/')) url = 'https://api.github.com' + path;
+    var res = await fetch(url, opts);
+    if (!res.ok) {
+      var errText;
+      try { var errJson = await res.json(); errText = errJson.message; } catch(e) { errText = res.statusText; }
+      throw new Error(errText || 'API request failed');
+    }
+    return res.json();
+  }
+
+  function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  async function validatePat(token) {
+    var pat = token || getPat();
+    if (!pat) return false;
+    try {
+      var res = await fetch('https://api.github.com/user', {
+        headers: { 'Authorization': 'Bearer ' + pat, 'Accept': 'application/vnd.github.v3+json' },
+      });
+      if (!res.ok) return false;
+      var user = await res.json();
+      var repoRes = await fetch(GITHUB_API, {
+        headers: { 'Authorization': 'Bearer ' + pat, 'Accept': 'application/vnd.github.v3+json' },
+      });
+      return repoRes.ok;
+    } catch(e) { return false; }
+  }
+
+  async function getFile(path) {
+    try {
+      var data = await githubFetch('GET', '/contents/' + path + '?ref=' + CONFIG.branch);
+      var content = atob(data.content);
+      return { content: content, sha: data.sha };
+    } catch(e) {
+      if (e.message && e.message.indexOf('Not Found') !== -1) return null;
+      throw e;
+    }
+  }
+
+  async function saveFile(path, content, sha) {
+    var encoded = btoa(content);
+    var payload = { message: 'Update ' + path, content: encoded, branch: CONFIG.branch };
+    if (sha) payload.sha = sha;
+    var data = await githubFetch('PUT', '/contents/' + path, payload);
+    return data.content.sha;
+  }
+
+  async function deleteFile(path, sha) {
+    await githubFetch('DELETE', '/contents/' + path, { message: 'Delete ' + path, sha: sha, branch: CONFIG.branch });
+  }
+
+  async function listPosts() {
+    var data;
+    try {
+      data = await githubFetch('GET', '/contents/src/content/posts?ref=' + CONFIG.branch);
+    } catch(e) {
+      if (e.message && e.message.indexOf('Not Found') !== -1) return [];
+      throw e;
+    }
+    var files = data.filter(function(f) { return f.name.endsWith('.md'); });
+    var posts = [];
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      try {
+        var content = await githubFetch('GET', '/contents/src/content/posts/' + f.name);
+        var decoded = atob(content.content);
+        var parsed = parseFrontmatter(decoded);
+        var slug = f.name.replace(/\.md$/, '');
+        posts.push({
+          slug: slug,
+          name: f.name,
+          sha: content.sha,
+          title: parsed.attrs.title || slug,
+          excerpt: parsed.attrs.excerpt || '',
+          publishDate: parsed.attrs.publishDate || '',
+          categories: parsed.attrs.categories || [],
+          tags: parsed.attrs.tags || [],
+          featured: parsed.attrs.featured || false,
+          author: parsed.attrs.author || 'Aethel',
+          featuredImage: parsed.attrs.featuredImage || '',
+          body: parsed.body,
+        });
+      } catch(e) {}
+    }
+    posts.sort(function(a, b) { return new Date(b.publishDate) - new Date(a.publishDate); });
+    return posts;
+  }
+
+  async function savePost(slug, attrs, body) {
+    var content = buildFrontmatter(attrs, body);
+    var path = 'src/content/posts/' + slug + '.md';
+    var sha = attrs._sha || null;
+    return saveFile(path, content, sha);
+  }
+
+  async function deletePost(slug, sha) {
+    var path = 'src/content/posts/' + slug + '.md';
+    await deleteFile(path, sha);
+  }
+
+  function parseFrontmatter(str) {
+    var match = str.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+    if (!match) return { attrs: {}, body: str };
+    var yaml = match[1];
+    var body = (match[2] || '').trim();
+    var attrs = {};
+    var currentKey = null;
+    var currentList = null;
+    yaml.split('\n').forEach(function(line) {
+      var listMatch = line.match(/^\s+-\s+(.*)$/);
+      var kvMatch = line.match(/^(\w+):\s*(.*)$/);
+      if (kvMatch) {
+        if (currentKey && currentList !== null) {
+          attrs[currentKey] = currentList;
+          currentList = null;
+        }
+        currentKey = kvMatch[1];
+        var val = kvMatch[2].replace(/^"(.*)"$/, '$1');
+        if (val === 'true') attrs[currentKey] = true;
+        else if (val === 'false') attrs[currentKey] = false;
+        else if (val === '') { currentList = []; attrs[currentKey] = []; }
+        else attrs[currentKey] = val;
+      } else if (listMatch && currentKey) {
+        if (currentList === null) currentList = [];
+        currentList.push(listMatch[1].replace(/^"(.*)"$/, '$1'));
+      }
+    });
+    if (currentKey && currentList !== null) attrs[currentKey] = currentList;
+    return { attrs: attrs, body: body };
+  }
+
+  function buildFrontmatter(attrs, body) {
+    var lines = ['---'];
+    Object.keys(attrs).forEach(function(key) {
+      if (key === '_sha') return;
+      var val = attrs[key];
+      if (Array.isArray(val)) {
+        lines.push(key + ':');
+        val.forEach(function(item) { lines.push('  - "' + item + '"'); });
+      } else if (typeof val === 'boolean') {
+        lines.push(key + ': ' + (val ? 'true' : 'false'));
+      } else if (val !== undefined && val !== null) {
+        lines.push(key + ': "' + String(val).replace(/"/g, '\\"') + '"');
+      }
+    });
+    lines.push('---');
+    if (body) lines.push('', body);
+    return lines.join('\n');
+  }
+
+  var defaultSettings = {
+    site: { title: 'Aethel_AI', tagline: 'Smart tools for everyday life — no jargon, just results.', description: 'A blog about AI, automation, and smart tools for everyday life.', copyright: 'All rights reserved.' },
+    navigation: { links: [{ label: 'Home', url: '/' }, { label: 'Trending', url: '/trending', skipHeader: true }, { label: 'About', url: '/about' }, { label: 'Contact', url: '/contact' }] },
+    social: { twitter: '#', github: '#', linkedin: '#' },
+    design: { accentColor: '#3B82F6', accentHover: '#2563EB', primaryColor: '#0F1E36' },
+    content: { heroCount: 3, postsPerPage: 12, sidebarWidgets: { search: true, trending: true, categories: true, popular: true, newsletter: true } },
+    automation: { schedule: 'every 3 hours', lastRun: null, lastStatus: null },
+  };
+
+  async function loadSettings() {
+    try {
+      var file = await getFile('src/config/site.json');
+      if (!file) return JSON.parse(JSON.stringify(defaultSettings));
+      var settings = JSON.parse(file.content);
+      settings._sha = file.sha;
+      return settings;
+    } catch(e) {
+      return JSON.parse(JSON.stringify(defaultSettings));
+    }
+  }
+
+  async function saveSettings(settings) {
+    var content = JSON.stringify(settings, null, 2);
+    var sha = settings._sha || null;
+    var newSha = await saveFile('src/config/site.json', content, sha);
+    return newSha;
+  }
+
+  var MESSAGES_PATH = 'data/messages.json';
+
+  async function loadMessages() {
+    try {
+      var file = await getFile(MESSAGES_PATH);
+      if (!file) return [];
+      var data = JSON.parse(file.content);
+      data._sha = file.sha;
+      return data;
+    } catch(e) {
+      return { messages: [], _sha: null };
+    }
+  }
+
+  async function saveMessages(data) {
+    var content = JSON.stringify({ messages: data.messages }, null, 2);
+    var sha = data._sha || null;
+    var newSha = await saveFile(MESSAGES_PATH, content, sha);
+    return newSha;
+  }
+
+  var SEARCH_PATH = 'data/search-queries.json';
+
+  async function loadSearchQueries() {
+    try {
+      var file = await getFile(SEARCH_PATH);
+      if (!file) return { queries: [], _sha: null };
+      var data = JSON.parse(file.content);
+      data._sha = file.sha;
+      return data;
+    } catch(e) {
+      return { queries: [], _sha: null };
+    }
+  }
+
+  async function saveSearchQueries(data) {
+    var content = JSON.stringify({ queries: data.queries }, null, 2);
+    var sha = data._sha || null;
+    var newSha = await saveFile(SEARCH_PATH, content, sha);
+    return newSha;
+  }
+
+  var AUTOMATION_PATH = 'data/automation-runs.json';
+
+  async function loadAutomationRuns() {
+    try {
+      var file = await getFile(AUTOMATION_PATH);
+      if (!file) return { runs: [], _sha: null };
+      var data = JSON.parse(file.content);
+      data._sha = file.sha;
+      return data;
+    } catch(e) {
+      return { runs: [], _sha: null };
+    }
+  }
+
+  async function saveAutomationRuns(data) {
+    var content = JSON.stringify({ runs: data.runs }, null, 2);
+    var sha = data._sha || null;
+    var newSha = await saveFile(AUTOMATION_PATH, content, sha);
+    return newSha;
+  }
+
+  async function triggerWorkflow() {
+    var pat = getPat();
+    if (!pat) throw new Error('GitHub token not configured');
+    var res = await fetch('https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/actions/workflows/auto-content.yml/dispatches', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + pat,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ref: CONFIG.branch }),
+    });
+    if (!res.ok) {
+      var errText;
+      try { var errJson = await res.json(); errText = errJson.message; } catch(e) { errText = res.statusText; }
+      throw new Error(errText || 'Failed to trigger workflow');
+    }
+    return true;
+  }
+
+  async function getWorkflowStatus() {
+    var pat = getPat();
+    if (!pat) return null;
+    try {
+      var res = await fetch('https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo + '/actions/workflows/auto-content.yml/runs?per_page=5', {
+        headers: { 'Authorization': 'Bearer ' + pat, 'Accept': 'application/vnd.github.v3+json' },
+      });
+      if (!res.ok) return null;
+      var data = await res.json();
+      return data.workflow_runs || [];
+    } catch(e) { return null; }
+  }
+
+  async function fetchTrending() {
+    var feeds = [
+      { url: 'https://techcrunch.com/category/artificial-intelligence/feed/', source: 'TechCrunch' },
+      { url: 'https://www.theverge.com/ai-artificial-intelligence/rss/index.xml', source: 'The Verge' },
+      { url: 'https://feeds.arstechnica.com/arstechnica/index', source: 'Ars Technica' },
+    ];
+
+    var allItems = [];
+    var proxy = 'https://api.rss2json.com/v1/api.json?rss_url=';
+
+    for (var i = 0; i < feeds.length; i++) {
+      try {
+        var res = await fetch(proxy + encodeURIComponent(feeds[i].url));
+        if (!res.ok) continue;
+        var data = await res.json();
+        if (data.status !== 'ok' || !data.items) continue;
+        data.items.forEach(function(item) {
+          allItems.push({
+            title: item.title || '',
+            description: (item.description || '').replace(/<[^>]*>/g, '').slice(0, 200),
+            pubDate: item.pubDate || item.pub_date || '',
+            source: feeds[i].source,
+            link: item.link || '',
+          });
+        });
+      } catch(e) {}
+    }
+
+    allItems.sort(function(a, b) { return new Date(b.pubDate) - new Date(a.pubDate); });
+    return allItems.slice(0, 30);
+  }
+
+  return {
+    CONFIG: CONFIG,
+    getPat: getPat,
+    storePat: storePat,
+    removePat: removePat,
+    hasPat: hasPat,
+    validatePat: validatePat,
+    listPosts: listPosts,
+    savePost: savePost,
+    deletePost: deletePost,
+    parseFrontmatter: parseFrontmatter,
+    buildFrontmatter: buildFrontmatter,
+    loadSettings: loadSettings,
+    saveSettings: saveSettings,
+    defaultSettings: defaultSettings,
+    loadMessages: loadMessages,
+    saveMessages: saveMessages,
+    generateId: generateId,
+    loadSearchQueries: loadSearchQueries,
+    saveSearchQueries: saveSearchQueries,
+    loadAutomationRuns: loadAutomationRuns,
+    saveAutomationRuns: saveAutomationRuns,
+    triggerWorkflow: triggerWorkflow,
+    getWorkflowStatus: getWorkflowStatus,
+    fetchTrending: fetchTrending,
+    getFile: getFile,
+    saveFile: saveFile,
+  };
+})();
+
+(function() {
     // --- Theme ---
     (function() {
       var saved = localStorage.getItem('theme');
@@ -1139,3 +1512,4 @@ import AdminLayout from '../../components/admin/AdminLayout.astro';
     document.head.appendChild(script);
   })();
 </script>
+</AdminLayout>
