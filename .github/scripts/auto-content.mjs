@@ -1,3 +1,5 @@
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const REPO = 'greatokon98/aethel-ai';
@@ -286,8 +288,31 @@ async function main() {
   const headlines = await fetchHeadlines();
   console.log(`  Fetched ${headlines.length} headlines\n`);
 
-  console.log('Discovering topics...');
-  const discovered = await discoverTopics(headlines);
+  const lightweightHeadlines = headlines.map(item => ({
+    title: item.title ? item.title.trim() : "",
+    source: item.source,
+    description: item.description ? item.description.replace(/<[^>]*>/g, '').slice(0, 100).trim() + "..." : ""
+  }));
+
+  console.log(`[Aethel_AI] Sanitized payload: ${lightweightHeadlines.length} headlines cleaned`);
+
+  const batchSize = 3;
+  const allDiscoveredTopics = [];
+
+  for (let i = 0; i < lightweightHeadlines.length; i += batchSize) {
+    const batch = lightweightHeadlines.slice(i, i + batchSize);
+    console.log(`[Aethel_AI] Processing batch ${Math.floor(i / batchSize) + 1}...`);
+    const batchTopics = await discoverTopics(batch);
+    if (batchTopics && batchTopics.length > 0) {
+      allDiscoveredTopics.push(...batchTopics);
+    }
+    if (i + batchSize < lightweightHeadlines.length) {
+      console.log(`[Aethel_AI] Pausing 10s for API quota...`);
+      await sleep(10000);
+    }
+  }
+
+  const discovered = allDiscoveredTopics;
   console.log(`  Discovered ${discovered.length} topics:`);
   discovered.forEach(t => console.log(`    - ${t.title}: ${t.reason}`));
   console.log();
