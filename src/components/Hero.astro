@@ -13,11 +13,19 @@ export interface Props {
 
 const { posts } = Astro.props;
 const featured = posts.filter((p) => (p as any).featured).length ? posts.filter((p) => (p as any).featured) : posts.slice(0, 3);
+const featuredData = featured.map(p => ({
+  title: p.title,
+  excerpt: p.excerpt,
+  slug: p.slug,
+  publishDate: p.publishDate.toISOString(),
+  categories: p.categories || [],
+  readingTime: p.readingTime || 3,
+}));
 ---
 
 <section class="hero" id="hero-section">
-  <div class="hero__slider" id="hero-slider">
-    <div class="hero__canvas" id="hero-canvas"></div>
+  <div class="hero__slider" id="hero-slider" data-featured={JSON.stringify(featuredData)}>
+    <!-- slides -->
     {featured.map((post, index) => (
       <a
         href={`/posts/${post.slug}`}
@@ -60,6 +68,63 @@ const featured = posts.filter((p) => (p as any).featured).length ? posts.filter(
         </div>
       </a>
     ))}
+
+    <!-- Desktop overlay grid (hidden below 1025px) -->
+    <div class="hero__overlay" id="hero-overlay">
+      <div class="hero__overlay-inner">
+        <div class="hero__overlay-left" id="hero-left">
+          <span class="hero__tag" id="hero-tag">{featured[0]?.categories?.[0] || 'Featured'}</span>
+          <h2 class="hero__title" id="hero-title">{featured[0]?.title}</h2>
+          <p class="hero__desc" id="hero-desc">{featured[0]?.excerpt}</p>
+          <div class="hero__meta">
+            <span id="hero-date">
+              {featured[0]?.publishDate.toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric', year: 'numeric',
+              })}
+            </span>
+            <span class="hero__meta-dot">•</span>
+            <span id="hero-read">{featured[0]?.readingTime || 3} min read</span>
+          </div>
+          <a href={`/posts/${featured[0]?.slug}`} class="hero__cta" id="hero-cta">
+            READ ARTICLE
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M3 7h8M7 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+        </div>
+        <div class="hero__overlay-right" id="hero-cards">
+          {featured.map((post, index) => (
+            <button class="hero__card"
+              class:list={{ 'hero__card--active': index === 0 }}
+              data-card={index}
+              aria-label={post.title}
+            >
+              <span class="hero__card-number">{String(index + 1).padStart(2, '0')}</span>
+              <div class="hero__card-body">
+                <h4 class="hero__card-title">{post.title}</h4>
+                <p class="hero__card-excerpt">{post.excerpt}</p>
+                <div class="hero__card-progress">
+                  <div class="hero__card-progress-bar" data-card-bar={index}></div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab navigation (mobile/tablet only) -->
+    <nav class="hero__tabs" id="hero-tabs">
+      {featured.map((post, index) => (
+        <button class="hero__tab" data-tab={index}
+                class:list={{ 'hero__tab--active': index === 0 }}>
+          <span class="hero__tab-number">{String(index + 1).padStart(2, '0')}</span>
+          <span class="hero__tab-title">{post.title}</span>
+        </button>
+      ))}
+    </nav>
+
+    <!-- Progress bar (mobile/tablet only) -->
     <div class="hero__progress" id="hero-progress">
       <div class="hero__progress-bar" id="hero-progress-bar"></div>
     </div>
@@ -71,27 +136,92 @@ const featured = posts.filter((p) => (p as any).featured).length ? posts.filter(
     const slider = document.getElementById('hero-slider');
     if (!slider) return;
 
+    // ---- data ----
+    let featuredData = [];
+    try {
+      const raw = slider.getAttribute('data-featured');
+      if (raw) featuredData = JSON.parse(raw);
+    } catch (e) {}
+
+    // ---- dom refs ----
     const slides = slider.querySelectorAll('.hero__slide');
+    const tabs = slider.querySelectorAll('.hero__tab');
     const progressBar = document.getElementById('hero-progress-bar');
+    const cards = slider.querySelectorAll('.hero__card');
+    const isDesktop = () => window.innerWidth >= 1025;
+
     let current = 0;
     let animFrame = null;
     let startTime = null;
     const DURATION = 8000;
 
+    // ---- update desktop UI ----
+    function updateDesktop(index) {
+      if (!isDesktop()) return;
+      const data = featuredData[index];
+      if (!data) return;
+
+      const tag = document.getElementById('hero-tag');
+      const title = document.getElementById('hero-title');
+      const desc = document.getElementById('hero-desc');
+      const dateEl = document.getElementById('hero-date');
+      const readEl = document.getElementById('hero-read');
+      const cta = document.getElementById('hero-cta');
+
+      if (tag) tag.textContent = data.categories?.[0] || 'Featured';
+      if (title) title.textContent = data.title;
+      if (desc) desc.textContent = data.excerpt;
+      if (dateEl) {
+        const d = new Date(data.publishDate);
+        dateEl.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      if (readEl) readEl.textContent = (data.readingTime || 3) + ' min read';
+      if (cta) cta.href = '/posts/' + data.slug;
+
+      // card active states
+      cards.forEach((c, i) => {
+        c.classList.toggle('hero__card--active', i === index);
+        const bar = c.querySelector('.hero__card-progress-bar');
+        if (bar) bar.style.width = '0%';
+      });
+    }
+
+    // ---- go to slide ----
     function goToSlide(index) {
       slides.forEach((s, i) => {
         s.classList.toggle('hero__slide--active', i === index);
       });
+      tabs.forEach((t, i) => {
+        t.classList.toggle('hero__tab--active', i === index);
+      });
       current = index;
       startTime = null;
-      if (progressBar) progressBar.style.width = '0%';
+
+      // reset mobile progress
+      if (progressBar) progressBar.style.height = '0%';
+
+      // reset desktop card bars
+      cards.forEach((c) => {
+        const bar = c.querySelector('.hero__card-progress-bar');
+        if (bar) bar.style.width = '0%';
+      });
+
+      updateDesktop(index);
     }
 
+    // ---- tick ----
     function tick(time) {
       if (!startTime) startTime = time;
       const elapsed = time - startTime;
       const pct = Math.min((elapsed / DURATION) * 100, 100);
-      if (progressBar) progressBar.style.width = pct + '%';
+
+      // mobile progress
+      if (progressBar) progressBar.style.height = pct + '%';
+
+      // desktop card progress
+      const activeCardBar = cards[current]?.querySelector('.hero__card-progress-bar');
+      if (activeCardBar) activeCardBar.style.width = pct + '%';
+
       if (elapsed >= DURATION) {
         goToSlide((current + 1) % slides.length);
       }
@@ -100,10 +230,11 @@ const featured = posts.filter((p) => (p as any).featured).length ? posts.filter(
 
     animFrame = requestAnimationFrame(tick);
 
+    // ---- pause on hover ----
     slider.addEventListener('mouseenter', () => {
       if (animFrame) cancelAnimationFrame(animFrame);
       animFrame = null;
-      if (progressBar) progressBar.style.width = '0%';
+      if (progressBar) progressBar.style.height = '0%';
     });
 
     slider.addEventListener('mouseleave', () => {
@@ -111,6 +242,7 @@ const featured = posts.filter((p) => (p as any).featured).length ? posts.filter(
       animFrame = requestAnimationFrame(tick);
     });
 
+    // ---- slide click (inactive → switch) ----
     slides.forEach((slide) => {
       slide.addEventListener('click', (e) => {
         if (!slide.classList.contains('hero__slide--active')) {
@@ -120,90 +252,53 @@ const featured = posts.filter((p) => (p as any).featured).length ? posts.filter(
       });
     });
 
-    // Starfield
-    (function initStars() {
-      const canvas = document.getElementById('hero-canvas');
-      if (!canvas) return;
-      const cvs = document.createElement('canvas');
-      const ctx = cvs.getContext('2d');
-      if (!ctx) return;
-      const hero = document.getElementById('hero-section');
-      if (!hero) return;
-      let appended = false;
-
-      function getStarColor() {
-        const theme = document.documentElement.getAttribute('data-theme');
-        return theme === 'dark' ? '255,255,255' : '15,30,54';
-      }
-
-      const resize = () => {
-        const rect = hero.getBoundingClientRect();
-        cvs.width = rect.width;
-        cvs.height = rect.height;
-        cvs.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.6;';
-        if (!appended) {
-          canvas.appendChild(cvs);
-          appended = true;
-        }
-      };
-
-      const stars = [];
-      const COUNT = 70;
-
-      function initStarsArr(w, h) {
-        stars.length = 0;
-        for (let i = 0; i < COUNT; i++) {
-          stars.push({
-            x: Math.random() * w,
-            y: Math.random() * h,
-            r: Math.random() * 1.5 + 0.5,
-            speed: Math.random() * 0.12 + 0.02,
-            drift: Math.random() * 0.06 - 0.03,
-            phase: Math.random() * Math.PI * 2,
-          });
-        }
-      }
-
-      function draw() {
-        const w = cvs.width, h = cvs.height;
-        if (w === 0 || h === 0) { requestAnimationFrame(draw); return; }
-        ctx.clearRect(0, 0, w, h);
-        const t = Date.now() / 1000;
-        const starColor = getStarColor();
-
-        for (const s of stars) {
-          s.y -= s.speed;
-          s.x += s.drift;
-          if (s.y < 0) { s.y = h; s.x = Math.random() * w; }
-          if (s.x < 0) s.x = w;
-          if (s.x > w) s.x = 0;
-
-          const twinkle = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 1.2 + s.phase));
-          ctx.beginPath();
-          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${starColor}, ${twinkle * 0.5})`;
-          ctx.fill();
-        }
-
-        requestAnimationFrame(draw);
-      }
-
-      resize();
-      initStarsArr(cvs.width, cvs.height);
-      draw();
-
-      const onResize = () => {
-        resize();
-        initStarsArr(cvs.width, cvs.height);
-      };
-      window.addEventListener('resize', onResize);
-
-      // Watch for theme changes
-      const themeObserver = new MutationObserver(() => {
-        // Colors update automatically on next frame via getStarColor()
+    // ---- tab click ----
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        goToSlide(parseInt(tab.dataset.tab));
       });
-      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    })();
+    });
+
+    // ---- card click ----
+    cards.forEach((card) => {
+      card.addEventListener('click', () => {
+        const index = parseInt(card.dataset.card);
+        if (index !== current) {
+          goToSlide(index);
+        }
+      });
+    });
+
+    // ---- desktop card hover progress fill ----
+    if (isDesktop()) {
+      cards.forEach((card) => {
+        card.addEventListener('mouseenter', () => {
+          if (!card.classList.contains('hero__card--active')) {
+            const bar = card.querySelector('.hero__card-progress-bar');
+            if (bar) bar.style.width = '100%';
+          }
+        });
+        card.addEventListener('mouseleave', () => {
+          if (!card.classList.contains('hero__card--active')) {
+            const bar = card.querySelector('.hero__card-progress-bar');
+            if (bar) bar.style.width = '0%';
+          }
+        });
+      });
+    }
+
+    // ---- resize handler ----
+    let cardHoverBound = false;
+    function handleResize() {
+      const desk = isDesktop();
+      if (desk && !cardHoverBound) {
+        cardHoverBound = true;
+        // bind hover events if not already bound (they are bound above if desktop initially)
+      }
+      updateDesktop(current);
+    }
+    window.addEventListener('resize', handleResize);
+
   })();
 </script>
 
@@ -214,14 +309,6 @@ const featured = posts.filter((p) => (p as any).featured).length ? posts.filter(
     margin: 0 auto;
     width: 100%;
     position: relative;
-  }
-
-  .hero__canvas {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    overflow: hidden;
   }
 
   .hero__slider {
@@ -259,6 +346,7 @@ const featured = posts.filter((p) => (p as any).featured).length ? posts.filter(
     width: 100%;
     height: 100%;
     object-fit: cover;
+    opacity: 0.85;
   }
 
   .hero__slide-placeholder {
@@ -353,30 +441,128 @@ const featured = posts.filter((p) => (p as any).featured).length ? posts.filter(
 
   .hero__progress {
     position: absolute;
-    bottom: 0;
-    left: 0;
+    top: 0;
     right: 0;
+    bottom: 0;
     z-index: 5;
-    height: 2px;
-    background-color: rgba(255, 255, 255, 0.12);
+    width: 2px;
+    background-color: rgba(255, 255, 255, 0.1);
     overflow: hidden;
   }
 
   .hero__progress-bar {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, var(--color-accent), #60A5FA);
+    width: 100%;
+    height: 0%;
+    background: linear-gradient(to top, var(--color-accent), #60A5FA);
     box-shadow: 0 0 8px var(--color-accent), 0 0 20px rgba(59, 130, 246, 0.25);
-    border-radius: 0 1px 1px 0;
-    transition: width 0.1s linear;
+    border-radius: 1px 1px 0 0;
+    transition: height 0.1s linear;
   }
 
+  .hero__tabs {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--space-8) 0;
+    pointer-events: none;
+  }
+
+  .hero__tab {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: transparent;
+    border: none;
+    border-left: 2px solid rgba(255, 255, 255, 0.12);
+    padding: 14px 20px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 400ms ease;
+    font-family: var(--font-body);
+    position: relative;
+    pointer-events: auto;
+  }
+
+  .hero__tab::before {
+    content: '';
+    position: absolute;
+    left: -2px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--color-accent);
+    opacity: 0;
+    transition: opacity 400ms ease;
+    box-shadow: 0 0 8px var(--color-accent);
+  }
+
+  .hero__tab--active::before {
+    opacity: 1;
+  }
+
+  .hero__tab--active {
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  .hero__tab-number {
+    font-family: var(--font-heading);
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.3);
+    min-width: 24px;
+    transition: color 400ms ease;
+    line-height: 1;
+  }
+
+  .hero__tab--active .hero__tab-number {
+    color: var(--color-accent);
+    text-shadow: 0 0 10px var(--color-accent), 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+
+  .hero__tab-title {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.35);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    transition: color 400ms ease;
+    font-weight: 300;
+    line-height: 1.3;
+    max-width: 140px;
+  }
+
+  .hero__tab--active .hero__tab-title {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  /* ====== Desktop overlay (1025px+) ====== */
+  .hero__overlay {
+    display: none;
+  }
+
+  /* ====== Tablet & mobile (<1025px) ====== */
   @media (max-width: 1024px) {
+    .hero__tab-title { display: none; }
+    .hero__tab { padding: 14px 16px; }
     .hero__slider { min-height: 440px; }
     .hero__slide-title { font-size: var(--text-4xl); }
     .hero__slide-content { padding: var(--space-8); }
+    .hero__overlay { display: none !important; }
+    .hero__cta,
+    .hero__tag,
+    .hero__title,
+    .hero__desc,
+    .hero__meta,
+    .hero__card { display: none; }
   }
 
+  /* ====== Mobile (<769px) ====== */
   @media (max-width: 768px) {
     .hero__slider {
       min-height: 320px;
@@ -389,5 +575,243 @@ const featured = posts.filter((p) => (p as any).featured).length ? posts.filter(
     .hero__slide-meta { gap: var(--space-2); font-size: var(--text-xs); }
     .hero__slide-reading::before { margin-right: var(--space-2); }
     .hero__slide-cta { display: none; }
+    .hero__overlay { display: none !important; }
+  }
+
+  /* ====== Desktop only (1025px+) ====== */
+  @media (min-width: 1025px) {
+    .hero__slide-content { display: none; }
+    .hero__tabs { display: none; }
+    .hero__progress { display: none; }
+
+    .hero__overlay {
+      display: flex;
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      padding: var(--space-12);
+      pointer-events: none;
+    }
+
+    .hero__overlay-inner {
+      display: grid;
+      grid-template-columns: 1fr minmax(280px, 360px);
+      gap: var(--space-12);
+      align-items: center;
+      height: 100%;
+      max-width: var(--max-width);
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .hero__overlay-left {
+      pointer-events: auto;
+      max-width: 600px;
+    }
+
+    .hero__tag {
+      display: inline-block;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-accent);
+      margin-bottom: var(--space-3);
+    }
+
+    .hero__title {
+      font-family: var(--font-heading);
+      font-size: var(--text-5xl);
+      color: white;
+      font-weight: 500;
+      line-height: var(--leading-tight);
+      letter-spacing: -0.02em;
+      margin-bottom: var(--space-3);
+    }
+
+    .hero__desc {
+      font-family: var(--font-body);
+      font-size: var(--text-lg);
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: var(--space-5);
+      font-weight: 300;
+      line-height: 1.6;
+    }
+
+    .hero__meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: var(--space-5);
+    }
+
+    .hero__meta-dot {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .hero__cta {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 700;
+      color: white;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding-bottom: 2px;
+      border-bottom: 2px solid var(--color-accent);
+      text-decoration: none;
+      transition: color 300ms ease, border-color 300ms ease;
+    }
+
+    .hero__cta:hover {
+      color: var(--color-accent-hover);
+      border-color: var(--color-accent-hover);
+    }
+
+    /* ---- right panel cards ---- */
+    .hero__overlay-right {
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hero__card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      text-align: left;
+      cursor: pointer;
+      transition: all 400ms ease;
+      font-family: var(--font-body);
+    }
+
+    .hero__card--active {
+      background: rgba(248, 250, 252, 0.08);
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .hero__card:hover:not(.hero__card--active) {
+      background: rgba(248, 250, 252, 0.05);
+    }
+
+    .hero__card-number {
+      font-family: var(--font-heading);
+      font-size: 12px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.25);
+      min-width: 26px;
+      line-height: 1;
+      padding: 3px 6px;
+      border-radius: 4px;
+      background: rgba(226, 232, 240, 0.12);
+      text-align: center;
+      transition: all 400ms ease;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .hero__card--active .hero__card-number {
+      color: var(--color-accent);
+      background: rgba(59, 130, 246, 0.15);
+    }
+
+    .hero__card:hover:not(.hero__card--active) .hero__card-number {
+      color: #2563EB;
+      background: rgba(37, 99, 235, 0.1);
+    }
+
+    .hero__card-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hero__card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.85);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: color 400ms ease;
+      margin: 0;
+    }
+
+    .hero__card:not(.hero__card--active) .hero__card-title {
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    .hero__card:not(.hero__card--active):hover .hero__card-title {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .hero__card-excerpt {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.35);
+      margin-top: 2px;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      transition: color 400ms ease;
+    }
+
+    .hero__card--active .hero__card-excerpt {
+      color: rgba(255, 255, 255, 0.55);
+    }
+
+    .hero__card-progress {
+      margin-top: 7px;
+      width: 100%;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .hero__card:not(.hero__card--active) .hero__card-progress {
+      opacity: 0;
+      transition: opacity 400ms ease;
+    }
+
+    .hero__card:not(.hero__card--active):hover .hero__card-progress {
+      opacity: 1;
+      background: rgba(226, 232, 240, 0.15);
+    }
+
+    .hero__card-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--color-accent);
+      border-radius: 999px;
+      transition: width 0.1s linear;
+    }
+
+    /* dark theme overrides */
+    [data-theme="dark"] .hero__card--active {
+      background: rgba(30, 41, 59, 0.45);
+      border-color: rgba(96, 165, 250, 0.3);
+    }
+
+    [data-theme="dark"] .hero__card--active .hero__card-number {
+      color: #60A5FA;
+      background: rgba(96, 165, 250, 0.15);
+    }
+
+    [data-theme="dark"] .hero__card:hover:not(.hero__card--active) .hero__card-number {
+      color: var(--color-accent-hover);
+      background: rgba(191, 219, 254, 0.1);
+    }
   }
 </style>

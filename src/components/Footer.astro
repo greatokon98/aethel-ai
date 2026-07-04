@@ -67,6 +67,11 @@ const year = new Date().getFullYear();
     background: #0B1120;
   }
 
+  [data-theme="light"] .footer {
+    background: var(--color-surface);
+    border-top-color: var(--color-border);
+  }
+
   .footer__grid {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 2fr;
@@ -85,6 +90,10 @@ const year = new Date().getFullYear();
     transition: color var(--transition-slow);
   }
 
+  [data-theme="light"] .footer__logo {
+    color: var(--color-text);
+  }
+
   .footer__tagline {
     font-family: var(--font-body);
     color: rgba(255, 255, 255, 0.75);
@@ -92,6 +101,10 @@ const year = new Date().getFullYear();
     margin-top: var(--space-3);
     font-weight: 300;
     max-width: 280px;
+  }
+
+  [data-theme="light"] .footer__tagline {
+    color: var(--color-text-secondary);
   }
 
   .footer__social {
@@ -112,6 +125,11 @@ const year = new Date().getFullYear();
     transition: all var(--transition);
   }
 
+  [data-theme="light"] .footer__social-link {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-muted);
+  }
+
   .footer__social-link:hover {
     background-color: var(--color-accent);
     color: white;
@@ -127,6 +145,10 @@ const year = new Date().getFullYear();
     font-weight: 600;
   }
 
+  [data-theme="light"] .footer__heading {
+    color: var(--color-text-muted);
+  }
+
   .footer__list {
     list-style: none;
     display: flex;
@@ -138,11 +160,37 @@ const year = new Date().getFullYear();
     font-family: var(--font-body);
     color: rgba(255, 255, 255, 0.85);
     font-size: var(--text-base);
+    text-decoration: none;
     transition: color var(--transition);
+    position: relative;
+    padding: var(--space-2) 0;
+  }
+
+  [data-theme="light"] .footer__list a {
+    color: #475569;
+  }
+
+  .footer__list a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: var(--color-accent);
+    transition: width var(--transition);
   }
 
   .footer__list a:hover {
     color: var(--color-accent);
+  }
+
+  [data-theme="light"] .footer__list a:hover {
+    color: #2563EB;
+  }
+
+  .footer__list a:hover::after {
+    width: 100%;
   }
 
   .footer__text {
@@ -152,9 +200,33 @@ const year = new Date().getFullYear();
     margin-bottom: var(--space-4);
   }
 
+  [data-theme="light"] .footer__text {
+    color: var(--color-text-secondary);
+  }
+
   .footer__form {
     display: flex;
     gap: var(--space-2);
+  }
+
+  .footer__form .btn-primary {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .footer__form .btn-primary::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.5);
+    transition: width var(--transition);
+  }
+
+  .footer__form .btn-primary:hover::after {
+    width: 100%;
   }
 
   .footer__input {
@@ -172,12 +244,26 @@ const year = new Date().getFullYear();
     min-width: 0;
   }
 
+  [data-theme="light"] .footer__input {
+    background: #FFFFFF;
+    border-color: #CBD5E1;
+    color: var(--color-text);
+  }
+
   .footer__input:focus {
     border-color: var(--color-accent);
   }
 
+  [data-theme="light"] .footer__input:focus {
+    border-color: #2563EB;
+  }
+
   .footer__input::placeholder {
     color: rgba(255, 255, 255, 0.4);
+  }
+
+  [data-theme="light"] .footer__input::placeholder {
+    color: var(--color-text-muted);
   }
 
   .footer__bottom {
@@ -186,11 +272,19 @@ const year = new Date().getFullYear();
     text-align: center;
   }
 
+  [data-theme="light"] .footer__bottom {
+    border-top-color: var(--color-border);
+  }
+
   .footer__bottom p {
     font-family: var(--font-body);
     font-size: var(--text-sm);
     color: rgba(255, 255, 255, 0.55);
     margin: 0;
+  }
+
+  [data-theme="light"] .footer__bottom p {
+    color: var(--color-text-muted);
   }
 
   @media (max-width: 968px) {
