@@ -59,6 +59,62 @@ const primaryColor = config.design.primaryColor;
     <slot />
   </main>
   <Footer />
+
+  <script>
+    (function() {
+      const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+      if (!isDesktop) return;
+
+      var dot = document.createElement('div');
+      var ring = document.createElement('div');
+      var cursor = document.createElement('div');
+
+      var baseStyles = 'position:fixed;top:0;left:0;pointer-events:none;z-index:99999;';
+      var trans = 'translate(-50%, -50%)';
+
+      cursor.style.cssText = baseStyles + 'display:none;';
+      dot.style.cssText = 'position:absolute;top:50%;left:50%;width:4px;height:4px;background:#3B82F6;border-radius:50%;transform:' + trans + ';transition:width 0.2s,height 0.2s;';
+      ring.style.cssText = 'position:absolute;top:50%;left:50%;width:28px;height:28px;border:1.5px solid #3B82F6;border-radius:50%;transform:' + trans + ';opacity:0.5;transition:width 0.2s,height 0.2s,opacity 0.2s;';
+
+      cursor.appendChild(dot);
+      cursor.appendChild(ring);
+      document.body.appendChild(cursor);
+
+      document.body.style.cursor = 'none';
+      var style = document.createElement('style');
+      style.textContent = 'a,cursor\\:none;';
+      document.head.appendChild(style);
+
+      document.addEventListener('mousemove', function(e) {
+        cursor.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px) translate(-50%,-50%)';
+        if (cursor.style.display === 'none') cursor.style.display = '';
+      });
+
+      document.addEventListener('mouseleave', function() { cursor.style.display = 'none'; });
+      document.addEventListener('mouseenter', function() { cursor.style.display = ''; });
+
+      document.addEventListener('mouseover', function(e) {
+        if (e.target.closest('a,button,input,textarea,select,[role="button"]')) {
+          ring.style.width = '40px';
+          ring.style.height = '40px';
+          ring.style.opacity = '0.8';
+          dot.style.width = '6px';
+          dot.style.height = '6px';
+        }
+      });
+
+      document.addEventListener('mouseout', function(e) {
+        if (!e.target.closest('a,button,input,textarea,select,[role="button"]')) {
+          ring.style.width = '28px';
+          ring.style.height = '28px';
+          ring.style.opacity = '0.5';
+          dot.style.width = '4px';
+          dot.style.height = '4px';
+        }
+      });
+    })();
+  </script>
+
   <script>
     if ('IntersectionObserver' in window) {
       const observer = new IntersectionObserver(

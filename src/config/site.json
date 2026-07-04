@@ -8,6 +8,7 @@
   "navigation": {
     "links": [
       { "label": "Home", "url": "/" },
+      { "label": "Trending", "url": "/trending", "skipHeader": true },
       { "label": "About", "url": "/about" },
       { "label": "Contact", "url": "/contact" }
     ]

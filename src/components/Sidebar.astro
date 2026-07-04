@@ -19,9 +19,29 @@ export interface Props {
     pubDate: string;
     description: string;
   }>;
+  popularPosts?: Array<{
+    title: string;
+    slug: string;
+    publishDate: Date;
+  }>;
 }
 
-const { categories = [], recentPosts = [], trendingPosts = [], trending = [] } = Astro.props;
+const { categories = [], recentPosts = [], trendingPosts = [], trending = [], popularPosts = [] } = Astro.props;
+
+const displayPopular = (() => {
+  if (popularPosts.length > 0) {
+    const sorted = [...popularPosts].sort((a, b) => b.publishDate.getTime() - a.publishDate.getTime());
+    const result = sorted.slice(0, 5);
+    if (result.length < 5) {
+      const fillCount = 5 - result.length;
+      const pool = recentPosts.filter(p => !popularPosts.find(pp => pp.slug === p.slug));
+      const shuffled = [...pool].sort(() => Math.random() - 0.5);
+      result.push(...shuffled.slice(0, fillCount));
+    }
+    return result;
+  }
+  return recentPosts.slice(0, 5);
+})();
 ---
 
 <aside class="sidebar">
@@ -46,16 +66,6 @@ const { categories = [], recentPosts = [], trendingPosts = [], trending = [] } =
               <time class="sidebar__trending-date" datetime={post.publishDate.toISOString()}>
                 {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </time>
-            </div>
-          </a>
-        ))
-      ) : trending.length > 0 ? (
-        trending.slice(0, 4).map((item, i) => (
-          <a href={item.link} target="_blank" rel="noopener noreferrer" class="sidebar__trending-item">
-            <span class="sidebar__trending-number">{String(i + 1).padStart(2, '0')}</span>
-            <div class="sidebar__trending-content">
-              <span class="sidebar__trending-title">{item.title}</span>
-              <span class="sidebar__trending-date">{item.source}</span>
             </div>
           </a>
         ))
@@ -100,8 +110,8 @@ const { categories = [], recentPosts = [], trendingPosts = [], trending = [] } =
   <div class="sidebar__widget">
     <h3 class="sidebar__widget-title">Popular Posts</h3>
     <ul class="sidebar__posts">
-      {recentPosts.length > 0 ? (
-        recentPosts.slice(0, 5).map((post) => (
+      {displayPopular.length > 0 ? (
+        displayPopular.map((post) => (
           <li class="sidebar__post-item">
             <div class="sidebar__post-body">
               <a href={`/posts/${post.slug}`} class="sidebar__post-link">

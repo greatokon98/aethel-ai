@@ -1,7 +1,7 @@
 ---
 import { getConfig } from '../lib/site-config';
 const config = getConfig();
-const navLinks = config.navigation.links;
+const navLinks = config.navigation.links.filter((l) => !l.skipHeader);
 ---
 
 <header class="header">
@@ -137,6 +137,12 @@ const navLinks = config.navigation.links;
   .header__nav-link:hover,
   .header__nav-link--active {
     color: var(--color-accent);
+    font-weight: 700;
+  }
+
+  .header__nav-link--active::after {
+    height: 3px;
+    box-shadow: 0 0 6px var(--color-accent);
   }
 
   .header__nav-link:hover::after,
