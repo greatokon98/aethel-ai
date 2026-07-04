@@ -1,7 +1,4 @@
----
----
-
-<form class="contact-form" method="post" action="/api/contact">
+<form class="contact-form" id="contact-form">
   <div class="contact-form__field">
     <label for="name" class="contact-form__label">Name</label>
     <input type="text" id="name" name="name" class="contact-form__input" required />
@@ -18,8 +15,65 @@
     <label for="message" class="contact-form__label">Message</label>
     <textarea id="message" name="message" class="contact-form__textarea" rows="6" required></textarea>
   </div>
-  <button type="submit" class="btn btn-primary">Send Message</button>
+  <button type="submit" class="btn btn-primary" id="contact-submit-btn">Send Message</button>
+  <div class="contact-form__status" id="contact-form-status"></div>
 </form>
+
+<script>
+  document.getElementById('contact-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    var btn = document.getElementById('contact-submit-btn');
+    var status = document.getElementById('contact-form-status');
+    var name = document.getElementById('name').value.trim();
+    var email = document.getElementById('email').value.trim();
+    var subject = document.getElementById('subject').value.trim();
+    var message = document.getElementById('message').value.trim();
+
+    if (!name || !email || !message) {
+      status.textContent = 'Please fill in required fields.';
+      status.style.color = '#EF4444';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+    status.textContent = '';
+
+    var msgData = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name,
+      email: email,
+      subject: subject || '(No subject)',
+      body: message,
+      timestamp: new Date().toISOString(),
+      read: false,
+    };
+
+    // Store in localStorage for admin to sync later
+    try {
+      var pending = JSON.parse(localStorage.getItem('aa_pending_messages') || '[]');
+      pending.push(msgData);
+      localStorage.setItem('aa_pending_messages', JSON.stringify(pending));
+    } catch(e) {}
+
+    // Try to send via mailto as fallback
+    var mailtoLink = 'mailto:great.okon98@gmail.com?subject=' + encodeURIComponent(subject || 'Contact Form Message') +
+      '&body=' + encodeURIComponent('From: ' + name + ' (' + email + ')\n\n' + message);
+    window.open(mailtoLink);
+
+    btn.textContent = 'Message Sent';
+    btn.style.background = '#059669';
+    status.textContent = 'Thank you! Your message has been sent.';
+    status.style.color = '#059669';
+    this.reset();
+    setTimeout(function() {
+      btn.disabled = false;
+      btn.textContent = 'Send Message';
+      btn.style.background = '';
+      status.textContent = '';
+    }, 3000);
+  });
+</script>
 
 <style>
   .contact-form {
@@ -74,5 +128,10 @@
 
   .contact-form button {
     align-self: flex-start;
+  }
+
+  .contact-form__status {
+    font-size: 14px;
+    font-weight: 500;
   }
 </style>

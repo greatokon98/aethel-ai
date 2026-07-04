@@ -33,5 +33,10 @@
       "popular": true,
       "newsletter": true
     }
+  },
+  "automation": {
+    "schedule": "every 3 hours",
+    "lastRun": null,
+    "lastStatus": null
   }
 }

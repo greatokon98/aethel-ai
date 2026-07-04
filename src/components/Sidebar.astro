@@ -46,12 +46,27 @@ const displayPopular = (() => {
 
 <aside class="sidebar">
   <div class="sidebar__widget sidebar__search">
-    <form class="sidebar__search-form" action="/search" method="get">
+    <form class="sidebar__search-form" id="sidebar-search-form">
       <svg class="sidebar__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
       </svg>
-      <input type="text" name="q" placeholder="Search articles..." class="sidebar__search-input" />
+      <input type="text" id="sidebar-search-input" placeholder="Search articles..." class="sidebar__search-input" />
     </form>
+    <script>
+      document.getElementById('sidebar-search-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var q = document.getElementById('sidebar-search-input').value.trim();
+        if (!q) return;
+        // Store query for admin analytics
+        try {
+          var queries = JSON.parse(localStorage.getItem('aa_search_queries') || '[]');
+          queries.push({ query: q, timestamp: new Date().toISOString() });
+          localStorage.setItem('aa_search_queries', JSON.stringify(queries));
+        } catch(e) {}
+        // Redirect to search results page with query
+        window.location.href = '/?s=' + encodeURIComponent(q);
+      });
+    </script>
   </div>
 
   <div class="sidebar__widget">

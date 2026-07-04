@@ -1,430 +1,301 @@
 ---
+import AdminLayout from '../components/admin/AdminLayout.astro';
+import StarField from '../components/StarField.astro';
 ---
 
-<!doctype html>
-<html lang="en" data-theme="light">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="robots" content="noindex" />
-  <title>Admin — Aethel_AI</title>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 50%, #F1F5F9 100%);
-      color: #0F172A;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      -webkit-font-smoothing: antialiased;
-    }
-    .login-card {
-      background: #FFFFFF;
-      border: 1px solid #E2E8F0;
-      border-radius: 16px;
-      padding: 48px 40px;
-      width: 100%;
-      max-width: 420px;
-      text-align: center;
-      box-shadow: 0 4px 24px rgba(15, 30, 54, 0.06);
-    }
-    .login-logo { margin-bottom: 32px; }
-    .login-logo img {
-      width: 56px;
-      height: 56px;
-      display: inline-block;
-    }
-    .login-title {
-      font-family: 'Fraunces', Georgia, serif;
-      font-size: 22px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-    .login-subtitle {
-      color: #64748B;
-      font-size: 15px;
-      margin-bottom: 28px;
-      line-height: 1.5;
-    }
-    .login-form { text-align: left; }
-    .login-field {
-      margin-bottom: 16px;
-    }
-    .login-field label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: #475569;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .login-field input {
-      width: 100%;
-      padding: 12px 14px;
-      border: 1.5px solid #E2E8F0;
-      border-radius: 10px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      color: #0F172A;
-      background: #F8FAFC;
-      transition: border-color 200ms, box-shadow 200ms;
-      outline: none;
-    }
-    .login-field input:focus {
-      border-color: #3B82F6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-      background: #FFFFFF;
-    }
-    .login-field input::placeholder { color: #94A3B8; }
-    .login-submit {
-      width: 100%;
-      padding: 14px;
-      background: #3B82F6;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 200ms, transform 100ms;
-      margin-top: 4px;
-    }
-    .login-submit:hover { background: #2563EB; }
-    .login-submit:active { transform: scale(0.98); }
-    .login-submit:disabled {
-      background: #93C5FD;
-      cursor: not-allowed;
-    }
-    .login-divider {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin: 24px 0;
-      color: #94A3B8;
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .login-divider::before, .login-divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background-color: #E2E8F0;
-    }
-    .login-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      width: 100%;
-      padding: 14px 20px;
-      border: 1.5px solid #E2E8F0;
-      border-radius: 10px;
-      background: white;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 15px;
-      font-weight: 500;
-      color: #0F172A;
-      cursor: pointer;
-      transition: all 200ms;
-      text-decoration: none;
-      margin-bottom: 12px;
-    }
-    .login-btn:hover {
-      border-color: #3B82F6;
-      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
-    }
-    .login-btn svg { flex-shrink: 0; }
-    .login-error {
-      display: none;
-      background: #FEF2F2;
-      border: 1px solid #FCA5A5;
-      color: #B91C1C;
-      font-size: 14px;
-      padding: 12px 16px;
-      border-radius: 10px;
-      margin-bottom: 16px;
-      text-align: center;
-    }
-    .login-error--visible { display: block; }
-    .login-loader {
-      display: none;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 16px;
-      color: #64748B;
-      font-size: 14px;
-    }
-    .login-loader--active { display: flex; }
-    .login-loader .spinner {
-      width: 18px; height: 18px;
-      border: 2px solid #E2E8F0;
-      border-top-color: #3B82F6;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-      flex-shrink: 0;
-    }
-    .login-toggle {
-      margin-top: 20px;
-      font-size: 14px;
-      color: #64748B;
-    }
-    .login-toggle a {
-      color: #3B82F6;
-      text-decoration: none;
-      font-weight: 500;
-      cursor: pointer;
-    }
-    .login-toggle a:hover { text-decoration: underline; }
-    .login-mode {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 24px;
-      background: #F1F5F9;
-      border-radius: 10px;
-      padding: 4px;
-    }
-    .login-mode button {
-      flex: 1;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 8px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 200ms;
-      background: transparent;
-      color: #64748B;
-    }
-    .login-mode button.active {
-      background: #FFFFFF;
-      color: #0F172A;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    }
-    .login-forgot {
-      text-align: right;
-      margin-top: 8px;
-      font-size: 13px;
-    }
-    .login-forgot a {
-      color: #3B82F6;
-      text-decoration: none;
-      cursor: pointer;
-    }
-    .login-forgot a:hover { text-decoration: underline; }
-    .login-name-field { display: none; }
-    .login-name-field--visible { display: block; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @media (max-width: 480px) {
-      .login-card { padding: 32px 24px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="login-card" id="login-card">
-    <div class="login-logo">
-      <img src="/favicon.svg" alt="Aethel_AI" />
+<AdminLayout>
+  <div id="app">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-logo">
+          <svg width="48" height="48" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="6" fill="#3B82F6"/>
+            <path d="M8 22 L11 7 Q11.3 5.5 13 5.5 Q14.7 5.5 15 7 L18 22 L16 22 L15 16.5 H10 L9 22 Z M10.5 14.5 H14.5 L12.5 9.5 Z" fill="white"/>
+          </svg>
+        </div>
+        <h1 class="login-title">Admin Login</h1>
+        <p class="login-subtitle">Enter your GitHub token to manage the blog</p>
+
+        <div class="login-error" id="login-error"></div>
+
+        <form class="login-form" id="login-form" onsubmit="return handleLogin(event)">
+          <div class="login-field">
+            <label for="pat">GitHub Personal Access Token</label>
+            <input type="password" id="pat" placeholder="ghp_..." autocomplete="off" required />
+            <div class="login-hint">
+              Needs <strong>repo</strong> scope.
+              <a href="https://github.com/settings/tokens" target="_blank" style="color:#3B82F6;text-decoration:none;font-weight:500">Create one →</a>
+            </div>
+          </div>
+          <button type="submit" class="login-submit" id="login-btn">Verify & Sign In</button>
+        </form>
+
+        <div class="login-loader" id="login-loader">
+          <div class="spinner"></div>
+          <span>Verifying token...</span>
+        </div>
+
+        <div class="login-divider">or</div>
+
+        <button class="login-gh-btn" onclick="window.location.href='/'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Back to Site
+        </button>
+      </div>
     </div>
-    <h1 class="login-title">Welcome back</h1>
-    <p class="login-subtitle" id="login-subtitle">Sign in to manage your blog</p>
-
-    <div class="login-mode">
-      <button class="active" id="mode-signin" onclick="setMode('signin')">Sign In</button>
-      <button id="mode-signup" onclick="setMode('signup')">Sign Up</button>
-    </div>
-
-    <div class="login-error" id="login-error"></div>
-
-    <form class="login-form" id="login-form" onsubmit="return handleSubmit(event)">
-      <div class="login-field login-name-field" id="name-field">
-        <label for="name">Full Name</label>
-        <input type="text" id="name" placeholder="Your name" autocomplete="name" />
-      </div>
-      <div class="login-field">
-        <label for="email">Email</label>
-        <input type="email" id="email" placeholder="you@example.com" autocomplete="email" required />
-      </div>
-      <div class="login-field">
-        <label for="password">Password</label>
-        <input type="password" id="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" required />
-      </div>
-      <div class="login-forgot" id="forgot-row">
-        <a onclick="handleForgot()">Forgot password?</a>
-      </div>
-      <button type="submit" class="login-submit" id="login-submit-btn">Sign In</button>
-    </form>
-
-    <div class="login-loader" id="login-loader">
-      <div class="spinner"></div>
-      <span id="loader-text">Signing in...</span>
-    </div>
-
-    <div class="login-divider">or continue with</div>
-
-    <button class="login-btn" onclick="oauthLogin('google')">
-      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Sign in with Google
-    </button>
-    <button class="login-btn" onclick="oauthLogin('github')">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="#24292F"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-      Sign in with GitHub
-    </button>
   </div>
+</AdminLayout>
 
-  <script is:inline>
-    var mode = 'signin';
+<script is:inline>
+  (function() {
+    // Theme
+    var saved = localStorage.getItem('theme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
 
-    function setMode(m) {
-      mode = m;
-      document.getElementById('mode-signin').classList.toggle('active', m === 'signin');
-      document.getElementById('mode-signup').classList.toggle('active', m === 'signup');
-      document.getElementById('name-field').classList.toggle('login-name-field--visible', m === 'signup');
-      document.getElementById('forgot-row').style.display = m === 'signin' ? '' : 'none';
-      document.getElementById('login-submit-btn').textContent = m === 'signin' ? 'Sign In' : 'Create Account';
-      document.getElementById('login-subtitle').textContent = m === 'signin' ? 'Sign in to manage your blog' : 'Create an account to get started';
-      clearError();
+    // Check if already authenticated
+    var existingPat = localStorage.getItem('aa_github_pat');
+    if (existingPat) {
+      // Quick validation
+      fetch('https://api.github.com/user', {
+        headers: { 'Authorization': 'Bearer ' + existingPat, 'Accept': 'application/vnd.github.v3+json' }
+      }).then(function(r) {
+        if (r.ok) window.location.href = '/admin/panel/';
+      }).catch(function() {});
     }
 
     function showError(msg) {
       var el = document.getElementById('login-error');
       el.textContent = msg;
-      el.classList.add('login-error--visible');
+      el.style.display = 'block';
     }
 
     function clearError() {
-      document.getElementById('login-error').classList.remove('login-error--visible');
+      var el = document.getElementById('login-error');
+      el.style.display = 'none';
     }
 
-    function setLoading(loading, text) {
+    function setLoading(loading) {
       var loader = document.getElementById('login-loader');
-      var btn = document.getElementById('login-submit-btn');
-      if (loading) {
-        loader.classList.add('login-loader--active');
-        document.getElementById('loader-text').textContent = text || 'Please wait...';
-        btn.disabled = true;
-      } else {
-        loader.classList.remove('login-loader--active');
-        btn.disabled = false;
-      }
+      var btn = document.getElementById('login-btn');
+      loader.style.display = loading ? 'flex' : 'none';
+      btn.disabled = loading;
     }
 
-    var AUTH_KEY = 'aa_auth';
-
-    function storeAuth(data) {
-      data.expires_at = Date.now() + (data.expires_in || 3600) * 1000;
-      localStorage.setItem(AUTH_KEY, JSON.stringify(data));
-    }
-
-    function api(path, body) {
-      return fetch('/.netlify/identity' + path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      }).then(function(r) {
-        if (!r.ok) {
-          return r.json().then(function(d) {
-            var msg = d.error_description || d.msg || d.error || 'Something went wrong';
-            throw new Error(msg);
-          }).catch(function(e) {
-            if (e instanceof Error) throw e;
-            throw new Error('Something went wrong');
-          });
-        }
-        return r.json();
-      });
-    }
-
-    function handleSubmit(e) {
+    async function handleLogin(e) {
       e.preventDefault();
       clearError();
 
-      var email = document.getElementById('email').value.trim();
-      var password = document.getElementById('password').value;
+      var pat = document.getElementById('pat').value.trim();
+      if (!pat) { showError('Please enter your GitHub token'); return false; }
 
-      if (!email) { showError('Please enter your email'); return false; }
-      if (!password) { showError('Please enter your password'); return false; }
+      setLoading(true);
 
-      if (mode === 'signup') {
-        var name = document.getElementById('name').value.trim();
-        if (!name) { showError('Please enter your name'); return false; }
+      try {
+        // Validate by fetching user + repo
+        var userRes = await fetch('https://api.github.com/user', {
+          headers: { 'Authorization': 'Bearer ' + pat, 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (!userRes.ok) {
+          var errData;
+          try { errData = await userRes.json(); } catch(e) {}
+          showError(errData && errData.message ? errData.message : 'Invalid token. Please check and try again.');
+          setLoading(false);
+          return false;
+        }
 
-        setLoading(true, 'Creating account...');
-        api('/signup', { email: email, password: password, data: { full_name: name } })
-          .then(function() {
-            return api('/token', { email: email, password: password, grant_type: 'password' });
-          })
-          .then(function(res) {
-            storeAuth(res);
-            window.location.href = '/admin/panel/';
-          })
-          .catch(function(err) {
-            setLoading(false);
-            showError(err.message);
-          });
-      } else {
-        setLoading(true, 'Signing in...');
-        api('/token', { email: email, password: password, grant_type: 'password' })
-          .then(function(res) {
-            storeAuth(res);
-            window.location.href = '/admin/panel/';
-          })
-          .catch(function(err) {
-            setLoading(false);
-            showError(err.message);
-          });
+        var user = await userRes.json();
+
+        // Check repo access
+        var repoRes = await fetch('https://api.github.com/repos/greatokon98/aethel-ai', {
+          headers: { 'Authorization': 'Bearer ' + pat, 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (!repoRes.ok) {
+          showError('Token valid but does not have access to greatokon98/aethel-ai. Make sure it has repo scope.');
+          setLoading(false);
+          return false;
+        }
+
+        // Store token
+        localStorage.setItem('aa_github_pat', pat);
+        localStorage.setItem('aa_user', JSON.stringify({ login: user.login, name: user.name || user.login, avatar: user.avatar_url }));
+
+        window.location.href = '/admin/panel/';
+      } catch(err) {
+        showError('Connection error: ' + err.message);
+        setLoading(false);
       }
+
       return false;
     }
 
-    function handleForgot() {
-      var email = document.getElementById('email').value.trim();
-      if (!email) { showError('Enter your email first, then click Forgot password'); return; }
+    window.handleLogin = handleLogin;
+  })();
+</script>
 
-      setLoading(true, 'Sending recovery email...');
-      api('/recover', { email: email })
-        .then(function() {
-          setLoading(false);
-          showError('Recovery email sent. Check your inbox.');
-        })
-        .catch(function(err) {
-          setLoading(false);
-          showError(err.message);
-        });
-    }
-
-    function oauthLogin(provider) {
-      window.location.href = '/.netlify/identity/authorize?provider=' + provider;
-    }
-
-    // Check if already logged in via stored token
-    var existingAuth = localStorage.getItem(AUTH_KEY);
-    if (existingAuth) {
-      try { var parsed = JSON.parse(existingAuth); if (parsed && parsed.access_token) { window.location.href = '/admin/panel/'; } } catch(e) {}
-    }
-
-    // Check URL hash for token (after OAuth callback)
-    if (window.location.hash) {
-      var hash = window.location.hash.replace('#', '');
-      var params = {};
-      hash.split('&').forEach(function(p) {
-        var parts = p.split('=');
-        if (parts.length === 2) params[parts[0]] = decodeURIComponent(parts[1]);
-      });
-      if (params.access_token) {
-        storeAuth(params);
-        window.location.hash = '';
-        window.location.href = '/admin/panel/';
-      }
-    }
-  </script>
-</body>
-</html>
+<style is:global>
+  .login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+  }
+  .login-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    box-shadow: 0 4px 24px rgba(15, 30, 54, 0.06);
+  }
+  [data-theme="dark"] .login-card {
+    background: #1E293B;
+    border-color: #334155;
+  }
+  .login-logo { margin-bottom: 24px; }
+  .login-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .login-subtitle {
+    color: #64748B;
+    font-size: 15px;
+    margin-bottom: 28px;
+    line-height: 1.5;
+  }
+  [data-theme="dark"] .login-subtitle { color: #94A3B8; }
+  .login-form { text-align: left; }
+  .login-field { margin-bottom: 20px; }
+  .login-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  [data-theme="dark"] .login-field label { color: #94A3B8; }
+  .login-field input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: #0F172A;
+    background: #F8FAFC;
+    transition: border-color 200ms, box-shadow 200ms;
+    outline: none;
+  }
+  .login-field input:focus {
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    background: #FFFFFF;
+  }
+  [data-theme="dark"] .login-field input {
+    background: #0F172A;
+    border-color: #334155;
+    color: #F1F5F9;
+  }
+  [data-theme="dark"] .login-field input:focus {
+    border-color: #3B82F6;
+    background: #0F172A;
+  }
+  .login-hint {
+    font-size: 12px;
+    color: #94A3B8;
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .login-submit {
+    width: 100%;
+    padding: 14px;
+    background: #3B82F6;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 200ms, transform 100ms;
+    margin-top: 4px;
+  }
+  .login-submit:hover { background: #2563EB; }
+  .login-submit:disabled {
+    background: #93C5FD;
+    cursor: not-allowed;
+  }
+  .login-error {
+    display: none;
+    background: #FEF2F2;
+    border: 1px solid #FCA5A5;
+    color: #B91C1C;
+    font-size: 14px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .login-loader {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+    color: #64748B;
+    font-size: 14px;
+  }
+  .login-loader .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid #E2E8F0;
+    border-top-color: #3B82F6;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    flex-shrink: 0;
+  }
+  .login-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 20px 0;
+    color: #94A3B8;
+    font-size: 13px;
+  }
+  .login-divider::before, .login-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: #E2E8F0;
+  }
+  .login-gh-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 20px;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 10px;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: #64748B;
+    cursor: pointer;
+    transition: all 200ms;
+  }
+  .login-gh-btn:hover {
+    border-color: #3B82F6;
+    color: #3B82F6;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
