@@ -229,25 +229,6 @@ const displayPopular = (() => {
     position: relative;
   }
 
-  .sidebar__trending-item::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: #2563EB;
-    transition: width 300ms ease;
-  }
-
-  [data-theme="dark"] .sidebar__trending-item::after {
-    background: var(--color-accent-hover);
-  }
-
-  .sidebar__trending-item:hover::after {
-    width: 100%;
-  }
-
   .sidebar__trending-number {
     font-family: var(--font-heading);
     font-size: var(--text-2xl);
@@ -272,6 +253,26 @@ const displayPopular = (() => {
     margin-bottom: var(--space-1);
     line-height: var(--leading-snug);
     transition: color var(--transition);
+    position: relative;
+  }
+
+  .sidebar__trending-title::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: #2563EB;
+    transition: width 300ms ease;
+  }
+
+  [data-theme="dark"] .sidebar__trending-title::after {
+    background: var(--color-accent-hover);
+  }
+
+  .sidebar__trending-item:hover .sidebar__trending-title::after {
+    width: 100%;
   }
 
   .sidebar__trending-item:hover .sidebar__trending-title {

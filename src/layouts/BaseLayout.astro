@@ -39,17 +39,12 @@ const primaryColor = config.design.primaryColor;
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <style>
     :root {
-      /* --color-accent: {
-          accentColor
-      } */
-
-      ;--color-accent-hover: {
-          accentHover
-      }
-
-      ;--color-primary: {
-          primaryColor
-      }
+      --color-accent-hover: #2563EB;
+      --color-primary: #0F1E36;
+    }
+    [data-theme="dark"] {
+      --color-accent-hover: #0048c5;
+      --color-primary: #1E293B;
     }
   </style>
   <script is:inline>
