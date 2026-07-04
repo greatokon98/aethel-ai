@@ -1,7 +1,7 @@
 window.AdminAPI = (function() {
   var CONFIG = {
     type: 'render',
-    renderUrl: 'https://aethel-api.onrender.com',
+    renderUrl: 'https://aethel-ai-e82y.onrender.com',
     owner: 'greatokon98',
     repo: 'aethel-ai',
     branch: 'main',
