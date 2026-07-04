@@ -1,9 +1,0 @@
-[build]
-  command = "echo 'Build disabled — deployed via GitHub Actions'"
-  publish = "dist"
-
-[build.environment]
-  NODE_VERSION = "24"
-
-[functions]
-  directory = "netlify/functions"
