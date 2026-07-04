@@ -1,0 +1,122 @@
+<canvas id="starfield" aria-hidden="true"></canvas>
+
+<style>
+  #starfield {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.7;
+  }
+</style>
+
+<script>
+  (function() {
+    const canvas = document.getElementById('starfield');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const DARK_STARS = ['rgba(255,255,255,0.3)','rgba(255,255,255,0.4)','rgba(255,255,255,0.5)','rgba(255,255,255,0.6)','rgba(255,255,255,0.7)','rgba(255,255,255,0.8)'];
+    const LIGHT_STARS = ['rgba(59,130,246,0.4)','rgba(59,130,246,0.5)','rgba(59,130,246,0.6)','rgba(59,130,246,0.7)','rgba(59,130,246,0.8)','rgba(59,130,246,0.9)'];
+
+    const COUNT = 65;
+    const DRIFT_SPEED = 0.8;
+
+    let stars = [];
+    let w, h;
+    let active = true;
+    let raf = null;
+
+    function getTheme() {
+      return document.documentElement.getAttribute('data-theme') || 'light';
+    }
+
+    function pick(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function initStars() {
+      stars = [];
+      for (let i = 0; i < COUNT; i++) {
+        stars.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: Math.random() < 0.7 ? 1 : (Math.random() < 0.7 ? 1.5 : 2),
+          twinkle: Math.random() < 0.35,
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.3 + Math.random() * 0.5,
+        });
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, w, h);
+      const theme = getTheme();
+      const palette = theme === 'dark' ? DARK_STARS : LIGHT_STARS;
+
+      const now = performance.now() / 1000;
+
+      for (const s of stars) {
+        let opacity = 1;
+        if (s.twinkle) {
+          opacity = 0.7 + 0.3 * Math.sin(now * s.speed + s.phase);
+        }
+
+        const color = pick(palette);
+        const baseAlpha = parseFloat(color.match(/[\d.]+(?=\))/)?.[0] || '0.15');
+        ctx.globalAlpha = baseAlpha * opacity;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    function drift() {
+      for (const s of stars) {
+        s.x += DRIFT_SPEED;
+        if (s.x > w + 4) s.x = -4;
+      }
+    }
+
+    function tick() {
+      if (!active) return;
+      drift();
+      draw();
+      raf = requestAnimationFrame(tick);
+    }
+
+    function resize() {
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = w;
+      canvas.height = h;
+      if (stars.length === 0) initStars();
+    }
+
+    function pause() { active = false; if (raf) { cancelAnimationFrame(raf); raf = null; } }
+    function resume() { if (!active) { active = true; raf = requestAnimationFrame(tick); } }
+
+    function onVisChange() {
+      document.hidden ? pause() : resume();
+    }
+
+    function watchTheme() {
+      const html = document.documentElement;
+      const obs = new MutationObserver(() => { draw(); });
+      obs.observe(html, { attributes: true, attributeFilter: ['data-theme'] });
+    }
+
+    resize();
+    initStars();
+    raf = requestAnimationFrame(tick);
+
+    window.addEventListener('resize', resize);
+    document.addEventListener('visibilitychange', onVisChange);
+    watchTheme();
+  })();
+</script>

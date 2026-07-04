@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import StarField from '../components/StarField.astro';
 import { getConfig } from '../lib/site-config';
 
 export interface Props {
@@ -138,5 +139,6 @@ const primaryColor = config.design.primaryColor;
       document.querySelectorAll('.fade-in').forEach((el) => el.classList.add('fade-in--visible'));
     }
   </script>
+  <StarField />
 </body>
 </html>
