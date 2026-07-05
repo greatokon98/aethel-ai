@@ -84,6 +84,16 @@ import StarField from '../StarField.astro';
       background: #2563EB;
       border-color: #2563EB;
     }
+    .admin-header__btn--outline {
+      background: transparent;
+      border-color: #CBD5E1;
+      color: #64748B;
+    }
+    .admin-header__btn--outline:hover {
+      border-color: #3B82F6;
+      color: #3B82F6;
+      background: transparent;
+    }
     .theme-toggle-btn {
       background: none;
       border: none;
@@ -662,6 +672,14 @@ import StarField from '../StarField.astro';
     [data-theme="dark"] .trending-card__title { color: #F1F5F9; }
     [data-theme="dark"] .trending-card__desc { color: #94A3B8; }
     [data-theme="dark"] .admin-header__user { color: rgba(255,255,255,0.5); }
+    [data-theme="dark"] .admin-header__btn--outline {
+      border-color: #475569;
+      color: #94A3B8;
+    }
+    [data-theme="dark"] .admin-header__btn--outline:hover {
+      border-color: #3B82F6;
+      color: #60A5FA;
+    }
     [data-theme="dark"] .error-card { background: #1E293B; border-color: #334155; }
     [data-theme="dark"] .error-card__message { color: #94A3B8; }
     [data-theme="dark"] .empty-state { color: #64748B; }
