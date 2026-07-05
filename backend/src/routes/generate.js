@@ -9,11 +9,11 @@ const VALID_CATS = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 
 
 function extractKeywords(title, categories) {
   const stopWords = new Set(['how','to','the','a','an','is','are','was','were','for','with','in','on','at','and','or','of','its','this','that','what','why','when','where','which','who','does','do','can','will','has','have','had','but','not','all','be','by','from','it','no','so','up','if','as','about','into','than','then','them','they','your','you']);
-  const words = title.replace(/[^a-zA-Z0-9 ]/g, '').split(' ').filter(w => w.length > 3 && !stopWords.has(w.toLowerCase()));
+  const words = title.replace(/[^a-zA-Z0-9 ]/g, '').split(' ').filter(w => w.length >= 2 && !stopWords.has(w.toLowerCase()));
   if (categories) {
     categories.split(',').forEach(c => { const t = c.trim(); if (t) words.push(t); });
   }
-  return [...new Set(words)].slice(0, 3).join(' ') || title.split(' ').slice(0, 3).join(' ');
+  return [...new Set(words)].slice(0, 4).join(' ') || title.split(' ').slice(0, 3).join(' ');
 }
 
 async function fetchFeaturedImage(title, categories) {

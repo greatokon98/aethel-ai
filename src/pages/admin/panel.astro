@@ -1290,6 +1290,7 @@ window.AdminAPI = (function() {
 
     // --- Data Loading ---
     async function loadDashboard() {
+      if (state.view !== 'dashboard') return;
       render();
       var results = await Promise.all([
         AdminAPI.listPosts().catch(function() { return state.posts || []; }),
@@ -1297,6 +1298,7 @@ window.AdminAPI = (function() {
         AdminAPI.loadSearchQueries().catch(function() { return state.searchData || { queries: [] }; }),
         AdminAPI.loadAutomationRuns().catch(function() { return state.automationRuns || { runs: [] }; }),
       ]);
+      if (state.view !== 'dashboard') return;
       state.posts = results[0];
       state.messages = results[1];
       state.searchData = results[2];
@@ -1329,6 +1331,7 @@ window.AdminAPI = (function() {
     }
 
     async function loadTrending() {
+      if (state.view !== 'trending') return;
       clearInterval(_trendingTimer);
       _trendingTimer = null;
       state.trendingItems = [];
@@ -1338,10 +1341,13 @@ window.AdminAPI = (function() {
       } catch(e) {
         state.trendingItems = [];
       }
+      if (state.view !== 'trending') return;
       render();
       _trendingTimer = setInterval(async function() {
+        if (state.view !== 'trending') return;
         try {
           state.trendingItems = await AdminAPI.fetchTrending();
+          if (state.view !== 'trending') return;
           render();
         } catch(e) {}
       }, 30000);
