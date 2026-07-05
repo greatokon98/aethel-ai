@@ -99,19 +99,19 @@ const searchScript = [
   '        var s = c.toLowerCase().replace(/\\s+/g, "-");',
   '        return \'<a href="/category/\' + s + \'" class="search-result-cat">\' + esc(c) + "</a>";',
   '      }).join("");',
-  '      if (p.featuredImage) {',
-  '        h += \'<article class="search-result-card">\';',
+  '      h += \'<article class="search-result-card">\';',
   '        h += \'<a href="/posts/\' + p.slug + \'" class="search-result-img-link">\';',
+  '        if (p.featuredImage) {',
   '        h += \'<img src="\' + p.featuredImage + \'" alt="\' + esc(p.title) + \'" class="search-result-img" loading="lazy" />\';',
+  '        } else {',
+  '        h += \'<div class="search-result-img-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>\';',
+  '        }',
   '        h += "</a>";',
-  '      } else {',
-  '        h += \'<article class="search-result-card">\';',
-  '      }',
   '      h += \'<div class="search-result-body">\';',
-  '      h += \'<div class="search-result-meta"><span class="search-result-date">\' + timeAgo(p.publishDate) + \'</span><span class="search-result-reading">\' + p.readingTime + " min read</span></div>";',
+  '        if (cats) h += \'<div class="search-result-cats">\' + cats + "</div>";',
   '      h += \'<h3 class="search-result-title"><a href="/posts/\' + p.slug + \'">\' + esc(p.title) + "</a></h3>";',
   '      h += \'<p class="search-result-excerpt">\' + esc(p.excerpt) + "</p>";',
-  '      if (cats) h += \'<div class="search-result-cats">\' + cats + "</div>";',
+  '      h += \'<div class="search-result-meta"><span class="search-result-date">\' + timeAgo(p.publishDate) + \'</span><span class="search-result-sep"> \\u00b7 </span><span class="search-result-reading">\' + p.readingTime + " min read</span></div>";',
   '      h += "</div></article>";',
   '    }',
   '    grid.innerHTML = h;',
@@ -353,10 +353,11 @@ const searchScript = [
 
   .search-result-img-link {
     flex-shrink: 0;
-    width: 180px;
+    width: 160px;
     height: 120px;
     overflow: hidden;
     border-radius: var(--radius-md);
+    text-decoration: none;
   }
 
   .search-result-img {
@@ -370,19 +371,43 @@ const searchScript = [
     transform: scale(1.05);
   }
 
+  .search-result-img-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-border);
+    color: var(--color-text-muted);
+    border-radius: var(--radius-md);
+    transition: transform 400ms ease;
+  }
+
+  .search-result-card:hover .search-result-img-placeholder {
+    transform: scale(1.05);
+  }
+
   .search-result-body {
+    display: flex;
+    flex-direction: column;
     flex: 1;
     min-width: 0;
   }
 
   .search-result-meta {
     display: flex;
-    gap: var(--space-3);
+    gap: var(--space-1);
+    align-items: center;
     font-size: var(--text-xs);
     color: var(--color-text-muted);
-    margin-bottom: var(--space-2);
+    margin-top: auto;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+  }
+
+  .search-result-sep {
+    color: var(--color-text-muted);
+    opacity: 0.5;
   }
 
   .search-result-title {
@@ -418,6 +443,7 @@ const searchScript = [
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
+    margin-bottom: var(--space-2);
   }
 
   .search-result-cat {

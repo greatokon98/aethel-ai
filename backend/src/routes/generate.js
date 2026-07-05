@@ -29,6 +29,10 @@ router.post('/', async (req, res) => {
     const { title } = req.body;
     if (!title) return res.status(400).json({ error: 'title is required' });
 
+    if (!GEMINI_KEY) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY not configured on server. Add it to Render environment variables.' });
+    }
+
     const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
 
     const prompt = `You are Aethel, a writer for Aethel_AI — a blog about AI and automation for everyday people.
@@ -70,7 +74,9 @@ TAGS: [comma-separated tags, first tag must be "trending"]`;
 
     if (!geminiRes.ok) {
       const err = await geminiRes.text();
-      throw new Error(`Gemini API error (${geminiRes.status}): ${err.slice(0, 200)}`);
+      const isHtml = err.trim().startsWith('<!');
+      const clean = isHtml ? 'API key invalid or not enabled. Check GEMINI_API_KEY in Render env vars.' : err.slice(0, 200);
+      throw new Error(`Gemini API error (${geminiRes.status}): ${clean}`);
     }
 
     const data = await geminiRes.json();
