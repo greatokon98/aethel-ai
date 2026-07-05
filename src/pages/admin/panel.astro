@@ -149,7 +149,13 @@ window.AdminAPI = (function() {
     return lines.join('\n');
   }
 
-  async function listPosts() {
+  async function listPosts(force) {
+    if (!force) {
+      try {
+        var cached = sessionStorage.getItem('aa_posts_cache');
+        if (cached) { var parsed = JSON.parse(cached); if (Array.isArray(parsed)) return parsed; }
+      } catch(e) {}
+    }
     try {
       var data = await apiFetch(GITHUB_API + '/contents/src/content/posts?ref=' + CONFIG.branch);
     } catch(e) {
@@ -157,25 +163,25 @@ window.AdminAPI = (function() {
       throw e;
     }
     var files = data.filter(function(f) { return f.name.endsWith('.md'); });
-    var posts = [];
-    for (var i = 0; i < files.length; i++) {
-      var f = files[i];
+    var results = await Promise.all(files.map(async function(f) {
       try {
         var content = await apiFetch(GITHUB_API + '/contents/src/content/posts/' + f.name);
         var decoded = atob(content.content);
         var parsed = parseFrontmatter(decoded);
         var slug = f.name.replace(/\.md$/, '');
-        posts.push({
+        return {
           slug: slug, name: f.name, sha: content.sha,
           title: parsed.attrs.title || slug, excerpt: parsed.attrs.excerpt || '',
           publishDate: parsed.attrs.publishDate || '',
           categories: parsed.attrs.categories || [], tags: parsed.attrs.tags || [],
           featured: parsed.attrs.featured || false, author: parsed.attrs.author || 'Aethel',
           featuredImage: parsed.attrs.featuredImage || '', body: parsed.body,
-        });
-      } catch(e) {}
-    }
+        };
+      } catch(e) { return null; }
+    }));
+    var posts = results.filter(Boolean);
     posts.sort(function(a, b) { return new Date(b.publishDate) - new Date(a.publishDate); });
+    try { sessionStorage.setItem('aa_posts_cache', JSON.stringify(posts)); } catch(e) {}
     return posts;
   }
 
@@ -1076,7 +1082,7 @@ window.AdminAPI = (function() {
               tags: content.tags || ['trending'],
               author: 'Aethel',
               featured: false,
-              featuredImage: '',
+              featuredImage: content.featuredImage || '',
               publishDate: new Date().toISOString().split('T')[0],
               sha: null,
             };
@@ -1181,6 +1187,7 @@ window.AdminAPI = (function() {
     // --- View switching ---
     function switchView(view) {
       state.view = view;
+      try { sessionStorage.setItem('aa_active_tab', view); } catch(e) {}
       if (view === 'dashboard') {
         loadDashboard();
       } else if (view === 'trending' && state.trendingItems.length === 0) {
@@ -1357,6 +1364,7 @@ window.AdminAPI = (function() {
         }
         var body = bodyEl.value;
         await AdminAPI.savePost(slug, attrs, body);
+        try { sessionStorage.removeItem('aa_posts_cache'); } catch(e) {}
         showToast('Post saved! Rebuilding site...', 'success');
         state.view = 'list';
         render();
@@ -1537,7 +1545,13 @@ window.AdminAPI = (function() {
         window.location.href = '/admin/';
         return;
       }
-      loadPosts();
+      var savedTab;
+      try { savedTab = sessionStorage.getItem('aa_active_tab'); } catch(e) {}
+      if (savedTab && ['dashboard','list','trending','messages','search','automation','settings','diagnostics'].indexOf(savedTab) !== -1) {
+        switchView(savedTab);
+      } else {
+        loadPosts();
+      }
     }
 
     // Marked preview update

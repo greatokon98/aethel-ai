@@ -201,11 +201,25 @@ Topic: [title] — [reason]`;
 }
 
 async function fetchFeaturedImage(query) {
-  const url = `https://source.unsplash.com/featured/1200x630/?${encodeURIComponent(query)},artificial-intelligence,technology`;
-  return url;
+  const key = process.env.UNSPLASH_ACCESS_KEY;
+  if (key) {
+    try {
+      const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)},technology&w=1200&h=630&fit=crop`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Client-ID ${key}`, 'Accept-Version': 'v1' },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return `${data.urls.raw}&w=1200&h=630&fit=crop`;
+      }
+    } catch {}
+  }
+  const seed = encodeURIComponent(query.split(' ').slice(0, 5).join('-').toLowerCase());
+  return `https://picsum.photos/seed/${seed}/1200/630`;
 }
 
-async function writePost(topic, existingPosts) {
+async function writePost(topic, existingPosts, postType) {
   const prompt = `You are Aethel, a writer for Aethel_AI \u2014 a blog about AI and automation for everyday people.
 
 Your voice and style:
@@ -233,8 +247,10 @@ Format in Markdown. Do NOT include a title at the top (frontmatter will be added
 
   const content = await callGemini(prompt);
 
-  const typeIndex = existingPosts.length % TYPE_CYCLE.length;
-  const postType = TYPE_CYCLE[typeIndex];
+  if (!postType) {
+    const typeIndex = existingPosts.length % TYPE_CYCLE.length;
+    postType = TYPE_CYCLE[typeIndex];
+  }
 
   const catPrompt = `Given this blog post title: "${topic.title}", which category best fits? Choose ONE from: AI Tools, Content Creation, Productivity, Workflow, AI News, Automation, Creativity, Entrepreneurship, Future of Work.
 Reply with just the category name.`;
@@ -322,7 +338,7 @@ async function main() {
     return !isDup;
   });
 
-  newTopics = newTopics.slice(0, 2);
+  newTopics = newTopics.slice(0, 5);
   console.log(`  ${newTopics.length} new topics to write\n`);
 
   if (newTopics.length === 0) {
@@ -331,10 +347,12 @@ async function main() {
   }
 
   let committed = 0;
-  for (const topic of newTopics) {
+  for (let i = 0; i < newTopics.length; i++) {
+    const topic = newTopics[i];
+    const postType = i < 2 ? 'trending' : 'standard';
     console.log(`Writing: "${topic.title}"...`);
     try {
-      let { slug, markdown, type } = await writePost(topic, existingPosts);
+      let { slug, markdown, type } = await writePost(topic, existingPosts, postType);
 
       if (existingSlugs.has(slug)) {
         let n = 1;

@@ -3,7 +3,26 @@ import { Router } from 'express';
 const router = Router();
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
 const VALID_CATS = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work'];
+
+async function fetchFeaturedImage(query) {
+  if (UNSPLASH_KEY) {
+    try {
+      const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)},technology&w=1200&h=630&fit=crop`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Client-ID ${UNSPLASH_KEY}`, 'Accept-Version': 'v1' },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return `${data.urls.raw}&w=1200&h=630&fit=crop`;
+      }
+    } catch {}
+  }
+  const seed = encodeURIComponent(query.split(' ').slice(0, 5).join('-').toLowerCase());
+  return `https://picsum.photos/seed/${seed}/1200/630`;
+}
 
 router.post('/', async (req, res) => {
   try {
@@ -78,6 +97,7 @@ TAGS: [comma-separated tags, first tag must be "trending"]`;
     const body = bodyLines.join('\n');
     const firstLine = bodyLines[0] || '';
     const excerpt = firstLine.length > 160 ? firstLine.slice(0, 157) + '...' : firstLine;
+    const featuredImage = await fetchFeaturedImage(title);
 
     return res.json({
       content: {
@@ -86,6 +106,7 @@ TAGS: [comma-separated tags, first tag must be "trending"]`;
         body: body,
         category: category,
         tags: tags,
+        featuredImage: featuredImage,
       },
     });
   } catch (err) {
