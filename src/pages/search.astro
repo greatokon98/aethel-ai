@@ -102,7 +102,7 @@ const searchScript = [
   '      h += \'<article class="search-result-card">\';',
   '        h += \'<a href="/posts/\' + p.slug + \'" class="search-result-img-link">\';',
   '        if (p.featuredImage) {',
-  '        h += \'<img src="\' + p.featuredImage + \'" alt="\' + esc(p.title) + \'" class="search-result-img" loading="lazy" />\';',
+  '        h += \'<img src="\' + p.featuredImage + \'" alt="\' + esc(p.title) + \'" class="search-result-img" loading="lazy" decoding="async" />\';',
   '        } else {',
   '        h += \'<div class="search-result-img-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>\';',
   '        }',

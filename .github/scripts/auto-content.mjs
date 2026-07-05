@@ -129,7 +129,7 @@ async function callGemini(prompt) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 2000 },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
       }),
     }
   );
@@ -223,7 +223,7 @@ async function fetchFeaturedImage(query) {
       if (res.ok) {
         const data = await res.json();
         if (data.hits && data.hits.length > 0) {
-          return data.hits[0].largeImageURL;
+          return data.hits[0].webformatURL;
         }
       }
     } catch {}
@@ -250,7 +250,9 @@ Write an in-depth, original blog post on this topic:
 
 The post should help someone who is curious but confused about this topic. Make it practical, clear, and genuinely useful.
 
-Write 500-700 words with:
+Generate a comprehensive, deep-dive article. Do NOT summarize or deliver short text blocks. The output must consist of an elegant introductory hook, 3 to 4 distinct structured sub-sections containing detailed paragraphs, and a mature human-sounding closing takeaway.
+
+Write 800-1200 words with:
 1. A bold opening sentence that hooks
 2. 3-4 short sections with subheadings
 3. What this actually means for the reader

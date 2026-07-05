@@ -35,7 +35,7 @@ const featuredData = featured.map(p => ({
       >
         <div class="hero__slide-bg">
           {post.featuredImage ? (
-            <img src={post.featuredImage} alt={post.title} class="hero__slide-image" />
+            <img src={post.featuredImage} alt={post.title} class="hero__slide-image" loading="lazy" decoding="async" fetchpriority="high" />
           ) : (
             <div class="hero__slide-placeholder"></div>
           )}

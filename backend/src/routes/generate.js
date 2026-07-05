@@ -28,7 +28,7 @@ async function fetchFeaturedImage(query) {
       if (res.ok) {
         const data = await res.json();
         if (data.hits && data.hits.length > 0) {
-          return data.hits[0].largeImageURL;
+          return data.hits[0].webformatURL;
         }
       }
     } catch {}
@@ -50,15 +50,56 @@ Your voice and style:
 - Use subheadings as short questions or phrases
 - End with a one-sentence takeaway
 
-Write a blog post based on this trending topic: "${title}"
+Generate a comprehensive, deep-dive article based on this trending topic: "${title}"
+
+Do NOT summarize or deliver short text blocks. The output must consist of an elegant introductory hook, 3 to 4 distinct structured sub-sections containing detailed paragraphs, and a mature human-sounding closing takeaway.
 
 First, write exactly ONE sentence as an excerpt that summarizes the post.
 
-Then write the full post (500-700 words) with:
+Then write the full post (800-1200 words) with:
 1. A bold opening sentence that hooks
 2. 3-4 short sections with subheadings
 3. What this actually means for the reader
 4. A one-sentence takeaway at the end, on its own line, prefixed with **
+
+Format the post in Markdown. Do NOT include a title at the top. Do NOT include --- separators.
+
+On separate lines at the very end of your response, add:
+CATEGORY: [choose one from: ${VALID_CATS.join(', ')}]
+TAGS: [comma-separated tags, first tag must be "trending"]`;
+}
+
+function buildRegeneratePrompt(title, body) {
+  return `You are Aethel, a writer for Aethel_AI — a blog about AI and automation for everyday people.
+
+Your voice and style:
+- First-person, honest, practical, anti-hype
+- Short punchy paragraphs (2-3 sentences max)
+- Bold for **emphasis** on key concepts
+- No jargon — explain everything clearly
+- Share real results and practical takeaways
+- Address the reader directly ("you")
+- Use subheadings as short questions or phrases
+- End with a one-sentence takeaway
+
+Your task is to rewrite the following draft blog post on the topic: "${title}"
+
+The draft may be incomplete, truncated, or not fully in the Aethel voice.
+Complete any cut-off sentences, expand thin sections, and rewrite the entire post in the Aethel voice above.
+Keep the same topic, structure, and key points.
+Target 800-1200 words of finished, natural prose — no placeholders or notes.
+
+First, write exactly ONE sentence as an excerpt that summarizes the post.
+
+Then write the full post with:
+1. A bold opening sentence that hooks
+2. 3-4 short sections with subheadings
+3. What this actually means for the reader
+4. A one-sentence takeaway at the end, on its own line, prefixed with **
+
+Here is the draft to rewrite:
+
+${body}
 
 Format the post in Markdown. Do NOT include a title at the top. Do NOT include --- separators.
 
@@ -142,6 +183,42 @@ router.post('/', async (req, res) => {
         category: category,
         tags: tags,
         featuredImage: featuredImage,
+        _provider: 'groq',
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/regenerate', async (req, res) => {
+  try {
+    const { title, body } = req.body;
+    if (!title || !body) {
+      return res.status(400).json({ error: 'title and body are required' });
+    }
+
+    const prompt = buildRegeneratePrompt(title, body);
+    let text = '';
+
+    if (GROQ_KEY) {
+      text = await callGroq(prompt);
+    }
+
+    if (!text) {
+      return res.status(500).json({
+        error: 'Groq API failed. Check GROQ_API_KEY in Render env vars.',
+      });
+    }
+
+    const parsed = parseResponse(text);
+    return res.json({
+      content: {
+        title: title,
+        excerpt: parsed.excerpt,
+        body: parsed.body,
+        category: parsed.category,
+        tags: parsed.tags,
         _provider: 'groq',
       },
     });

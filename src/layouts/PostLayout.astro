@@ -70,7 +70,7 @@ const formattedDate = publishDate.toLocaleDateString('en-US', {
 
           {featuredImage && (
             <div class="post-page__image-wrapper">
-              <img src={featuredImage} alt={title} class="post-page__image" />
+              <img src={featuredImage} alt={title} class="post-page__image" loading="lazy" decoding="async" fetchpriority="low" />
             </div>
           )}
 

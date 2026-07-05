@@ -343,6 +343,17 @@ window.AdminAPI = (function() {
     throw new Error('Auto-generation requires Render backend');
   }
 
+  // ---- Regenerate Post ----
+  async function regeneratePost(title, body) {
+    if (CONFIG.type === 'render') {
+      return await apiFetch(BASE + '/api/generate/regenerate', {
+        method: 'POST',
+        body: { title: title, body: body }
+      });
+    }
+    throw new Error('Regeneration requires Render backend');
+  }
+
   // ---- Trending ----
   async function fetchTrending() {
     if (CONFIG.type === 'render') {
@@ -604,6 +615,7 @@ window.AdminAPI = (function() {
         '<div class="editor-actions">' +
           '<button class="btn-save" id="btn-save-post">' + (isNew ? 'Create Post' : 'Save Changes') + '</button>' +
           '<button class="btn-cancel" id="btn-cancel-edit">Cancel</button>' +
+          (!isNew ? '<button class="btn-regenerate" id="btn-regenerate">Regenerate with Groq</button>' : '') +
           (!isNew ? '<button class="btn-delete" id="btn-editor-delete">Delete Post</button>' : '') +
         '</div>' +
       '</div>';
@@ -1034,6 +1046,12 @@ window.AdminAPI = (function() {
         });
       }
 
+      // Regenerate with Groq
+      var regenBtn = document.getElementById('btn-regenerate');
+      if (regenBtn) {
+        regenBtn.addEventListener('click', handleRegenerate);
+      }
+
       // Tab navigation
       qsa('.admin-tab').forEach(function(tab) {
         tab.addEventListener('click', function() {
@@ -1336,6 +1354,38 @@ window.AdminAPI = (function() {
         state.workflowRuns = [];
       }
       render();
+    }
+
+    // --- Regenerate with Groq ---
+    async function handleRegenerate() {
+      var title = document.getElementById('ed-title').value.trim();
+      var body = document.getElementById('ed-body').value.trim();
+      if (!title || !body) {
+        alert('Title and body are required to regenerate.');
+        return;
+      }
+      var btn = document.getElementById('btn-regenerate');
+      btn.disabled = true;
+      btn.textContent = 'Regenerating...';
+      try {
+        var result = await regeneratePost(title, body);
+        var content = result.content;
+        document.getElementById('ed-body').value = content.body;
+        document.getElementById('ed-excerpt').value = content.excerpt || '';
+        if (content.categories) {
+          document.getElementById('ed-categories').value = content.categories.join(', ');
+        }
+        if (content.tags) {
+          document.getElementById('ed-tags').value = content.tags.join(', ');
+        }
+        window.updatePreview();
+        alert('Post regenerated successfully! Check the body and preview below.');
+      } catch (err) {
+        alert('Regeneration failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Regenerate with Groq';
+      }
     }
 
     // --- Post CRUD ---

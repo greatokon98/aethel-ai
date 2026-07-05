@@ -349,6 +349,13 @@ import StarField from '../StarField.astro';
       margin-left: auto;
     }
     .editor-actions .btn-delete:hover { background: #FEE2E2; }
+    .editor-actions .btn-regenerate {
+      background: transparent;
+      color: #3B82F6;
+      border: 1.5px solid #3B82F6;
+    }
+    .editor-actions .btn-regenerate:hover { background: #EFF6FF; }
+    .editor-actions .btn-regenerate:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .toast {
       position: fixed;
@@ -667,6 +674,8 @@ import StarField from '../StarField.astro';
     [data-theme="dark"] .editor-field textarea,
     [data-theme="dark"] .editor-field select { background: #0F172A; border-color: #334155; color: #F1F5F9; }
     [data-theme="dark"] .editor-preview { background: #0F172A; border-color: #334155; }
+    [data-theme="dark"] .editor-actions .btn-regenerate { color: #60A5FA; border-color: #60A5FA; }
+    [data-theme="dark"] .editor-actions .btn-regenerate:hover { background: rgba(59,130,246,0.1); }
     [data-theme="dark"] .settings-nav-row input { background: #0F172A; border-color: #334155; color: #F1F5F9; }
     [data-theme="dark"] .settings-section-title { border-color: #1E293B; }
     [data-theme="dark"] .trending-card__title { color: #F1F5F9; }

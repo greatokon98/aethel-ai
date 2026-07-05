@@ -25,7 +25,7 @@ const cardClass = featured ? 'post-card post-card--featured' : 'post-card';
   <a href={`/posts/${slug}`} class="post-card__link">
     <div class="post-card__image-wrapper">
       {featuredImage ? (
-        <img src={featuredImage} alt={title} class="post-card__image" loading="lazy" />
+        <img src={featuredImage} alt={title} class="post-card__image" loading="lazy" decoding="async" />
       ) : (
         <div class="post-card__image-placeholder"></div>
       )}
