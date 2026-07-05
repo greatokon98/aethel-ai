@@ -461,6 +461,8 @@ window.AdminAPI = (function() {
       error: null,
     };
 
+    var _trendingTimer = null;
+
     // --- View Renderers ---
 
     function renderLoading() {
@@ -636,6 +638,7 @@ window.AdminAPI = (function() {
       }).join('');
       return '<div class="post-list-header">' +
         '<h1>Trending Now <span class="count">(' + items.length + ')</span></h1>' +
+        '<span class="trending-auto-badge">⟳ Auto 30s</span>' +
         '<button class="admin-header__btn" id="btn-refresh-trending">Refresh</button>' +
       '</div>' +
       '<div class="trending-list">' + rows + '</div>';
@@ -1186,6 +1189,10 @@ window.AdminAPI = (function() {
 
     // --- View switching ---
     function switchView(view) {
+      if (view !== 'trending') {
+        clearInterval(_trendingTimer);
+        _trendingTimer = null;
+      }
       state.view = view;
       try { sessionStorage.setItem('aa_active_tab', view); } catch(e) {}
       if (view === 'dashboard') {
@@ -1237,6 +1244,8 @@ window.AdminAPI = (function() {
     }
 
     async function loadTrending() {
+      clearInterval(_trendingTimer);
+      _trendingTimer = null;
       state.trendingItems = [];
       render();
       try {
@@ -1245,6 +1254,12 @@ window.AdminAPI = (function() {
         state.trendingItems = [];
       }
       render();
+      _trendingTimer = setInterval(async function() {
+        try {
+          state.trendingItems = await AdminAPI.fetchTrending();
+          render();
+        } catch(e) {}
+      }, 30000);
     }
 
     async function loadSettings() {

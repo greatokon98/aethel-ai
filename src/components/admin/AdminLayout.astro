@@ -422,6 +422,19 @@ import StarField from '../StarField.astro';
     .trending-card__desc { font-size: 13px; color: #64748B; line-height: 1.4; }
     .trending-card__actions { flex-shrink: 0; }
     .trending-write { white-space: nowrap; }
+    .trending-auto-badge {
+      font-size: 12px;
+      font-weight: 500;
+      color: #22C55E;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      animation: trendingPulse 2s ease-in-out infinite;
+    }
+    @keyframes trendingPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
 
     .settings-form { max-width: 800px; }
     .settings-section {
