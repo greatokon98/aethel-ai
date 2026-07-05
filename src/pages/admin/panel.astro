@@ -457,6 +457,10 @@ window.AdminAPI = (function() {
       t._timer = setTimeout(function() { t.classList.remove('toast--visible'); }, 3000);
     }
 
+    // --- Cache ---
+    var _cache = {};
+    var CACHE_TTL = 30000;
+
     // --- State ---
     var state = {
       view: 'loading',
@@ -473,6 +477,7 @@ window.AdminAPI = (function() {
     };
 
     var _trendingTimer = null;
+    var _dashboardTimer = null;
 
     // --- View Renderers ---
 
@@ -1211,6 +1216,10 @@ window.AdminAPI = (function() {
         clearInterval(_trendingTimer);
         _trendingTimer = null;
       }
+      if (view !== 'dashboard') {
+        clearInterval(_dashboardTimer);
+        _dashboardTimer = null;
+      }
       state.view = view;
       try { sessionStorage.setItem('aa_active_tab', view); } catch(e) {}
       if (view === 'dashboard') {
@@ -1233,26 +1242,35 @@ window.AdminAPI = (function() {
     // --- Data Loading ---
     async function loadDashboard() {
       render();
-      try {
-        state.posts = await AdminAPI.listPosts();
-      } catch(e) {}
-      try {
-        state.messages = await AdminAPI.loadMessages();
-      } catch(e) {}
-      try {
-        state.searchData = await AdminAPI.loadSearchQueries();
-      } catch(e) {}
-      try {
-        state.automationRuns = await AdminAPI.loadAutomationRuns();
-      } catch(e) {}
+      var results = await Promise.all([
+        AdminAPI.listPosts().catch(function() { return state.posts || []; }),
+        AdminAPI.loadMessages().catch(function() { return state.messages || { messages: [] }; }),
+        AdminAPI.loadSearchQueries().catch(function() { return state.searchData || { queries: [] }; }),
+        AdminAPI.loadAutomationRuns().catch(function() { return state.automationRuns || { runs: [] }; }),
+      ]);
+      state.posts = results[0];
+      state.messages = results[1];
+      state.searchData = results[2];
+      state.automationRuns = results[3];
+      _cache.dashboard = Date.now();
       render();
+      clearInterval(_dashboardTimer);
+      _dashboardTimer = setInterval(function() {
+        loadDashboard();
+      }, 60000);
     }
 
-    async function loadPosts() {
+    async function loadPosts(force) {
+      if (!force && _cache.posts && Date.now() - _cache.posts < CACHE_TTL && state.posts.length > 0) {
+        state.view = 'list';
+        render();
+        return;
+      }
       state.view = 'loading';
       render();
       try {
-        state.posts = await AdminAPI.listPosts();
+        state.posts = await AdminAPI.listPosts(force);
+        _cache.posts = Date.now();
         state.view = 'list';
       } catch(e) {
         state.view = 'error';
@@ -1280,20 +1298,30 @@ window.AdminAPI = (function() {
       }, 30000);
     }
 
-    async function loadSettings() {
+    async function loadSettings(force) {
+      if (!force && _cache.settings && Date.now() - _cache.settings < CACHE_TTL && state.settings) {
+        render();
+        return;
+      }
       render();
       try {
         state.settings = await AdminAPI.loadSettings();
+        _cache.settings = Date.now();
       } catch(e) {
         state.settings = JSON.parse(JSON.stringify(AdminAPI.defaultSettings));
       }
       render();
     }
 
-    async function loadMessages() {
+    async function loadMessages(force) {
+      if (!force && _cache.messages && Date.now() - _cache.messages < CACHE_TTL && state.messages) {
+        render();
+        return;
+      }
       render();
       try {
         state.messages = await AdminAPI.loadMessages();
+        _cache.messages = Date.now();
 
         // Sync pending messages from localStorage
         try {
@@ -1318,10 +1346,15 @@ window.AdminAPI = (function() {
       render();
     }
 
-    async function loadSearchData() {
+    async function loadSearchData(force) {
+      if (!force && _cache.search && Date.now() - _cache.search < CACHE_TTL && state.searchData) {
+        render();
+        return;
+      }
       render();
       try {
         state.searchData = await AdminAPI.loadSearchQueries();
+        _cache.search = Date.now();
 
         // Sync pending search queries from localStorage
         try {
@@ -1341,15 +1374,21 @@ window.AdminAPI = (function() {
       render();
     }
 
-    async function loadAutomationRuns() {
+    async function loadAutomationRuns(force) {
+      if (!force && _cache.automation && Date.now() - _cache.automation < CACHE_TTL && state.automationRuns) {
+        render();
+        return;
+      }
       render();
       try {
         state.automationRuns = await AdminAPI.loadAutomationRuns();
+        _cache.automation = Date.now();
       } catch(e) {
         state.automationRuns = { runs: [], _sha: null };
       }
       try {
         state.workflowRuns = await AdminAPI.getWorkflowStatus();
+        _cache.workflow = Date.now();
       } catch(e) {
         state.workflowRuns = [];
       }
@@ -1440,10 +1479,19 @@ window.AdminAPI = (function() {
         var body = bodyEl.value;
         await AdminAPI.savePost(slug, attrs, body);
         try { sessionStorage.removeItem('aa_posts_cache'); } catch(e) {}
+        _cache.posts = 0;
         showToast('Post saved! Rebuilding site...', 'success');
         state.view = 'list';
+        state.posts = state.posts.map(function(p) {
+          if (p.slug === slug) {
+            return { slug: slug, name: slug + '.md', sha: attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, body: body };
+          }
+          if (p.slug === state.editingPost && state.editingPost.slug && state.editingPost.slug !== slug) {
+            return null;
+          }
+          return p;
+        }).filter(Boolean);
         render();
-        loadPosts();
       } catch(e) {
         showToast('Error saving: ' + e.message, 'error');
         saveBtn.disabled = false;
@@ -1455,9 +1503,10 @@ window.AdminAPI = (function() {
       try {
         await AdminAPI.deletePost(post.slug, post.sha);
         showToast('Post deleted. Rebuilding...', 'success');
+        _cache.posts = 0;
         state.view = 'list';
+        state.posts = state.posts.filter(function(p) { return p.slug !== post.slug; });
         render();
-        loadPosts();
       } catch(e) {
         showToast('Error deleting: ' + e.message, 'error');
       }
