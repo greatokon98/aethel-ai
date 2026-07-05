@@ -2,7 +2,7 @@
 title: "AI & Your Art: Protecting Your Creative Work"
 excerpt: "Everyday creators need to understand how AI impacts ownership and usage rights for their work and AI-generated content."
 publishDate: "2026-07-05"
-featuredImage: "https://source.unsplash.com/featured/1200x630/?AI%20%26%20Your%20Art%3A%20Protecting%20Your%20Creative%20Work,artificial-intelligence,technology"
+featuredImage: "https://picsum.photos/seed/ai-your-art-protecting-your-creative/1200/630"
 featured: false
 categories:
   - "Creativity"
