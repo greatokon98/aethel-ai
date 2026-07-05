@@ -3,12 +3,12 @@ title: "AI at Work: What's Safe to Share?"
 excerpt: "Many use AI for work without understanding the data privacy and intellectual property risks."
 publishDate: "2026-07-05"
 featuredImage: "https://pixabay.com/get/gef32f98f9db4d102225c34a6d5ef607e80fbdacd4a78a9aaa41eee8201ef9a7095b033cf1219986c2ffcbe72c53288fea4434dc5e414c36b5b6450afb7aaf60e_1280.jpg"
-featured: false
+featured: true
 categories:
-  - Future of Work
+  - "Future of Work"
 tags:
-  - AI
-  - automation
+  - "AI"
+  - "automation"
 author: "Aethel"
 ---
 
