@@ -401,7 +401,7 @@ window.AdminAPI = (function() {
     loadAutomationRuns: loadAutomationRuns, saveAutomationRuns: saveAutomationRuns,
     triggerWorkflow: triggerWorkflow, getWorkflowStatus: getWorkflowStatus,
     fetchTrending: fetchTrending,
-    generatePost: generatePost,
+    generatePost: generatePost, regeneratePost: regeneratePost,
     getFile: ghGetFile, saveFile: ghSaveFile,
   };
 })();
@@ -620,6 +620,7 @@ window.AdminAPI = (function() {
         '<div class="editor-actions">' +
           '<button class="btn-save" id="btn-save-post">' + (isNew ? 'Create Post' : 'Save Changes') + '</button>' +
           '<button class="btn-cancel" id="btn-cancel-edit">Cancel</button>' +
+          (isNew ? '<button class="btn-regenerate" id="btn-generate">Generate with AI</button>' : '') +
           (!isNew ? '<button class="btn-regenerate" id="btn-regenerate">Regenerate with Groq</button>' : '') +
           (!isNew ? '<button class="btn-delete" id="btn-editor-delete">Delete Post</button>' : '') +
         '</div>' +
@@ -1051,6 +1052,12 @@ window.AdminAPI = (function() {
         });
       }
 
+      // Generate with AI
+      var genBtn = document.getElementById('btn-generate');
+      if (genBtn) {
+        genBtn.addEventListener('click', handleGenerate);
+      }
+
       // Regenerate with Groq
       var regenBtn = document.getElementById('btn-regenerate');
       if (regenBtn) {
@@ -1395,6 +1402,41 @@ window.AdminAPI = (function() {
       render();
     }
 
+    // --- Generate with AI ---
+    async function handleGenerate() {
+      var title = document.getElementById('ed-title').value.trim();
+      if (!title) {
+        alert('Enter a title first to generate content.');
+        return;
+      }
+      var btn = document.getElementById('btn-generate');
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+      try {
+        var result = await AdminAPI.generatePost(title);
+        var content = result.content;
+        document.getElementById('ed-body').value = content.body;
+        document.getElementById('ed-excerpt').value = content.excerpt || '';
+        document.getElementById('ed-slug').value = slugify(title);
+        if (content.categories) {
+          document.getElementById('ed-categories').value = content.categories.join(', ');
+        }
+        if (content.tags) {
+          document.getElementById('ed-tags').value = content.tags.join(', ');
+        }
+        if (content.featuredImage) {
+          document.getElementById('ed-image').value = content.featuredImage;
+        }
+        window.updatePreview();
+        showToast('Content generated! Review and save.', 'success');
+      } catch (err) {
+        alert('Generation failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Generate with AI';
+      }
+    }
+
     // --- Regenerate with Groq ---
     async function handleRegenerate() {
       var title = document.getElementById('ed-title').value.trim();
@@ -1407,7 +1449,7 @@ window.AdminAPI = (function() {
       btn.disabled = true;
       btn.textContent = 'Regenerating...';
       try {
-        var result = await regeneratePost(title, body);
+        var result = await AdminAPI.regeneratePost(title, body);
         var content = result.content;
         document.getElementById('ed-body').value = content.body;
         document.getElementById('ed-excerpt').value = content.excerpt || '';
