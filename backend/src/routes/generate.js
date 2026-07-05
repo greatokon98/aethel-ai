@@ -2,8 +2,7 @@ import { Router } from 'express';
 
 const router = Router();
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY;
-const OPENAI_KEY = process.env.OPENAI_API_KEY;
+const GROQ_KEY = process.env.GROQ_API_KEY;
 const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
 const PIXABAY_KEY = process.env.PIXABAY_API_KEY;
 const VALID_CATS = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work'];
@@ -92,35 +91,15 @@ function parseResponse(text) {
   return { body, excerpt, category, tags };
 }
 
-async function callGemini(prompt) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 2500 },
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    const isHtml = err.trim().startsWith('<!');
-    const clean = isHtml ? 'API key invalid or not enabled. Check GEMINI_API_KEY in Render env vars.' : err.slice(0, 200);
-    throw new Error(`Gemini error (${res.status}): ${clean}`);
-  }
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
-
-async function callOpenAI(prompt) {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+async function callGroq(prompt) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENAI_KEY}`,
+      'Authorization': `Bearer ${GROQ_KEY}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model: 'llama-3.1-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 2500,
@@ -128,7 +107,7 @@ async function callOpenAI(prompt) {
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`OpenAI error (${res.status}): ${err.slice(0, 200)}`);
+    throw new Error(`Groq error (${res.status}): ${err.slice(0, 200)}`);
   }
   const data = await res.json();
   return data.choices?.[0]?.message?.content || '';
@@ -141,29 +120,14 @@ router.post('/', async (req, res) => {
 
     const prompt = buildPrompt(title);
     let text = '';
-    let used = '';
 
-    if (GEMINI_KEY) {
-      try {
-        text = await callGemini(prompt);
-        used = 'gemini';
-      } catch (err) {
-        console.warn('Gemini failed, trying OpenAI:', err.message);
-      }
-    }
-
-    if (!text && OPENAI_KEY) {
-      try {
-        text = await callOpenAI(prompt);
-        used = 'openai';
-      } catch (err) {
-        console.warn('OpenAI also failed:', err.message);
-      }
+    if (GROQ_KEY) {
+      text = await callGroq(prompt);
     }
 
     if (!text) {
       return res.status(500).json({
-        error: 'All AI providers failed. Check your API keys (GEMINI_API_KEY, OPENAI_API_KEY) in Render env vars.',
+        error: 'Groq API failed. Check GROQ_API_KEY in Render env vars.',
       });
     }
 
@@ -178,7 +142,7 @@ router.post('/', async (req, res) => {
         category: category,
         tags: tags,
         featuredImage: featuredImage,
-        _provider: used,
+        _provider: 'groq',
       },
     });
   } catch (err) {
