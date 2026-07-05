@@ -215,7 +215,11 @@ const searchScript = [
               slug: p.slug,
               publishDate: new Date(p.publishDate),
             }))}
-            trendingPosts={trendingPosts}
+            trendingPosts={trendingPosts.map((p) => ({
+              title: p.title,
+              slug: p.slug,
+              publishDate: new Date(p.publishDate),
+            }))}
             trending={trending}
             popularPosts={popularPosts.map((p) => ({
               title: p.title,
