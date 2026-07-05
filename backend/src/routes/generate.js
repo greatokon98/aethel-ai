@@ -7,10 +7,20 @@ const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
 const PIXABAY_KEY = process.env.PIXABAY_API_KEY;
 const VALID_CATS = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work'];
 
-async function fetchFeaturedImage(query) {
+function extractKeywords(title, categories) {
+  const stopWords = new Set(['how','to','the','a','an','is','are','was','were','for','with','in','on','at','and','or','of','its','this','that','what','why','when','where','which','who','does','do','can','will','has','have','had','but','not','all','be','by','from','it','no','so','up','if','as','about','into','than','then','them','they','your','you']);
+  const words = title.replace(/[^a-zA-Z0-9 ]/g, '').split(' ').filter(w => w.length > 3 && !stopWords.has(w.toLowerCase()));
+  if (categories) {
+    categories.split(',').forEach(c => { const t = c.trim(); if (t) words.push(t); });
+  }
+  return [...new Set(words)].slice(0, 3).join(' ') || title.split(' ').slice(0, 3).join(' ');
+}
+
+async function fetchFeaturedImage(title, categories) {
+  const keywords = extractKeywords(title, categories);
   if (UNSPLASH_KEY) {
     try {
-      const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)},technology&w=1200&h=630&fit=crop`;
+      const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(keywords)},technology&w=1200&h=630&fit=crop`;
       const res = await fetch(url, {
         headers: { 'Authorization': `Client-ID ${UNSPLASH_KEY}`, 'Accept-Version': 'v1' },
         signal: AbortSignal.timeout(5000),
@@ -23,7 +33,7 @@ async function fetchFeaturedImage(query) {
   }
   if (PIXABAY_KEY) {
     try {
-      const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(query)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
+      const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
       const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
       if (res.ok) {
         const data = await res.json();
@@ -33,7 +43,7 @@ async function fetchFeaturedImage(query) {
       }
     } catch {}
   }
-  const seed = encodeURIComponent(query.split(' ').slice(0, 5).join('-').toLowerCase());
+  const seed = encodeURIComponent(keywords.split(' ').slice(0, 5).join('-').toLowerCase());
   return `https://picsum.photos/seed/${seed}/1200/630`;
 }
 
@@ -173,7 +183,7 @@ router.post('/', async (req, res) => {
     }
 
     const { body, excerpt, category, tags } = parseResponse(text);
-    const featuredImage = await fetchFeaturedImage(title);
+    const featuredImage = await fetchFeaturedImage(title, category);
 
     return res.json({
       content: {
@@ -222,6 +232,31 @@ router.post('/regenerate', async (req, res) => {
         _provider: 'groq',
       },
     });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/images/search', async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query) {
+      return res.status(400).json({ error: 'query is required' });
+    }
+    const keywords = extractKeywords(query);
+    const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=12`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!response.ok) {
+      return res.status(502).json({ error: 'Pixabay API failed' });
+    }
+    const data = await response.json();
+    const images = (data.hits || []).map(hit => ({
+      url: hit.largeImageURL,
+      preview: hit.webformatURL,
+      tags: hit.tags,
+      author: hit.user,
+    }));
+    return res.json({ images });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

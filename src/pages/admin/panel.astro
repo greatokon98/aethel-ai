@@ -389,6 +389,10 @@ window.AdminAPI = (function() {
   }
 
   // ---- Public API ----
+  function apiPost(path, body) {
+    return apiFetch(BASE + path, { method: 'POST', body: body });
+  }
+
   return {
     CONFIG: CONFIG,
     getPat: getPat, storePat: storePat, removePat: removePat, hasPat: hasPat,
@@ -403,6 +407,7 @@ window.AdminAPI = (function() {
     fetchTrending: fetchTrending,
     generatePost: generatePost, regeneratePost: regeneratePost,
     getFile: ghGetFile, saveFile: ghSaveFile,
+    apiPost: apiPost,
   };
 })();
 
@@ -613,7 +618,7 @@ window.AdminAPI = (function() {
           '<div class="editor-field"><label>Categories (comma-separated)</label><input type="text" id="ed-categories" value="' + escapeHtml(cats) + '" /></div>' +
           '<div class="editor-field"><label>Tags (comma-separated)</label><input type="text" id="ed-tags" value="' + escapeHtml(tags) + '" /></div>' +
         '</div>' +
-        '<div class="editor-field"><label>Featured Image URL</label><input type="url" id="ed-image" value="' + escapeHtml(p.featuredImage || '') + '" /></div>' +
+        '<div class="editor-field"><label>Featured Image URL</label><div class="editor-image-row"><input type="url" id="ed-image" value="' + escapeHtml(p.featuredImage || '') + '" /><button type="button" class="btn-search-images" id="btn-search-images">Search</button></div></div>' +
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-featured" ' + (p.featured ? 'checked' : '') + ' /> Featured post</label></div>' +
         '<div class="editor-field"><label>Body (Markdown)</label><textarea class="editor-body" id="ed-body" oninput="window.updatePreview()">' + escapeHtml(p.body) + '</textarea></div>' +
         '<div class="editor-field"><label>Preview</label><div class="editor-preview" id="ed-preview">' + previewContent + '</div></div>' +
@@ -623,6 +628,20 @@ window.AdminAPI = (function() {
           (isNew ? '<button class="btn-regenerate" id="btn-generate">Generate with AI</button>' : '') +
           (!isNew ? '<button class="btn-regenerate" id="btn-regenerate">Regenerate with Groq</button>' : '') +
           (!isNew ? '<button class="btn-delete" id="btn-editor-delete">Delete Post</button>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="image-modal-overlay" id="image-modal-overlay" style="display:none">' +
+        '<div class="image-modal">' +
+          '<div class="image-modal-header">' +
+            '<h3>Search Pixabay</h3>' +
+            '<button type="button" class="image-modal-close" id="image-modal-close">&times;</button>' +
+          '</div>' +
+          '<div class="image-modal-search">' +
+            '<input type="text" id="image-modal-query" placeholder="Search images..." />' +
+            '<button type="button" id="image-modal-go">Search</button>' +
+          '</div>' +
+          '<div class="image-modal-grid" id="image-modal-grid"></div>' +
+          '<div class="image-modal-status" id="image-modal-status"></div>' +
         '</div>' +
       '</div>';
     }
@@ -1064,6 +1083,9 @@ window.AdminAPI = (function() {
         regenBtn.addEventListener('click', handleRegenerate);
       }
 
+      // Image search modal
+      initImageSearch();
+
       // Tab navigation
       qsa('.admin-tab').forEach(function(tab) {
         tab.addEventListener('click', function() {
@@ -1467,6 +1489,68 @@ window.AdminAPI = (function() {
         btn.disabled = false;
         btn.textContent = 'Regenerate with Groq';
       }
+    }
+
+    // --- Image Search Modal ---
+    function initImageSearch() {
+      var overlay = document.getElementById('image-modal-overlay');
+      var closeBtn = document.getElementById('image-modal-close');
+      var goBtn = document.getElementById('image-modal-go');
+      var queryInput = document.getElementById('image-modal-query');
+      var grid = document.getElementById('image-modal-grid');
+      var status = document.getElementById('image-modal-status');
+
+      if (!overlay) return;
+
+      function close() { overlay.style.display = 'none'; }
+      closeBtn.addEventListener('click', close);
+      overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
+
+      function doSearch() {
+        var q = queryInput.value.trim();
+        if (!q) return;
+        grid.innerHTML = '<div class="admin-loading"><div class="admin-spinner"></div></div>';
+        status.textContent = '';
+        goBtn.disabled = true;
+        goBtn.textContent = 'Searching...';
+
+        AdminAPI.apiPost('/api/generate/images/search', { query: q })
+          .then(function(data) {
+            goBtn.disabled = false;
+            goBtn.textContent = 'Search';
+            if (!data.images || data.images.length === 0) {
+              grid.innerHTML = '<div class="empty-state"><p>No images found. Try a different search.</p></div>';
+              return;
+            }
+            grid.innerHTML = data.images.map(function(img) {
+              return '<div class="image-modal-item" data-url="' + img.url + '">' +
+                '<img src="' + img.preview + '" alt="' + escapeHtml(img.tags) + '" loading="lazy" />' +
+                '<div class="image-modal-item-tags">' + escapeHtml(img.tags) + '</div>' +
+              '</div>';
+            }).join('');
+            grid.querySelectorAll('.image-modal-item').forEach(function(item) {
+              item.addEventListener('click', function() {
+                document.getElementById('ed-image').value = this.dataset.url;
+                close();
+              });
+            });
+          })
+          .catch(function(err) {
+            goBtn.disabled = false;
+            goBtn.textContent = 'Search';
+            grid.innerHTML = '';
+            status.textContent = 'Search failed: ' + err.message;
+          });
+      }
+
+      goBtn.addEventListener('click', doSearch);
+      queryInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') doSearch(); });
+
+      document.getElementById('btn-search-images').addEventListener('click', function() {
+        queryInput.value = document.getElementById('ed-image').value || document.getElementById('ed-title').value || '';
+        overlay.style.display = 'flex';
+        queryInput.focus();
+      });
     }
 
     // --- Post CRUD ---

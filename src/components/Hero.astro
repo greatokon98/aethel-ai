@@ -35,7 +35,7 @@ const featuredData = featured.map(p => ({
       >
         <div class="hero__slide-bg">
           {post.featuredImage ? (
-            <img src={post.featuredImage} alt={post.title} class="hero__slide-image" loading="lazy" decoding="async" fetchpriority="high" />
+            <img src={post.featuredImage} alt={post.title} class="hero__slide-image" decoding="async" />
           ) : (
             <div class="hero__slide-placeholder"></div>
           )}
@@ -135,6 +135,8 @@ const featuredData = featured.map(p => ({
   (function() {
     const slider = document.getElementById('hero-slider');
     if (!slider) return;
+    const slides = slider.querySelectorAll('.hero__slide');
+    if (slides.length < 2) return;
 
     // ---- data ----
     let featuredData = [];
@@ -144,7 +146,6 @@ const featuredData = featured.map(p => ({
     } catch (e) {}
 
     // ---- dom refs ----
-    const slides = slider.querySelectorAll('.hero__slide');
     const tabs = slider.querySelectorAll('.hero__tab');
     const progressBar = document.getElementById('hero-progress-bar');
     const cards = slider.querySelectorAll('.hero__card');

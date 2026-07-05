@@ -200,11 +200,21 @@ Topic: [title] — [reason]`;
   return discovered;
 }
 
-async function fetchFeaturedImage(query) {
+function extractKeywords(title, categories) {
+  const stopWords = new Set(['how','to','the','a','an','is','are','was','were','for','with','in','on','at','and','or','of','its','this','that','what','why','when','where','which','who','does','do','can','will','has','have','had','but','not','all','be','by','from','it','no','so','up','if','as','about','into','than','then','them','they','your','you']);
+  const words = title.replace(/[^a-zA-Z0-9 ]/g, '').split(' ').filter(w => w.length > 3 && !stopWords.has(w.toLowerCase()));
+  if (categories) {
+    categories.split(',').forEach(c => { const t = c.trim(); if (t) words.push(t); });
+  }
+  return [...new Set(words)].slice(0, 3).join(' ') || title.split(' ').slice(0, 3).join(' ');
+}
+
+async function fetchFeaturedImage(title, categories) {
+  const keywords = extractKeywords(title, categories);
   const key = process.env.UNSPLASH_ACCESS_KEY;
   if (key) {
     try {
-      const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(query)},technology&w=1200&h=630&fit=crop`;
+      const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(keywords)},technology&w=1200&h=630&fit=crop`;
       const res = await fetch(url, {
         headers: { 'Authorization': `Client-ID ${key}`, 'Accept-Version': 'v1' },
         signal: AbortSignal.timeout(5000),
@@ -218,7 +228,7 @@ async function fetchFeaturedImage(query) {
   const pixKey = process.env.PIXABAY_API_KEY;
   if (pixKey) {
     try {
-      const url = `https://pixabay.com/api/?key=${pixKey}&q=${encodeURIComponent(query)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
+      const url = `https://pixabay.com/api/?key=${pixKey}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
       const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
       if (res.ok) {
         const data = await res.json();
@@ -228,7 +238,7 @@ async function fetchFeaturedImage(query) {
       }
     } catch {}
   }
-  const seed = encodeURIComponent(query.split(' ').slice(0, 5).join('-').toLowerCase());
+  const seed = encodeURIComponent(keywords.split(' ').slice(0, 5).join('-').toLowerCase());
   return `https://picsum.photos/seed/${seed}/1200/630`;
 }
 
@@ -292,7 +302,7 @@ Reply with just the category name.`;
 title: "${topic.title}"
 excerpt: "${excerpt}"
 publishDate: "${date}"
-featuredImage: "${await fetchFeaturedImage(topic.title)}"
+featuredImage: "${await fetchFeaturedImage(topic.title, category)}"
 featured: ${isFeatured}
 categories:
   - ${category}
