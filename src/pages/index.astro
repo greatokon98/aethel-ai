@@ -36,8 +36,10 @@ const posts = files
       featured: (attributes.featured as boolean) || false,
       slug: getSlug(file),
       readingTime: getReadingTime(body),
+      draft: (attributes.draft as boolean) || false,
     };
   })
+  .filter(p => !p.draft)
   .sort((a, b) => {
     if (a.featured !== b.featured) return a.featured ? -1 : 1;
     return b.publishDate.getTime() - a.publishDate.getTime();

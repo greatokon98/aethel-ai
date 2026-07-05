@@ -48,6 +48,11 @@ if (!matchingFile) {
 
 const fileContent = fs.readFileSync(path.join(postsDir, matchingFile), 'utf-8');
 const { attributes, body } = parseFrontmatter(fileContent);
+
+// Draft posts redirect to 404
+if ((attributes.draft as boolean)) {
+  return Astro.redirect('/404');
+}
 const publishDate = new Date(attributes.publishDate as string);
 const htmlContent = marked.parse(body);
 const readingTime = getReadingTime(body);

@@ -50,8 +50,10 @@ const allPosts = files
       featured: (attributes.featured as boolean) || false,
       slug: getSlug(file),
       readingTime: getReadingTime(body),
+      draft: (attributes.draft as boolean) || false,
     };
   })
+  .filter(p => !p.draft)
   .sort((a, b) => b.publishDate.getTime() - a.publishDate.getTime());
 
 const categoryName = slug!.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());

@@ -34,8 +34,10 @@ const allPosts = files
       slug: getSlug(file),
       readingTime: getReadingTime(body),
       body: body.slice(0, 1000),
+      draft: (attributes.draft as boolean) || false,
     };
   })
+  .filter(p => !p.draft)
   .sort((a, b) => {
     const da = new Date(a.publishDate).getTime();
     const db = new Date(b.publishDate).getTime();

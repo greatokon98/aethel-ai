@@ -32,8 +32,10 @@ const posts = files
       featured: (attributes.featured as boolean) || false,
       slug: getSlug(file),
       readingTime: getReadingTime(body),
+      draft: (attributes.draft as boolean) || false,
     };
   })
+  .filter(p => !p.draft)
   .sort((a, b) => b.publishDate.getTime() - a.publishDate.getTime());
 
 const trendingPosts = posts.filter((p) => p.tags && p.tags.includes('trending'));

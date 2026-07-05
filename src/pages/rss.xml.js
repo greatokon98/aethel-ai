@@ -7,16 +7,19 @@ export async function GET(context) {
   const postsDir = path.resolve('src/content/posts');
   const files = fs.readdirSync(postsDir).filter((f) => f.endsWith('.md'));
 
-  const posts = files.map((file) => {
-    const content = fs.readFileSync(path.join(postsDir, file), 'utf-8');
-    const { attributes } = parseFrontmatter(content);
-    return {
-      title: attributes.title || '',
-      publishDate: new Date(attributes.publishDate || Date.now()),
-      excerpt: attributes.excerpt || '',
-      slug: (attributes.title || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-    };
-  });
+  const posts = files
+    .map((file) => {
+      const content = fs.readFileSync(path.join(postsDir, file), 'utf-8');
+      const { attributes } = parseFrontmatter(content);
+      return {
+        title: attributes.title || '',
+        publishDate: new Date(attributes.publishDate || Date.now()),
+        excerpt: attributes.excerpt || '',
+        slug: (attributes.title || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+        draft: attributes.draft || false,
+      };
+    })
+    .filter(p => !p.draft);
 
   return rss({
     title: 'Aethel_AI',

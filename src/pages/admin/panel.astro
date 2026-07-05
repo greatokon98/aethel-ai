@@ -575,8 +575,9 @@ window.AdminAPI = (function() {
         var date = p.publishDate ? formatDate(p.publishDate) : '';
         var cats = (p.categories || []).map(function(c) { return '<span class="post-cat">' + escapeHtml(c) + '</span>'; }).join('');
         var featuredBadge = p.featured ? '<span class="post-featured-badge">Featured</span>' : '';
+        var draftBadge = p.draft ? '<span class="post-draft-badge">Draft</span>' : '<span class="post-live-badge">Live</span>';
         return '<tr>' +
-          '<td><div class="post-title">' + escapeHtml(p.title) + '</div></td>' +
+          '<td><div class="post-title">' + escapeHtml(p.title) + draftBadge + '</div></td>' +
           '<td class="post-date">' + date + '</td>' +
           '<td><div class="post-cats">' + cats + '</div></td>' +
           '<td>' + featuredBadge + '</td>' +
@@ -618,8 +619,11 @@ window.AdminAPI = (function() {
           '<div class="editor-field"><label>Categories (comma-separated)</label><input type="text" id="ed-categories" value="' + escapeHtml(cats) + '" /></div>' +
           '<div class="editor-field"><label>Tags (comma-separated)</label><input type="text" id="ed-tags" value="' + escapeHtml(tags) + '" /></div>' +
         '</div>' +
-        '<div class="editor-field"><label>Featured Image URL</label><div class="editor-image-row"><input type="url" id="ed-image" value="' + escapeHtml(p.featuredImage || '') + '" /><button type="button" class="btn-search-images" id="btn-search-images">Search</button></div></div>' +
+        '<div class="editor-field"><label>Featured Image URL</label><div class="editor-image-row"><input type="url" id="ed-image" value="' + escapeHtml(p.featuredImage || '') + '" />' +
+          (isNew ? '<button type="button" class="btn-search-images" id="btn-generate-image">Generate Image</button>' : '') +
+          '<button type="button" class="btn-search-images" id="btn-search-images">Search</button></div></div>' +
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-featured" ' + (p.featured ? 'checked' : '') + ' /> Featured post</label></div>' +
+        '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-draft" ' + (p.draft ? 'checked' : '') + ' /> Save as draft (hidden from live site)</label></div>' +
         '<div class="editor-field"><label>Body (Markdown)</label><textarea class="editor-body" id="ed-body" oninput="window.updatePreview()">' + escapeHtml(p.body) + '</textarea></div>' +
         '<div class="editor-field"><label>Preview</label><div class="editor-preview" id="ed-preview">' + previewContent + '</div></div>' +
         '<div class="editor-actions">' +
@@ -1083,6 +1087,12 @@ window.AdminAPI = (function() {
         regenBtn.addEventListener('click', handleRegenerate);
       }
 
+      // Generate Image button
+      var genImgBtn = document.getElementById('btn-generate-image');
+      if (genImgBtn) {
+        genImgBtn.addEventListener('click', handleGenerateImage);
+      }
+
       // Image search modal
       initImageSearch();
 
@@ -1096,7 +1106,7 @@ window.AdminAPI = (function() {
 
       // Trending write buttons
       qsa('.trending-write').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
           var title = this.dataset.title;
           var slug = this.dataset.slug;
           state.editingPost = {
@@ -1114,6 +1124,16 @@ window.AdminAPI = (function() {
           };
           state.view = 'editor';
           render();
+          // Auto-fetch featured image from title
+          try {
+            var data = await AdminAPI.apiPost('/api/generate/images/search', { query: title });
+            if (data.images && data.images.length > 0) {
+              var imgEl = document.getElementById('ed-image');
+              if (imgEl) imgEl.value = data.images[0].url;
+            }
+          } catch (e) {
+            // Silent fail — user can manually search
+          }
         });
       });
 
@@ -1491,6 +1511,31 @@ window.AdminAPI = (function() {
       }
     }
 
+    // --- Generate Image from Title ---
+    async function handleGenerateImage() {
+      var title = document.getElementById('ed-title').value.trim();
+      if (!title) {
+        alert('Enter a title first to generate an image.');
+        return;
+      }
+      var btn = document.getElementById('btn-generate-image');
+      btn.disabled = true;
+      btn.textContent = 'Searching...';
+      try {
+        var data = await AdminAPI.apiPost('/api/generate/images/search', { query: title });
+        if (data.images && data.images.length > 0) {
+          document.getElementById('ed-image').value = data.images[0].url;
+        } else {
+          alert('No images found for this topic. Try a different title or use Search.');
+        }
+      } catch (err) {
+        alert('Image search failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Generate Image';
+      }
+    }
+
     // --- Image Search Modal ---
     function initImageSearch() {
       var overlay = document.getElementById('image-modal-overlay');
@@ -1564,6 +1609,7 @@ window.AdminAPI = (function() {
       var tagsEl = document.getElementById('ed-tags');
       var imageEl = document.getElementById('ed-image');
       var featuredEl = document.getElementById('ed-featured');
+      var draftEl = document.getElementById('ed-draft');
       var bodyEl = document.getElementById('ed-body');
 
       if (!titleEl || !bodyEl) return;
@@ -1585,6 +1631,7 @@ window.AdminAPI = (function() {
           publishDate: dateEl ? dateEl.value : new Date().toISOString().split('T')[0],
           featuredImage: imageEl ? imageEl.value.trim() : '',
           featured: featuredEl ? featuredEl.checked : false,
+          draft: draftEl ? draftEl.checked : false,
           categories: (catsEl ? catsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           tags: (tagsEl ? tagsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           author: authorEl ? authorEl.value.trim() || 'Aethel' : 'Aethel',
