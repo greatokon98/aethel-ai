@@ -64,7 +64,7 @@ const displayPopular = (() => {
           localStorage.setItem('aa_search_queries', JSON.stringify(queries));
         } catch(e) {}
         // Redirect to search results page with query
-        window.location.href = '/?s=' + encodeURIComponent(q);
+        window.location.href = '/search?q=' + encodeURIComponent(q);
       });
     </script>
   </div>
