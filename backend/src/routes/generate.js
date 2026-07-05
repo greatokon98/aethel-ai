@@ -60,11 +60,13 @@ Rules:
   let text = '';
   try {
     text = await callGemini(prompt);
-  } catch {}
+    if (text) console.log(`  [enrich] Gemini succeeded (${text.length} chars)`);
+  } catch (e) { console.error(`  [enrich] Gemini failed: ${e.message?.slice(0, 100)}`); }
   if (!text) {
     try {
       text = await callGroq(prompt);
-    } catch {}
+      if (text) console.log(`  [enrich] Groq succeeded (${text.length} chars)`);
+    } catch (e) { console.error(`  [enrich] Groq failed: ${e.message?.slice(0, 100)}`); }
   }
 
   let fluxJson = {};
@@ -100,8 +102,9 @@ const HF_API_KEY = process.env.HF_API_KEY;
 const HF_FLUX_DEV = 'black-forest-labs/FLUX.1-dev';
 const HF_FLUX_SCHNELL = 'black-forest-labs/FLUX.1-schnell';
 
-async function callFlux(model, prompt, timeoutMs = 45000) {
-  if (!HF_API_KEY) return null;
+async function callFlux(model, prompt, timeoutMs = 45000, retries = 0) {
+  if (!HF_API_KEY) { console.error('  [flux] No HF_API_KEY set'); return null; }
+  if (retries > 2) { console.error(`  [flux] ${model} max retries (2) exceeded`); return null; }
   const start = Date.now();
   try {
     const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
@@ -115,35 +118,44 @@ async function callFlux(model, prompt, timeoutMs = 45000) {
     });
     if (res.ok) {
       const buffer = await res.arrayBuffer();
+      const sizeKb = (buffer.byteLength / 1024).toFixed(1);
       const base64 = Buffer.from(buffer).toString('base64');
       const mime = res.headers.get('content-type') || 'image/jpeg';
+      console.log(`  [flux] ${model} OK — ${sizeKb}KB, ${mime}`);
       return `data:${mime};base64,${base64}`;
     }
+    const errBody = await res.text().catch(() => '');
+    console.error(`  [flux] ${model} HTTP ${res.status}: ${errBody.slice(0, 150)}`);
     if (res.status === 503) {
       const elapsed = Date.now() - start;
       const remaining = timeoutMs - elapsed - 3000;
-      if (remaining <= 0) return null;
-      const body = await res.json().catch(() => ({}));
-      const waitMs = Math.min((body.estimated_time || 10) * 1000, remaining);
+      if (remaining <= 0) { console.error(`  [flux] ${model} 503 retry timed out`); return null; }
+      let estimated = 10;
+      try { estimated = JSON.parse(errBody).estimated_time || 10; } catch {}
+      const waitMs = Math.min(estimated * 1000, remaining);
+      console.log(`  [flux] ${model} 503 — waiting ${waitMs}ms (retry ${retries + 1})`);
       await new Promise(r => setTimeout(r, waitMs));
-      return callFlux(model, prompt, remaining);
+      return callFlux(model, prompt, remaining, retries + 1);
     }
     return null;
-  } catch {
+  } catch (e) {
+    console.error(`  [flux] ${model} network error: ${e.message?.slice(0, 120)}`);
     return null;
   }
 }
 
 async function fetchFeaturedImage(title, categories) {
   const { fluxPrompt, pixabayKeywords } = await enrichImagePrompt(title, categories);
+  console.log(`  [image] Flux prompt: "${fluxPrompt.slice(0, 80)}..."`);
 
-  let image = await callFlux(HF_FLUX_DEV, fluxPrompt, 30000);
-  if (image) return image;
+  let image = await callFlux(HF_FLUX_DEV, fluxPrompt, 60000);
+  if (image) { console.log('  [image] <- FLUX.1-dev'); return image; }
 
-  image = await callFlux(HF_FLUX_SCHNELL, fluxPrompt, 15000);
-  if (image) return image;
+  image = await callFlux(HF_FLUX_SCHNELL, fluxPrompt, 30000);
+  if (image) { console.log('  [image] <- FLUX.1-schnell'); return image; }
 
   if (PIXABAY_KEY && pixabayKeywords.length > 0) {
+    console.log(`  [image] Flux failed, trying Pixabay with ${pixabayKeywords.length} keyword sets`);
     for (const kw of pixabayKeywords) {
       try {
         const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(kw)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
@@ -151,6 +163,7 @@ async function fetchFeaturedImage(title, categories) {
         if (res.ok) {
           const data = await res.json();
           if (data.hits && data.hits.length > 0) {
+            console.log(`  [image] <- Pixabay (keyword: "${kw}")`);
             return data.hits[0].webformatURL;
           }
         }
@@ -159,6 +172,7 @@ async function fetchFeaturedImage(title, categories) {
   }
 
   const seed = encodeURIComponent((title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40));
+  console.log('  [image] <- Picsum (last resort)');
   return `https://picsum.photos/seed/${seed || 'default'}/1200/630`;
 }
 
