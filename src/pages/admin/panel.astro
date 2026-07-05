@@ -629,7 +629,7 @@ window.AdminAPI = (function() {
             (desc ? '<div class="trending-card__desc">' + escapeHtml(desc) + '…</div>' : '') +
           '</div>' +
           '<div class="trending-card__actions">' +
-            '<button class="admin-header__btn trending-manual" data-title="' + escapeHtml(item.title) + '" data-slug="' + slug + '">Manual</button>' +
+            '<button class="admin-header__btn trending-write" data-title="' + escapeHtml(item.title) + '" data-slug="' + slug + '">Write</button>' +
             '<button class="admin-header__btn admin-header__btn--primary trending-auto" data-title="' + escapeHtml(item.title) + '" data-slug="' + slug + '">Auto Write</button>' +
           '</div>' +
         '</div>';
@@ -1039,8 +1039,8 @@ window.AdminAPI = (function() {
         });
       });
 
-      // Trending manual buttons
-      qsa('.trending-manual').forEach(function(btn) {
+      // Trending write buttons
+      qsa('.trending-write').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var title = this.dataset.title;
           var slug = this.dataset.slug;
@@ -1048,7 +1048,7 @@ window.AdminAPI = (function() {
             title: title,
             slug: slug,
             excerpt: '',
-            body: '<!-- Rewrite this trending story in your own voice. Add insight, make it yours. -->\n\n## Key Points\n\n- \n- \n- \n\n## The Story\n\n\n\n## Why It Matters\n\n',
+            body: '<!-- Write this post in the Aethel_AI voice:\n- First-person, honest, practical\n- Short punchy paragraphs (2-3 sentences)\n- Bold for **emphasis** on key concepts\n- No jargon \u2014 explain everything\n- Address the reader directly ("you")\n- Share real results, practical takeaways\n- End with a one-sentence takeaway\n-->\n\n## Key Points\n\n- \n- \n- \n\n## The Story\n\n\n\n## Why It Matters\n\n',
             categories: ['AI News'],
             tags: ['trending'],
             author: 'Aethel',
@@ -1359,8 +1359,18 @@ window.AdminAPI = (function() {
           tags: (tagsEl ? tagsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           author: authorEl ? authorEl.value.trim() || 'Aethel' : 'Aethel',
         };
-        if (state.editingPost && state.editingPost.sha) {
-          attrs._sha = state.editingPost.sha;
+        // Fetch latest SHA from GitHub to avoid stale cache mismatch
+        if (state.editingPost && state.editingPost.slug) {
+          try {
+            var latest = await AdminAPI.getFile('src/content/posts/' + slug + '.md');
+            if (latest && latest.sha) {
+              attrs._sha = latest.sha;
+            } else {
+              if (state.editingPost.sha) attrs._sha = state.editingPost.sha;
+            }
+          } catch(e) {
+            if (state.editingPost.sha) attrs._sha = state.editingPost.sha;
+          }
         }
         var body = bodyEl.value;
         await AdminAPI.savePost(slug, attrs, body);

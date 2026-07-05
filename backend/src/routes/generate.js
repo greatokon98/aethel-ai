@@ -3,6 +3,7 @@ import { Router } from 'express';
 const router = Router();
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
 const PIXABAY_KEY = process.env.PIXABAY_API_KEY;
 const VALID_CATS = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work'];
@@ -37,18 +38,8 @@ async function fetchFeaturedImage(query) {
   return `https://picsum.photos/seed/${seed}/1200/630`;
 }
 
-router.post('/', async (req, res) => {
-  try {
-    const { title } = req.body;
-    if (!title) return res.status(400).json({ error: 'title is required' });
-
-    if (!GEMINI_KEY) {
-      return res.status(500).json({ error: 'GEMINI_API_KEY not configured on server. Add it to Render environment variables.' });
-    }
-
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
-
-    const prompt = `You are Aethel, a writer for Aethel_AI — a blog about AI and automation for everyday people.
+function buildPrompt(title) {
+  return `You are Aethel, a writer for Aethel_AI — a blog about AI and automation for everyday people.
 
 Your voice and style:
 - First-person, honest, practical, anti-hype
@@ -75,47 +66,108 @@ Format the post in Markdown. Do NOT include a title at the top. Do NOT include -
 On separate lines at the very end of your response, add:
 CATEGORY: [choose one from: ${VALID_CATS.join(', ')}]
 TAGS: [comma-separated tags, first tag must be "trending"]`;
+}
 
-    const geminiRes = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 2500 },
-      }),
-    });
+function parseResponse(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  let category = 'AI News';
+  let tags = ['trending'];
+  let bodyLines = [];
 
-    if (!geminiRes.ok) {
-      const err = await geminiRes.text();
-      const isHtml = err.trim().startsWith('<!');
-      const clean = isHtml ? 'API key invalid or not enabled. Check GEMINI_API_KEY in Render env vars.' : err.slice(0, 200);
-      throw new Error(`Gemini API error (${geminiRes.status}): ${clean}`);
+  for (const line of lines) {
+    if (line.startsWith('CATEGORY:')) {
+      const cat = line.replace('CATEGORY:', '').trim();
+      if (VALID_CATS.includes(cat)) category = cat;
+    } else if (line.startsWith('TAGS:')) {
+      const raw = line.replace('TAGS:', '').trim();
+      tags = raw.split(',').map(t => t.trim()).filter(Boolean);
+    } else {
+      bodyLines.push(line);
     }
+  }
 
-    const data = await geminiRes.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const body = bodyLines.join('\n');
+  const firstLine = bodyLines[0] || '';
+  const excerpt = firstLine.length > 160 ? firstLine.slice(0, 157) + '...' : firstLine;
+  return { body, excerpt, category, tags };
+}
 
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+async function callGemini(prompt) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2500 },
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    const isHtml = err.trim().startsWith('<!');
+    const clean = isHtml ? 'API key invalid or not enabled. Check GEMINI_API_KEY in Render env vars.' : err.slice(0, 200);
+    throw new Error(`Gemini error (${res.status}): ${clean}`);
+  }
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
 
-    let category = 'AI News';
-    let tags = ['trending'];
-    let bodyLines = [];
+async function callOpenAI(prompt) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENAI_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 2500,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenAI error (${res.status}): ${err.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || '';
+}
 
-    for (const line of lines) {
-      if (line.startsWith('CATEGORY:')) {
-        const cat = line.replace('CATEGORY:', '').trim();
-        if (VALID_CATS.includes(cat)) category = cat;
-      } else if (line.startsWith('TAGS:')) {
-        const raw = line.replace('TAGS:', '').trim();
-        tags = raw.split(',').map(t => t.trim()).filter(Boolean);
-      } else {
-        bodyLines.push(line);
+router.post('/', async (req, res) => {
+  try {
+    const { title } = req.body;
+    if (!title) return res.status(400).json({ error: 'title is required' });
+
+    const prompt = buildPrompt(title);
+    let text = '';
+    let used = '';
+
+    if (GEMINI_KEY) {
+      try {
+        text = await callGemini(prompt);
+        used = 'gemini';
+      } catch (err) {
+        console.warn('Gemini failed, trying OpenAI:', err.message);
       }
     }
 
-    const body = bodyLines.join('\n');
-    const firstLine = bodyLines[0] || '';
-    const excerpt = firstLine.length > 160 ? firstLine.slice(0, 157) + '...' : firstLine;
+    if (!text && OPENAI_KEY) {
+      try {
+        text = await callOpenAI(prompt);
+        used = 'openai';
+      } catch (err) {
+        console.warn('OpenAI also failed:', err.message);
+      }
+    }
+
+    if (!text) {
+      return res.status(500).json({
+        error: 'All AI providers failed. Check your API keys (GEMINI_API_KEY, OPENAI_API_KEY) in Render env vars.',
+      });
+    }
+
+    const { body, excerpt, category, tags } = parseResponse(text);
     const featuredImage = await fetchFeaturedImage(title);
 
     return res.json({
@@ -126,6 +178,7 @@ TAGS: [comma-separated tags, first tag must be "trending"]`;
         category: category,
         tags: tags,
         featuredImage: featuredImage,
+        _provider: used,
       },
     });
   } catch (err) {
