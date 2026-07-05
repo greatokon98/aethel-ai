@@ -18,48 +18,199 @@ function extractKeywords(title, categories) {
   return [...new Set(words)].slice(0, 4).join(' ') || title.split(' ').slice(0, 3).join(' ');
 }
 
-async function fetchFeaturedImage(title, categories) {
-  const keywords = extractKeywords(title, categories);
+async function enrichImagePrompt(title, categories) {
+  const prompt = `You are an expert editorial art director and visual storyteller.
+
+Given the blog title: "${title}" (category: ${categories || 'general'})
+
+Analyze the topic and return ONLY two valid JSON objects separated by the delimiter "---PIXABAY---".
+
+First JSON object (for Flux image generation):
+
+{
+  "title": "${title}",
+  "visual_subject": "describe the main visual subject",
+  "setting": "describe the environment or setting",
+  "style": "realistic editorial photography or appropriate style",
+  "lighting": "describe the lighting",
+  "camera_angle": "describe the camera angle",
+  "mood": "describe the mood",
+  "avoid": ["text", "logos", "watermarks"]
+}
+
+Second JSON object (for Pixabay fallback search):
+
+{
+  "main_subject": "primary subject",
+  "secondary_subject": "secondary element",
+  "environment": "setting description",
+  "style": "professional",
+  "pixabay_keywords": ["keyword1 keyword2", "keyword3 keyword4", "keyword5 keyword6"]
+}
+
+Rules:
+- Understand the meaning and intent behind the title — don't illustrate words literally.
+- Prioritize realism unless the topic clearly benefits from illustration or 3D.
+- Choose colors that match the topic (tech→blues/cyan, finance→blue/white/green, health→clean whites/greens, travel→vibrant natural).
+- If people improve the story, use natural expressions in authentic environments.
+- One clear focal subject, strong visual hierarchy, negative space for text overlay.
+- Professional magazine cover quality.
+- For the pixabay_keywords array, provide 3 keyword strings optimized for Pixabay search (each string is a complete query like "teacher classroom laptop").`;
+
+  let text = '';
   try {
-    const prompt = `A professional 16:9 technology blog cover photo about ${keywords}, clean composition, high detail, vibrant colors, suitable for a blog header`;
-    const result = await genAI.models.generateImages({
-      model: 'imagen-4.0-generate-001',
-      prompt: prompt,
-      config: { aspectRatio: '16:9', numberOfImages: 1 },
-    });
-    if (result?.generatedImages?.[0]?.image?.imageBytes) {
-      const img = result.generatedImages[0].image;
-      return `data:${img.mimeType || 'image/png'};base64,${img.imageBytes}`;
-    }
+    text = await callGemini(prompt);
   } catch {}
-  if (PIXABAY_KEY) {
+  if (!text) {
     try {
-      const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.hits && data.hits.length > 0) {
-          return data.hits[0].webformatURL;
-        }
-      }
+      text = await callGroq(prompt);
     } catch {}
   }
-  const seed = encodeURIComponent(keywords.split(' ').slice(0, 5).join('-').toLowerCase());
-  return `https://picsum.photos/seed/${seed}/1200/630`;
+
+  let fluxJson = {};
+  let pixabayKeywords = [];
+
+  if (text) {
+    const parts = text.split('---PIXABAY---');
+    try {
+      const first = parts[0].replace(/^\s*json\s*/i, '').trim();
+      fluxJson = JSON.parse(first);
+    } catch {}
+    try {
+      const pixPart = parts.length > 1 ? parts[1] : parts[0];
+      const pixParsed = JSON.parse(pixPart.replace(/^\s*json\s*/i, '').trim());
+      pixabayKeywords = pixParsed.pixabay_keywords || [];
+    } catch {}
+  }
+
+  const fluxPrompt = [
+    fluxJson.visual_subject || title,
+    fluxJson.setting ? `in ${fluxJson.setting}` : '',
+    fluxJson.style || 'editorial photography',
+    fluxJson.lighting || 'natural lighting',
+    fluxJson.camera_angle || '',
+    `mood: ${fluxJson.mood || 'professional'}`,
+    'high quality, detailed, sharp focus, no text, no logos, no watermarks',
+  ].filter(Boolean).join(', ');
+
+  return { fluxPrompt, pixabayKeywords };
+}
+
+const HF_API_KEY = process.env.HF_API_KEY;
+const HF_FLUX_DEV = 'black-forest-labs/FLUX.1-dev';
+const HF_FLUX_SCHNELL = 'black-forest-labs/FLUX.1-schnell';
+
+async function callFlux(model, prompt, timeoutMs = 45000) {
+  if (!HF_API_KEY) return null;
+  const start = Date.now();
+  try {
+    const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${HF_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ inputs: prompt }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (res.ok) {
+      const buffer = await res.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString('base64');
+      const mime = res.headers.get('content-type') || 'image/jpeg';
+      return `data:${mime};base64,${base64}`;
+    }
+    if (res.status === 503) {
+      const elapsed = Date.now() - start;
+      const remaining = timeoutMs - elapsed - 3000;
+      if (remaining <= 0) return null;
+      const body = await res.json().catch(() => ({}));
+      const waitMs = Math.min((body.estimated_time || 10) * 1000, remaining);
+      await new Promise(r => setTimeout(r, waitMs));
+      return callFlux(model, prompt, remaining);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchFeaturedImage(title, categories) {
+  const { fluxPrompt, pixabayKeywords } = await enrichImagePrompt(title, categories);
+
+  let image = await callFlux(HF_FLUX_DEV, fluxPrompt, 30000);
+  if (image) return image;
+
+  image = await callFlux(HF_FLUX_SCHNELL, fluxPrompt, 15000);
+  if (image) return image;
+
+  if (PIXABAY_KEY && pixabayKeywords.length > 0) {
+    for (const kw of pixabayKeywords) {
+      try {
+        const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(kw)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.hits && data.hits.length > 0) {
+            return data.hits[0].webformatURL;
+          }
+        }
+      } catch {}
+    }
+  }
+
+  const seed = encodeURIComponent((title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40));
+  return `https://picsum.photos/seed/${seed || 'default'}/1200/630`;
 }
 
 function buildPrompt(title) {
   return `You are Aethel, a writer for Aethel_AI — a blog about AI and automation for everyday people.
 
-Your voice and style:
-- First-person, honest, practical, anti-hype
-- Short punchy paragraphs (2-3 sentences max)
-- Bold for **emphasis** on key concepts
-- No jargon — explain everything clearly
-- Share real results and practical takeaways
-- Address the reader directly ("you")
-- Use subheadings as short questions or phrases
-- End with a one-sentence takeaway
+Voice
+• First-person whenever it feels natural.
+• Write like an experienced creator sharing lessons, not a teacher giving a lecture.
+• Sound confident but never arrogant.
+• Honest, practical, conversational and emotionally intelligent.
+• Write like you're talking to one person over coffee.
+• Never sound like marketing copy or corporate content.
+
+Human Writing Rules
+• Show honesty through experience instead of claiming it.
+• Whenever possible, include a believable observation, small mistake, lesson learned, or moment of realization.
+• Don't just explain ideas—illustrate them with concrete examples.
+• Assume the reader is intelligent. Don't over-explain obvious concepts.
+• Prefer showing over telling.
+• Add subtle emotion without becoming dramatic.
+• Allow small imperfections in rhythm and phrasing so the writing feels naturally human.
+• Use contractions naturally.
+• Occasionally ask rhetorical questions when they improve flow.
+• Vary sentence length constantly. Mix short, medium and longer sentences.
+• Every paragraph should feel like the next natural thought, not another section of a template.
+• Avoid sounding like you're trying to impress the reader.
+
+Style
+• Short punchy paragraphs (2-3 sentences).
+• Address the reader directly ("you").
+• Bold only the most important ideas.
+• Explain ideas in plain English.
+• Use active voice.
+• Remove anything that sounds repetitive.
+• Cut filler before adding more words.
+• Every sentence should earn its place.
+
+Avoid AI Patterns — never use clichés such as: "In today's world…", "The key takeaway…", "It's important to note…", "Harness the power…", "Leverage…", "Unlock…", "Dive into…", "Whether you're…", "At the end of the day…", "Seamlessly…", "Transform your workflow…"
+• Avoid repeating the same point in different words.
+• Avoid generic motivational statements.
+• Avoid empty summaries.
+• Avoid predictable "Problem → Solution → Conclusion" formulas.
+• Avoid lists that feel mechanical.
+• Avoid explaining every obvious detail.
+
+Reader Experience
+• The reader should feel: understood, respected, slightly challenged, more confident after reading.
+• Each section should introduce a genuinely new idea rather than restating the previous one.
+
+Ending
+• End with one memorable sentence that feels earned—not a generic summary or call to action. Leave the reader with a thought they'll remember.
 
 Generate a comprehensive, deep-dive article based on this trending topic: "${title}"
 
@@ -83,15 +234,52 @@ TAGS: [comma-separated tags, first tag must be "trending"]`;
 function buildRegeneratePrompt(title, body) {
   return `You are Aethel, a writer for Aethel_AI — a blog about AI and automation for everyday people.
 
-Your voice and style:
-- First-person, honest, practical, anti-hype
-- Short punchy paragraphs (2-3 sentences max)
-- Bold for **emphasis** on key concepts
-- No jargon — explain everything clearly
-- Share real results and practical takeaways
-- Address the reader directly ("you")
-- Use subheadings as short questions or phrases
-- End with a one-sentence takeaway
+Voice
+• First-person whenever it feels natural.
+• Write like an experienced creator sharing lessons, not a teacher giving a lecture.
+• Sound confident but never arrogant.
+• Honest, practical, conversational and emotionally intelligent.
+• Write like you're talking to one person over coffee.
+• Never sound like marketing copy or corporate content.
+
+Human Writing Rules
+• Show honesty through experience instead of claiming it.
+• Whenever possible, include a believable observation, small mistake, lesson learned, or moment of realization.
+• Don't just explain ideas—illustrate them with concrete examples.
+• Assume the reader is intelligent. Don't over-explain obvious concepts.
+• Prefer showing over telling.
+• Add subtle emotion without becoming dramatic.
+• Allow small imperfections in rhythm and phrasing so the writing feels naturally human.
+• Use contractions naturally.
+• Occasionally ask rhetorical questions when they improve flow.
+• Vary sentence length constantly. Mix short, medium and longer sentences.
+• Every paragraph should feel like the next natural thought, not another section of a template.
+• Avoid sounding like you're trying to impress the reader.
+
+Style
+• Short punchy paragraphs (2-3 sentences).
+• Address the reader directly ("you").
+• Bold only the most important ideas.
+• Explain ideas in plain English.
+• Use active voice.
+• Remove anything that sounds repetitive.
+• Cut filler before adding more words.
+• Every sentence should earn its place.
+
+Avoid AI Patterns — never use clichés such as: "In today's world…", "The key takeaway…", "It's important to note…", "Harness the power…", "Leverage…", "Unlock…", "Dive into…", "Whether you're…", "At the end of the day…", "Seamlessly…", "Transform your workflow…"
+• Avoid repeating the same point in different words.
+• Avoid generic motivational statements.
+• Avoid empty summaries.
+• Avoid predictable "Problem → Solution → Conclusion" formulas.
+• Avoid lists that feel mechanical.
+• Avoid explaining every obvious detail.
+
+Reader Experience
+• The reader should feel: understood, respected, slightly challenged, more confident after reading.
+• Each section should introduce a genuinely new idea rather than restating the previous one.
+
+Ending
+• End with one memorable sentence that feels earned—not a generic summary or call to action. Leave the reader with a thought they'll remember.
 
 Your task is to rewrite the following draft blog post on the topic: "${title}"
 
@@ -167,9 +355,9 @@ async function callGroq(prompt) {
 
 async function callGemini(prompt) {
   const response = await genAI.models.generateContent({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
     contents: prompt,
-    config: { temperature: 0.7, maxOutputTokens: 4080 },
+    config: { temperature: 0.7, maxOutputTokens: 8192 },
   });
   return response.text;
 }

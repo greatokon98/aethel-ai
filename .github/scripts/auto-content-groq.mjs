@@ -1,6 +1,5 @@
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const HF_API_KEY = process.env.HF_API_KEY;
 const PIXABAY_KEY = process.env.PIXABAY_API_KEY;
@@ -124,28 +123,6 @@ async function fetchHeadlines() {
   return items.slice(0, 5);
 }
 
-async function callGemini(prompt) {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Gemini API error (${res.status}): ${err.slice(0, 200)}`);
-  }
-
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
-
 async function callGroq(prompt) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -193,7 +170,7 @@ Format your response as:
 Topic: [title] — [reason]`;
 
     try {
-      const response = await callGemini(prompt);
+      const response = await callGroq(prompt);
 
       const topicRegex = /Topic:\s*(.+?)\s*\u2014\s*(.+)/;
       const match = topicRegex.exec(response);
@@ -274,13 +251,8 @@ Rules:
 
   let text = '';
   try {
-    text = await callGemini(prompt);
+    text = await callGroq(prompt);
   } catch {}
-  if (!text) {
-    try {
-      text = await callGroq(prompt);
-    } catch {}
-  }
 
   let fluxJson = {};
   let pixabayKeywords = [];
@@ -441,7 +413,7 @@ Write 800-1200 words with:
 
 Format in Markdown. Do NOT include a title at the top (frontmatter will be added separately). Do NOT include --- separators.`;
 
-  const content = await callGemini(prompt);
+  const content = await callGroq(prompt);
 
   if (!postType) {
     const typeIndex = existingPosts.length % TYPE_CYCLE.length;
@@ -453,7 +425,7 @@ Reply with just the category name.`;
 
   let category = 'AI News';
   try {
-    const catResponse = await callGemini(catPrompt);
+    const catResponse = await callGroq(catPrompt);
     const validCats = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work'];
     const matched = validCats.find(c => catResponse.includes(c));
     if (matched) category = matched;
@@ -492,8 +464,8 @@ async function main() {
   console.log('=== Aethel_AI Auto Content Pipeline ===');
   console.log(`Time: ${new Date().toISOString()}\n`);
 
-  if (!GEMINI_API_KEY) {
-    console.error('ERROR: GEMINI_API_KEY not set');
+  if (!GROQ_API_KEY) {
+    console.error('ERROR: GROQ_API_KEY not set');
     process.exit(1);
   }
   if (!GITHUB_TOKEN) {
