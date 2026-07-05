@@ -1469,6 +1469,13 @@ window.AdminAPI = (function() {
         if (content.featuredImage) {
           document.getElementById('ed-image').value = content.featuredImage;
         }
+        // Sync state so re-render doesn't lose content
+        state.editingPost = state.editingPost || {};
+        state.editingPost.body = content.body;
+        state.editingPost.excerpt = content.excerpt || '';
+        state.editingPost.categories = content.categories || [];
+        state.editingPost.tags = content.tags || [];
+        state.editingPost.featuredImage = content.featuredImage || '';
         window.updatePreview();
         showToast('Content generated! Review and save.', 'success');
       } catch (err) {
@@ -1501,6 +1508,11 @@ window.AdminAPI = (function() {
         if (content.tags) {
           document.getElementById('ed-tags').value = content.tags.join(', ');
         }
+        // Sync state so re-render doesn't lose content
+        state.editingPost.body = content.body;
+        state.editingPost.excerpt = content.excerpt || '';
+        if (content.categories) state.editingPost.categories = content.categories;
+        if (content.tags) state.editingPost.tags = content.tags;
         window.updatePreview();
         alert('Post regenerated successfully! Check the body and preview below.');
       } catch (err) {
