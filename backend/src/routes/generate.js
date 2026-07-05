@@ -99,15 +99,15 @@ Rules:
 }
 
 const HF_API_KEY = process.env.HF_API_KEY;
-const HF_FLUX_DEV = 'black-forest-labs/FLUX.1-dev';
 const HF_FLUX_SCHNELL = 'black-forest-labs/FLUX.1-schnell';
+const HF_INFERENCE_URL = 'https://router.huggingface.co/hf-inference/models';
 
 async function callFlux(model, prompt, timeoutMs = 45000, retries = 0) {
   if (!HF_API_KEY) { console.error('  [flux] No HF_API_KEY set'); return null; }
   if (retries > 2) { console.error(`  [flux] ${model} max retries (2) exceeded`); return null; }
   const start = Date.now();
   try {
-    const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+    const res = await fetch(`${HF_INFERENCE_URL}/${model}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${HF_API_KEY}`,
@@ -148,10 +148,7 @@ async function fetchFeaturedImage(title, categories) {
   const { fluxPrompt, pixabayKeywords } = await enrichImagePrompt(title, categories);
   console.log(`  [image] Flux prompt: "${fluxPrompt.slice(0, 80)}..."`);
 
-  let image = await callFlux(HF_FLUX_DEV, fluxPrompt, 60000);
-  if (image) { console.log('  [image] <- FLUX.1-dev'); return image; }
-
-  image = await callFlux(HF_FLUX_SCHNELL, fluxPrompt, 30000);
+  let image = await callFlux(HF_FLUX_SCHNELL, fluxPrompt, 60000);
   if (image) { console.log('  [image] <- FLUX.1-schnell'); return image; }
 
   if (PIXABAY_KEY && pixabayKeywords.length > 0) {
