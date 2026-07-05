@@ -1,5 +1,7 @@
+import { GoogleGenAI } from '@google/genai';
 import { Router } from 'express';
 
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const router = Router();
 
 const GROQ_KEY = process.env.GROQ_API_KEY;
@@ -18,19 +20,18 @@ function extractKeywords(title, categories) {
 
 async function fetchFeaturedImage(title, categories) {
   const keywords = extractKeywords(title, categories);
-  if (UNSPLASH_KEY) {
-    try {
-      const url = `https://api.unsplash.com/photos/random?query=${encodeURIComponent(keywords)},technology&w=1200&h=630&fit=crop`;
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Client-ID ${UNSPLASH_KEY}`, 'Accept-Version': 'v1' },
-        signal: AbortSignal.timeout(5000),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return `${data.urls.raw}&w=1200&h=630&fit=crop`;
-      }
-    } catch {}
-  }
+  try {
+    const prompt = `A professional 16:9 technology blog cover photo about ${keywords}, clean composition, high detail, vibrant colors, suitable for a blog header`;
+    const result = await genAI.models.generateImages({
+      model: 'imagen-4.0-generate-001',
+      prompt: prompt,
+      config: { aspectRatio: '16:9', numberOfImages: 1 },
+    });
+    if (result?.generatedImages?.[0]?.image?.imageBytes) {
+      const img = result.generatedImages[0].image;
+      return `data:${img.mimeType || 'image/png'};base64,${img.imageBytes}`;
+    }
+  } catch {}
   if (PIXABAY_KEY) {
     try {
       const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
@@ -164,6 +165,15 @@ async function callGroq(prompt) {
   return data.choices?.[0]?.message?.content || '';
 }
 
+async function callGemini(prompt) {
+  const response = await genAI.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: prompt,
+    config: { temperature: 0.7, maxOutputTokens: 4080 },
+  });
+  return response.text;
+}
+
 router.post('/', async (req, res) => {
   try {
     const { title } = req.body;
@@ -201,6 +211,39 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.post('/gemini', async (req, res) => {
+  try {
+    const { title } = req.body;
+    if (!title) return res.status(400).json({ error: 'title is required' });
+
+    const prompt = buildPrompt(title);
+    const text = await callGemini(prompt);
+
+    if (!text) {
+      return res.status(500).json({
+        error: 'Gemini API failed. Check GEMINI_API_KEY in Render env vars.',
+      });
+    }
+
+    const { body, excerpt, category, tags } = parseResponse(text);
+    const featuredImage = await fetchFeaturedImage(title, category);
+
+    return res.json({
+      content: {
+        title: title,
+        excerpt: excerpt,
+        body: body,
+        category: category,
+        tags: tags,
+        featuredImage: featuredImage,
+        _provider: 'gemini',
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/regenerate', async (req, res) => {
   try {
     const { title, body } = req.body;
@@ -230,6 +273,41 @@ router.post('/regenerate', async (req, res) => {
         category: parsed.category,
         tags: parsed.tags,
         _provider: 'groq',
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/regenerate/gemini', async (req, res) => {
+  try {
+    const { title, body } = req.body;
+    if (!title || !body) {
+      return res.status(400).json({ error: 'title and body are required' });
+    }
+
+    const prompt = buildRegeneratePrompt(title, body);
+    const text = await callGemini(prompt);
+
+    if (!text) {
+      return res.status(500).json({
+        error: 'Gemini API failed. Check GEMINI_API_KEY in Render env vars.',
+      });
+    }
+
+    const parsed = parseResponse(text);
+    const featuredImage = await fetchFeaturedImage(title, parsed.category);
+
+    return res.json({
+      content: {
+        title: title,
+        excerpt: parsed.excerpt,
+        body: parsed.body,
+        category: parsed.category,
+        tags: parsed.tags,
+        featuredImage: featuredImage,
+        _provider: 'gemini',
       },
     });
   } catch (err) {

@@ -354,6 +354,26 @@ window.AdminAPI = (function() {
     throw new Error('Regeneration requires Render backend');
   }
 
+  async function generatePostGemini(title) {
+    if (CONFIG.type === 'render') {
+      return await apiFetch(BASE + '/api/generate/gemini', {
+        method: 'POST',
+        body: { title: title }
+      });
+    }
+    throw new Error('Auto-generation requires Render backend');
+  }
+
+  async function regeneratePostGemini(title, body) {
+    if (CONFIG.type === 'render') {
+      return await apiFetch(BASE + '/api/generate/regenerate/gemini', {
+        method: 'POST',
+        body: { title: title, body: body }
+      });
+    }
+    throw new Error('Regeneration requires Render backend');
+  }
+
   // ---- Trending ----
   async function fetchTrending() {
     if (CONFIG.type === 'render') {
@@ -406,6 +426,7 @@ window.AdminAPI = (function() {
     triggerWorkflow: triggerWorkflow, getWorkflowStatus: getWorkflowStatus,
     fetchTrending: fetchTrending,
     generatePost: generatePost, regeneratePost: regeneratePost,
+    generatePostGemini: generatePostGemini, regeneratePostGemini: regeneratePostGemini,
     getFile: ghGetFile, saveFile: ghSaveFile,
     apiPost: apiPost,
   };
@@ -631,6 +652,8 @@ window.AdminAPI = (function() {
           '<button class="btn-cancel" id="btn-cancel-edit">Cancel</button>' +
           (isNew ? '<button class="btn-regenerate" id="btn-generate">Generate with AI</button>' : '') +
           (!isNew ? '<button class="btn-regenerate" id="btn-regenerate">Regenerate with Groq</button>' : '') +
+          (isNew ? '<button class="btn-regenerate btn-gemini" id="btn-generate-gemini">Generate with Gemini</button>' : '') +
+          (!isNew ? '<button class="btn-regenerate btn-gemini" id="btn-regenerate-gemini">Regenerate with Gemini</button>' : '') +
           (!isNew ? '<button class="btn-delete" id="btn-editor-delete">Delete Post</button>' : '') +
         '</div>' +
       '</div>' +
@@ -1093,6 +1116,18 @@ window.AdminAPI = (function() {
         genImgBtn.addEventListener('click', handleGenerateImage);
       }
 
+      // Generate with Gemini
+      var genGeminiBtn = document.getElementById('btn-generate-gemini');
+      if (genGeminiBtn) {
+        genGeminiBtn.addEventListener('click', handleGenerateGemini);
+      }
+
+      // Regenerate with Gemini
+      var regenGeminiBtn = document.getElementById('btn-regenerate-gemini');
+      if (regenGeminiBtn) {
+        regenGeminiBtn.addEventListener('click', handleRegenerateGemini);
+      }
+
       // Image search modal
       initImageSearch();
 
@@ -1526,6 +1561,89 @@ window.AdminAPI = (function() {
       } finally {
         btn.disabled = false;
         btn.textContent = 'Regenerate with Groq';
+      }
+    }
+
+    // --- Generate with Gemini ---
+    async function handleGenerateGemini() {
+      var title = document.getElementById('ed-title').value.trim();
+      if (!title) {
+        alert('Enter a title first to generate content.');
+        return;
+      }
+      var btn = document.getElementById('btn-generate-gemini');
+      btn.disabled = true;
+      btn.textContent = 'Generating with Gemini...';
+      try {
+        var result = await AdminAPI.generatePostGemini(title);
+        var content = result.content;
+        document.getElementById('ed-body').value = content.body;
+        document.getElementById('ed-excerpt').value = content.excerpt || '';
+        document.getElementById('ed-slug').value = slugify(title);
+        if (content.categories) {
+          document.getElementById('ed-categories').value = content.categories.join(', ');
+        }
+        if (content.tags) {
+          document.getElementById('ed-tags').value = content.tags.join(', ');
+        }
+        if (content.featuredImage) {
+          document.getElementById('ed-image').value = content.featuredImage;
+        }
+        // Sync state so re-render doesn't lose content
+        state.editingPost = state.editingPost || {};
+        state.editingPost.body = content.body;
+        state.editingPost.excerpt = content.excerpt || '';
+        state.editingPost.categories = content.categories || [];
+        state.editingPost.tags = content.tags || [];
+        state.editingPost.featuredImage = content.featuredImage || '';
+        window.updatePreview();
+        showToast('Content generated with Gemini! Review and save.', 'success');
+      } catch (err) {
+        alert('Gemini generation failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Generate with Gemini';
+      }
+    }
+
+    // --- Regenerate with Gemini ---
+    async function handleRegenerateGemini() {
+      var title = document.getElementById('ed-title').value.trim();
+      var body = document.getElementById('ed-body').value.trim();
+      if (!title || !body) {
+        alert('Title and body are required to regenerate.');
+        return;
+      }
+      var btn = document.getElementById('btn-regenerate-gemini');
+      btn.disabled = true;
+      btn.textContent = 'Regenerating with Gemini...';
+      try {
+        var result = await AdminAPI.regeneratePostGemini(title, body);
+        var content = result.content;
+        document.getElementById('ed-body').value = content.body;
+        document.getElementById('ed-excerpt').value = content.excerpt || '';
+        if (content.categories) {
+          document.getElementById('ed-categories').value = content.categories.join(', ');
+        }
+        if (content.tags) {
+          document.getElementById('ed-tags').value = content.tags.join(', ');
+        }
+        if (content.featuredImage) {
+          document.getElementById('ed-image').value = content.featuredImage;
+        }
+        // Sync state so re-render doesn't lose content
+        state.editingPost.body = content.body;
+        state.editingPost.excerpt = content.excerpt || '';
+        if (content.categories) state.editingPost.categories = content.categories;
+        if (content.tags) state.editingPost.tags = content.tags;
+        state.editingPost.featuredImage = content.featuredImage || '';
+        window.updatePreview();
+        showToast('Post regenerated with Gemini! Review and save.', 'success');
+      } catch (err) {
+        alert('Gemini regeneration failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Regenerate with Gemini';
       }
     }
 
