@@ -118,12 +118,12 @@ async function fetchHeadlines() {
     if (r.status === 'fulfilled') items.push(...r.value);
   }
   items.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-  return items.slice(0, 10);
+  return items.slice(0, 5);
 }
 
 async function callGemini(prompt) {
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -144,48 +144,60 @@ async function callGemini(prompt) {
 }
 
 async function discoverTopics(headlines) {
-  const headlineText = headlines.map(h => `- ${h.title} (${h.source})`).join('\n');
+  const discovered = [];
 
-  const prompt = `You are a content strategist for Aethel_AI, a blog about AI and automation for everyday people.
+  console.log(`[Aethel_AI] Processing ${headlines.length} headlines sequentially...`);
 
-Here are the latest AI news headlines:
-${headlineText}
+  for (let i = 0; i < headlines.length; i++) {
+    const item = headlines[i];
+    console.log(`  -> Item ${i + 1}/${headlines.length}: "${(item.title || '').slice(0, 40)}..."`);
+
+    const prompt = `You are a content strategist for Aethel_AI, a blog about AI and automation for everyday people.
+
+Given this headline: "${item.title}"
 
 Think like a curious, practical person trying to understand AI and improve their daily life.
 
-Based on these headlines and your knowledge of what people struggle with, suggest 2-3 specific article topics that would help someone live better with AI. Focus on topics people genuinely need clarity on \u2014 not hype, not product launches, but real practical guidance and understanding.
+Suggest ONE specific article topic that would help someone live better with AI, inspired by this headline. Focus on a topic people genuinely need clarity on — not hype, not product launches, but real practical guidance and understanding.
 
-For each topic, provide:
+For the topic, provide:
 - Topic title (catchy but clear, max 10 words)
 - Why people need clarity on this (1 sentence max)
 
-Format your response as a simple list:
-1. Topic: [title] \u2014 [reason]
-2. Topic: [title] \u2014 [reason]`;
+Format your response as:
+Topic: [title] — [reason]`;
 
-  const response = await callGemini(prompt);
+    try {
+      const response = await callGemini(prompt);
 
-  const topics = [];
-  const topicRegex = /\d+\.\s*Topic:\s*(.+?)\s*\u2014\s*(.+)/g;
-  let match;
-  while ((match = topicRegex.exec(response)) !== null) {
-    topics.push({ title: match[1].trim(), reason: match[2].trim() });
-  }
+      const topicRegex = /Topic:\s*(.+?)\s*\u2014\s*(.+)/;
+      const match = topicRegex.exec(response);
 
-  if (topics.length === 0) {
-    const lines = response.split('\n').filter(l => l.includes('Topic:'));
-    for (const line of lines.slice(0, 3)) {
-      const parts = line.split(/\u2014|--|–|-\s+/);
-      if (parts.length >= 2) {
-        topics.push({
-          title: parts[0].replace(/.*Topic:\s*/, '').trim(),
-          reason: parts.slice(1).join(' ').trim(),
-        });
+      if (match) {
+        discovered.push({ title: match[1].trim(), reason: match[2].trim() });
+        console.log(`    -> Discovered: "${match[1].trim()}"`);
+      } else {
+        const parts = response.split(/\u2014|--|\u2013|-\s+/);
+        if (parts.length >= 2) {
+          const title = parts[0].replace(/.*Topic:\s*/, '').trim();
+          const reason = parts.slice(1).join(' ').trim();
+          if (title) {
+            discovered.push({ title, reason });
+            console.log(`    -> Discovered (fallback): "${title}"`);
+          }
+        }
       }
+    } catch (error) {
+      console.error(`  [!] Error processing item ${i + 1}:`, error.message);
+    }
+
+    if (i < headlines.length - 1) {
+      console.log(`  [Pacing] Sleeping 4 seconds to protect Free Tier RPM thresholds...`);
+      await sleep(4000);
     }
   }
 
-  return topics;
+  return discovered;
 }
 
 async function fetchFeaturedImage(query) {
@@ -296,23 +308,7 @@ async function main() {
 
   console.log(`[Aethel_AI] Sanitized payload: ${lightweightHeadlines.length} headlines cleaned`);
 
-  const batchSize = 3;
-  const allDiscoveredTopics = [];
-
-  for (let i = 0; i < lightweightHeadlines.length; i += batchSize) {
-    const batch = lightweightHeadlines.slice(i, i + batchSize);
-    console.log(`[Aethel_AI] Processing batch ${Math.floor(i / batchSize) + 1}...`);
-    const batchTopics = await discoverTopics(batch);
-    if (batchTopics && batchTopics.length > 0) {
-      allDiscoveredTopics.push(...batchTopics);
-    }
-    if (i + batchSize < lightweightHeadlines.length) {
-      console.log(`[Aethel_AI] Pausing 10s for API quota...`);
-      await sleep(10000);
-    }
-  }
-
-  const discovered = allDiscoveredTopics;
+  const discovered = await discoverTopics(lightweightHeadlines);
   console.log(`  Discovered ${discovered.length} topics:`);
   discovered.forEach(t => console.log(`    - ${t.title}: ${t.reason}`));
   console.log();

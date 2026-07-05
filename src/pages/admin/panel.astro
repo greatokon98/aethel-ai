@@ -326,6 +326,17 @@ window.AdminAPI = (function() {
     } catch(e) { return null; }
   }
 
+  // ---- Generate Post ----
+  async function generatePost(title) {
+    if (CONFIG.type === 'render') {
+      return await apiFetch(BASE + '/api/generate', {
+        method: 'POST',
+        body: { title: title }
+      });
+    }
+    throw new Error('Auto-generation requires Render backend');
+  }
+
   // ---- Trending ----
   async function fetchTrending() {
     if (CONFIG.type === 'render') {
@@ -373,6 +384,7 @@ window.AdminAPI = (function() {
     loadAutomationRuns: loadAutomationRuns, saveAutomationRuns: saveAutomationRuns,
     triggerWorkflow: triggerWorkflow, getWorkflowStatus: getWorkflowStatus,
     fetchTrending: fetchTrending,
+    generatePost: generatePost,
     getFile: ghGetFile, saveFile: ghSaveFile,
   };
 })();
@@ -611,7 +623,8 @@ window.AdminAPI = (function() {
             (desc ? '<div class="trending-card__desc">' + escapeHtml(desc) + '…</div>' : '') +
           '</div>' +
           '<div class="trending-card__actions">' +
-            '<button class="admin-header__btn admin-header__btn--primary trending-write" data-title="' + escapeHtml(item.title) + '" data-slug="' + slug + '">Write Post</button>' +
+            '<button class="admin-header__btn trending-manual" data-title="' + escapeHtml(item.title) + '" data-slug="' + slug + '">Manual</button>' +
+            '<button class="admin-header__btn admin-header__btn--primary trending-auto" data-title="' + escapeHtml(item.title) + '" data-slug="' + slug + '">Auto Write</button>' +
           '</div>' +
         '</div>';
       }).join('');
@@ -1020,8 +1033,8 @@ window.AdminAPI = (function() {
         });
       });
 
-      // Trending write buttons
-      qsa('.trending-write').forEach(function(btn) {
+      // Trending manual buttons
+      qsa('.trending-manual').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var title = this.dataset.title;
           var slug = this.dataset.slug;
@@ -1040,6 +1053,41 @@ window.AdminAPI = (function() {
           };
           state.view = 'editor';
           render();
+        });
+      });
+
+      // Trending auto-generate buttons
+      qsa('.trending-auto').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+          var title = this.dataset.title;
+          var slug = this.dataset.slug;
+          var btnEl = this;
+          btnEl.disabled = true;
+          btnEl.textContent = 'Generating...';
+          try {
+            var result = await AdminAPI.generatePost(title);
+            var content = result.content;
+            state.editingPost = {
+              title: content.title || title,
+              slug: slugify(content.title || title),
+              excerpt: content.excerpt || '',
+              body: content.body || '',
+              categories: content.category ? [content.category] : ['AI News'],
+              tags: content.tags || ['trending'],
+              author: 'Aethel',
+              featured: false,
+              featuredImage: '',
+              publishDate: new Date().toISOString().split('T')[0],
+              sha: null,
+            };
+            state.view = 'editor';
+            render();
+            showToast('Content generated! Review and publish.', 'success');
+          } catch(err) {
+            showToast('Generation failed: ' + err.message, 'error');
+            btnEl.disabled = false;
+            btnEl.textContent = 'Auto Write';
+          }
         });
       });
 

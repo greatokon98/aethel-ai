@@ -33,7 +33,7 @@ router.get('/', async (req, res) => {
       .flatMap((r) => r.value);
 
     items.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-    return res.json({ items: items.slice(0, 30) });
+    return res.json({ items: items.slice(0, 20) });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
