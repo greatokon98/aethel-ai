@@ -2,7 +2,7 @@
 title: "Spotting AI: How to Tell Human from Machine"
 excerpt: "As you navigate the internet, it's becoming increasingly difficult to distinguish between human-generated content and AI-produced material, making it essenti..."
 publishDate: "2026-07-05"
-featuredImage: "https://picsum.photos/seed/spotting-ai%3A-how-to-tell/1200/630"
+featuredImage: "https://www.pexels.com/photo/person-reaching-out-to-a-robot-8386434/"
 featured: false
 draft: false
 categories:
