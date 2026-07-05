@@ -2,7 +2,7 @@
 title: "Amazon will stop accepting new customers for Mechanical Turk"
 excerpt: "As I sat down to write about Amazon's decision to stop accepting new customers for Mechanical Turk, I couldn't help but wonder what this means for the future..."
 publishDate: "2026-07-05"
-featuredImage: "https://images.unsplash.com/photo-1649734926695-1b1664e98842?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8YW1hem9uJTIwbG9nb3xlbnwwfHwwfHx8MA%3D%3D"
+featuredImage: "https://unsplash.com/photos/a-close-up-of-a-dice-with-an-amazon-logo-on-it-J0eqDgSQDYg"
 featured: false
 draft: false
 categories:
