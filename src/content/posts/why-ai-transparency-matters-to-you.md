@@ -2,7 +2,7 @@
 title: "**Why AI Transparency Matters to You.**"
 excerpt: "People need to understand how knowing when AI is used impacts their trust in content and supports human creativity."
 publishDate: "2026-07-05"
-featuredImage: "https://picsum.photos/seed/**why-ai-transparency-matters-to/1200/630"
+featuredImage: "https://pixabay.com/get/gb3edd8abdb9ea85e120042041f5176691ca0f6ea6e6155688fdd4731a607eb294bb87bf789240e3da9da9b2a6954b8c5506a8eb4c35ae00f13e9c06b846a98b3_1280.jpg"
 featured: false
 categories:
   - Future of Work

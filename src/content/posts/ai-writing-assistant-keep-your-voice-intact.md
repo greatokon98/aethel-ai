@@ -2,7 +2,7 @@
 title: "AI Writing Assistant: Keep Your Voice Intact"
 excerpt: "People need to know how to use AI to improve their writing for important tasks without losing their personal style or authenticity."
 publishDate: "2026-07-05"
-featuredImage: "https://picsum.photos/seed/ai-writing-assistant%3A-keep-your/1200/630"
+featuredImage: "https://pixabay.com/get/g7c9b1ca27577c15af96425658e5e884f5e814d3371df592baca82a21b540ba5d38de282bcaf89e2a7128410e6e24b3e21c10221b3de133b8aaac46b11e0b57ad_1280.jpg"
 featured: false
 categories:
   - AI Tools

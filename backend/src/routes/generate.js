@@ -4,6 +4,7 @@ const router = Router();
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
+const PIXABAY_KEY = process.env.PIXABAY_API_KEY;
 const VALID_CATS = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work'];
 
 async function fetchFeaturedImage(query) {
@@ -17,6 +18,18 @@ async function fetchFeaturedImage(query) {
       if (res.ok) {
         const data = await res.json();
         return `${data.urls.raw}&w=1200&h=630&fit=crop`;
+      }
+    } catch {}
+  }
+  if (PIXABAY_KEY) {
+    try {
+      const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(query)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.hits && data.hits.length > 0) {
+          return data.hits[0].largeImageURL;
+        }
       }
     } catch {}
   }

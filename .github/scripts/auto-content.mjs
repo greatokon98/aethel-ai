@@ -215,6 +215,19 @@ async function fetchFeaturedImage(query) {
       }
     } catch {}
   }
+  const pixKey = process.env.PIXABAY_API_KEY;
+  if (pixKey) {
+    try {
+      const url = `https://pixabay.com/api/?key=${pixKey}&q=${encodeURIComponent(query)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.hits && data.hits.length > 0) {
+          return data.hits[0].largeImageURL;
+        }
+      }
+    } catch {}
+  }
   const seed = encodeURIComponent(query.split(' ').slice(0, 5).join('-').toLowerCase());
   return `https://picsum.photos/seed/${seed}/1200/630`;
 }
