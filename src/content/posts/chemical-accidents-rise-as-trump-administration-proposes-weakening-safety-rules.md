@@ -6,7 +6,7 @@ featuredImage: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGB
 featured: false
 draft: false
 categories:
-  - "AI News"
+  - "SCI News"
 tags:
   - "trending"
   - "chemical safety"
