@@ -2,14 +2,15 @@
 title: "Should AI Content Be Labeled? Why It Matters."
 excerpt: "People need to understand the ethical implications of unlabeled AI content and how it impacts their trust in media."
 publishDate: "2026-07-05"
-featuredImage: "https://picsum.photos/seed/should-ai-content-be-labeled%3F/1200/630"
+featuredImage: "https://images.pexels.com/photos/8849295/pexels-photo-8849295.jpeg"
 featured: false
+draft: false
 categories:
-  - Content Creation
+  - "Content Creation"
 tags:
-  - AI
-  - automation
-  - trending
+  - "AI"
+  - "automation"
+  - "trending"
 author: "Aethel"
 ---
 
