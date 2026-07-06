@@ -2,14 +2,15 @@
 title: "How to Build an Automated Morning Briefing"
 excerpt: "Start every day with a personalized summary of what matters — weather, calendar, news, and more — delivered automatically."
 publishDate: "2026-06-16"
-featuredImage: "https://images.unsplash.com/photo-1513001900722-370f803f498d?w=800"
+featuredImage: "https://images.pexels.com/photos/3862599/pexels-photo-3862599.jpeg"
 featured: false
+draft: false
 categories:
-  - Productivity
-  - Workflow
+  - "Productivity"
+  - "Workflow"
 tags:
-  - morning routine
-  - automation
+  - "morning routine"
+  - "automation"
 author: "Aethel"
 ---
 
