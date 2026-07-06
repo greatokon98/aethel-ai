@@ -2,7 +2,7 @@
 title: "Using AI Assistants Safely"
 excerpt: "To protect personal data online."
 publishDate: "2026-07-06"
-featuredImage: "https://labs.google/fx/tools/flow/shared/image/ea6ec142-88b0-4917-975d-52ebdc64e05f"
+featuredImage: "https://unsplash.com/photos/a-blue-and-white-logo-8zB4P0eafrs"
 featured: true
 draft: false
 categories:
