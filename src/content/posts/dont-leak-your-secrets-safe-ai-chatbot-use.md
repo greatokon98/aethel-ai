@@ -6,10 +6,10 @@ featuredImage: "https://picsum.photos/seed/don't-leak-your-secrets%3A-safe/1200/
 featured: false
 draft: true
 categories:
-  - AI Tools
+  - "AI Tools"
 tags:
-  - AI
-  - automation
+  - "AI"
+  - "automation"
 author: "Aethel"
 ---
 
