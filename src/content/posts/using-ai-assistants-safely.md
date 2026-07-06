@@ -2,13 +2,14 @@
 title: "Using AI Assistants Safely"
 excerpt: "To protect personal data online."
 publishDate: "2026-07-06"
-featuredImage: "https://images.unsplash.com/photo-1709120395858-92f1c7c577f5?w=800"
-featured: false
+featuredImage: "https://labs.google/fx/tools/flow/shared/image/ea6ec142-88b0-4917-975d-52ebdc64e05f"
+featured: true
+draft: false
 categories:
-  - AI Tools
+  - "AI Tools"
 tags:
-  - AI
-  - automation
+  - "AI"
+  - "automation"
 author: "Aethel"
 ---
 
@@ -34,4 +35,4 @@ So, what does all of this mean for you? It means that you need to be mindful of 
 
 I've learned a lot about AI assistants over the years, and I'm still learning. You should be too, especially if you're using these devices regularly. Take the time to educate yourself, and don't be afraid to ask questions. It's better to be informed than to be caught off guard, especially when it comes to your personal data and security. You owe it to yourself to stay safe, and to use these devices in a way that's responsible and respectful of your own privacy.
 
-**As you continue to use AI assistants, remember that your personal data and security are worth fighting for, and that a little bit of caution and awareness can go a long way in protecting them.
+As you continue to use AI assistants, remember that your personal data and security are worth fighting for, and that a little bit of caution and awareness can go a long way in protecting them.
