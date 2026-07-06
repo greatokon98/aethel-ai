@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { Router } from 'express';
+import { normalizeImageUrl } from '../utils.js';
 
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const router = Router();
@@ -23,7 +24,7 @@ async function enrichImagePrompt(title, categories) {
 
 Given the blog title: "${title}" (category: ${categories || 'general'})
 
-Analyze the topic and return ONLY two valid JSON objects separated by the delimiter "---PIXABAY---".
+Analyze the topic and return ONLY two valid JSON objects separated by the delimiter "---IMAGE_KEYWORDS---".
 
 First JSON object (for Flux image generation):
 
@@ -38,14 +39,14 @@ First JSON object (for Flux image generation):
   "avoid": ["text", "logos", "watermarks"]
 }
 
-Second JSON object (for Pixabay fallback search):
+Second JSON object (for image search fallback):
 
 {
   "main_subject": "primary subject",
   "secondary_subject": "secondary element",
   "environment": "setting description",
   "style": "professional",
-  "pixabay_keywords": ["keyword1 keyword2", "keyword3 keyword4", "keyword5 keyword6"]
+  "image_keywords": ["keyword1 keyword2", "keyword3 keyword4", "keyword5 keyword6"]
 }
 
 Rules:
@@ -55,7 +56,7 @@ Rules:
 - If people improve the story, use natural expressions in authentic environments.
 - One clear focal subject, strong visual hierarchy, negative space for text overlay.
 - Professional magazine cover quality.
-- For the pixabay_keywords array, provide 3 keyword strings optimized for Pixabay search (each string is a complete query like "teacher classroom laptop").`;
+- For the image_keywords array, provide 3 keyword strings optimized for image search (each string is a complete query like "teacher classroom laptop").`;
 
   let text = '';
   try {
@@ -70,18 +71,18 @@ Rules:
   }
 
   let fluxJson = {};
-  let pixabayKeywords = [];
+  let imageKeywords = [];
 
   if (text) {
-    const parts = text.split('---PIXABAY---');
+    const parts = text.split('---IMAGE_KEYWORDS---');
     try {
       const first = parts[0].replace(/^\s*json\s*/i, '').trim();
       fluxJson = JSON.parse(first);
     } catch {}
     try {
-      const pixPart = parts.length > 1 ? parts[1] : parts[0];
-      const pixParsed = JSON.parse(pixPart.replace(/^\s*json\s*/i, '').trim());
-      pixabayKeywords = pixParsed.pixabay_keywords || [];
+      const kwPart = parts.length > 1 ? parts[1] : parts[0];
+      const kwParsed = JSON.parse(kwPart.replace(/^\s*json\s*/i, '').trim());
+      imageKeywords = kwParsed.image_keywords || [];
     } catch {}
   }
 
@@ -95,7 +96,7 @@ Rules:
     'high quality, detailed, sharp focus, no text, no logos, no watermarks',
   ].filter(Boolean).join(', ');
 
-  return { fluxPrompt, pixabayKeywords };
+  return { fluxPrompt, imageKeywords };
 }
 
 const HF_API_KEY = process.env.HF_API_KEY;
@@ -145,15 +146,53 @@ async function callFlux(model, prompt, timeoutMs = 45000, retries = 0) {
 }
 
 async function fetchFeaturedImage(title, categories) {
-  const { fluxPrompt, pixabayKeywords } = await enrichImagePrompt(title, categories);
+  const { fluxPrompt, imageKeywords } = await enrichImagePrompt(title, categories);
   console.log(`  [image] Flux prompt: "${fluxPrompt.slice(0, 80)}..."`);
 
   let image = await callFlux(HF_FLUX_SCHNELL, fluxPrompt, 60000);
   if (image) { console.log('  [image] <- FLUX.1-schnell'); return image; }
 
-  if (PIXABAY_KEY && pixabayKeywords.length > 0) {
-    console.log(`  [image] Flux failed, trying Pixabay with ${pixabayKeywords.length} keyword sets`);
-    for (const kw of pixabayKeywords) {
+  const kws = imageKeywords || [];
+
+  if (UNSPLASH_KEY && kws.length > 0) {
+    console.log(`  [image] Flux failed, trying Unsplash with ${kws.length} keyword sets`);
+    for (const kw of kws) {
+      try {
+        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(kw)}&per_page=3&orientation=landscape&client_id=${UNSPLASH_KEY}`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.results && data.results.length > 0) {
+            const raw = data.results[0].urls.raw;
+            const finalUrl = raw.includes('?') ? raw.split('?')[0] + '?w=800' : raw + '?w=800';
+            console.log(`  [image] <- Unsplash (keyword: "${kw}")`);
+            return finalUrl;
+          }
+        }
+      } catch {}
+    }
+  }
+
+  if (kws.length > 0) {
+    console.log(`  [image] Unsplash failed, trying Pexels with ${kws.length} keyword sets`);
+    for (const kw of kws) {
+      try {
+        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(kw)}&per_page=3&orientation=landscape`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.photos && data.photos.length > 0) {
+            console.log(`  [image] <- Pexels (keyword: "${kw}")`);
+            return data.photos[0].src.medium;
+          }
+        }
+      } catch {}
+    }
+  }
+
+  if (PIXABAY_KEY && kws.length > 0) {
+    console.log(`  [image] Pexels failed, trying Pixabay with ${kws.length} keyword sets`);
+    for (const kw of kws) {
       try {
         const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(kw)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
         const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
@@ -197,6 +236,7 @@ Human Writing Rules
 • Vary sentence length constantly. Mix short, medium and longer sentences.
 • Every paragraph should feel like the next natural thought, not another section of a template.
 • Avoid sounding like you're trying to impress the reader.
+• Make every post interactive, educative, and relatable. Every sentence must serve the specific topic—no generic filler or formulaic content.
 
 Style
 • Short punchy paragraphs (2-3 sentences).
@@ -221,7 +261,8 @@ Reader Experience
 • Each section should introduce a genuinely new idea rather than restating the previous one.
 
 Ending
-• End with one memorable sentence that feels earned—not a generic summary or call to action. Leave the reader with a thought they'll remember.
+• Never end with a generic summary. End with an observation that leaves the reader thinking—one memorable, earned sentence tailored to the post's topic and body, not a generic wrap-up or call to action.
+• If a summary is included, it must be specific to the content and the body of the post—never a generic recap.
 
 Generate a comprehensive, deep-dive article based on this trending topic: "${title}"
 
@@ -266,6 +307,7 @@ Human Writing Rules
 • Vary sentence length constantly. Mix short, medium and longer sentences.
 • Every paragraph should feel like the next natural thought, not another section of a template.
 • Avoid sounding like you're trying to impress the reader.
+• Make every post interactive, educative, and relatable. Every sentence must serve the specific topic—no generic filler or formulaic content.
 
 Style
 • Short punchy paragraphs (2-3 sentences).
@@ -290,7 +332,8 @@ Reader Experience
 • Each section should introduce a genuinely new idea rather than restating the previous one.
 
 Ending
-• End with one memorable sentence that feels earned—not a generic summary or call to action. Leave the reader with a thought they'll remember.
+• Never end with a generic summary. End with an observation that leaves the reader thinking—one memorable, earned sentence tailored to the post's topic and body, not a generic wrap-up or call to action.
+• If a summary is included, it must be specific to the content and the body of the post—never a generic recap.
 
 Your task is to rewrite the following draft blog post on the topic: "${title}"
 
@@ -514,6 +557,36 @@ router.post('/regenerate/gemini', async (req, res) => {
   }
 });
 
+router.post('/images/generate', async (req, res) => {
+  try {
+    const { title } = req.body;
+    if (!title) {
+      return res.status(400).json({ error: 'title is required' });
+    }
+    const url = await fetchFeaturedImage(title, '');
+    const source = url.startsWith('data:') ? 'flux' :
+      url.includes('unsplash.com') ? 'unsplash' :
+      url.includes('pexels.com') ? 'pexels' :
+      url.includes('pixabay.com') ? 'pixabay' : 'picsum';
+    return res.json({ url, source });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/images/normalize', async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: 'url is required' });
+    }
+    const normalized = await normalizeImageUrl(url);
+    return res.json({ normalizedUrl: normalized });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/images/search', async (req, res) => {
   try {
     const { query } = req.body;
@@ -521,18 +594,72 @@ router.post('/images/search', async (req, res) => {
       return res.status(400).json({ error: 'query is required' });
     }
     const keywords = extractKeywords(query);
-    const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=12`;
-    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!response.ok) {
-      return res.status(502).json({ error: 'Pixabay API failed' });
+
+    const [unsplashRes, pexelsRes, pixabayRes] = await Promise.allSettled([
+      UNSPLASH_KEY
+        ? fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(keywords)}&per_page=6&orientation=landscape&client_id=${UNSPLASH_KEY}`, { signal: AbortSignal.timeout(6000) })
+        : Promise.reject(new Error('no key')),
+      fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(keywords)}&per_page=6&orientation=landscape`, { signal: AbortSignal.timeout(6000) }),
+      PIXABAY_KEY
+        ? fetch(`https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=6`, { signal: AbortSignal.timeout(6000) })
+        : Promise.reject(new Error('no key')),
+    ]);
+
+    const images = [];
+
+    if (unsplashRes.status === 'fulfilled' && unsplashRes.value.ok) {
+      try {
+        const data = await unsplashRes.value.json();
+        if (data.results) {
+          for (const r of data.results) {
+            const raw = r.urls.raw;
+            const direct = (raw.includes('?') ? raw.split('?')[0] : raw) + '?w=800';
+            images.push({
+              url: direct,
+              preview: r.urls.small,
+              tags: r.alternative_slugs?.en || '',
+              author: r.user?.name || '',
+              source: 'unsplash',
+            });
+          }
+        }
+      } catch {}
     }
-    const data = await response.json();
-    const images = (data.hits || []).map(hit => ({
-      url: hit.largeImageURL,
-      preview: hit.webformatURL,
-      tags: hit.tags,
-      author: hit.user,
-    }));
+
+    if (pexelsRes.status === 'fulfilled' && pexelsRes.value.ok) {
+      try {
+        const data = await pexelsRes.value.json();
+        if (data.photos) {
+          for (const p of data.photos) {
+            images.push({
+              url: p.src.large,
+              preview: p.src.medium,
+              tags: p.alt || '',
+              author: p.photographer || '',
+              source: 'pexels',
+            });
+          }
+        }
+      } catch {}
+    }
+
+    if (pixabayRes.status === 'fulfilled' && pixabayRes.value.ok) {
+      try {
+        const data = await pixabayRes.value.json();
+        if (data.hits) {
+          for (const h of data.hits) {
+            images.push({
+              url: h.largeImageURL,
+              preview: h.webformatURL,
+              tags: h.tags,
+              author: h.user,
+              source: 'pixabay',
+            });
+          }
+        }
+      } catch {}
+    }
+
     return res.json({ images });
   } catch (err) {
     return res.status(500).json({ error: err.message });

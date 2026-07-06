@@ -2,6 +2,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const HF_API_KEY = process.env.HF_API_KEY;
+const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
 const PIXABAY_KEY = process.env.PIXABAY_API_KEY;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const REPO = 'greatokon98/aethel-ai';
@@ -216,7 +217,7 @@ async function enrichImagePrompt(title, categories) {
 
 Given the blog title: "${title}" (category: ${categories || 'general'})
 
-Analyze the topic and return ONLY two valid JSON objects separated by the delimiter "---PIXABAY---".
+Analyze the topic and return ONLY two valid JSON objects separated by the delimiter "---IMAGE_KEYWORDS---".
 
 First JSON object (for Flux image generation):
 
@@ -231,14 +232,14 @@ First JSON object (for Flux image generation):
   "avoid": ["text", "logos", "watermarks"]
 }
 
-Second JSON object (for Pixabay fallback search):
+Second JSON object (for image search fallback):
 
 {
   "main_subject": "primary subject",
   "secondary_subject": "secondary element",
   "environment": "setting description",
   "style": "professional",
-  "pixabay_keywords": ["keyword1 keyword2", "keyword3 keyword4", "keyword5 keyword6"]
+  "image_keywords": ["keyword1 keyword2", "keyword3 keyword4", "keyword5 keyword6"]
 }
 
 Rules:
@@ -247,7 +248,7 @@ Rules:
 - Choose colors that match the topic.
 - One clear focal subject, strong visual hierarchy, negative space for text overlay.
 - Professional magazine cover quality.
-- For the pixabay_keywords array, provide 3 keyword strings optimized for Pixabay search.`;
+- For the image_keywords array, provide 3 keyword strings optimized for image search.`;
 
   let text = '';
   try {
@@ -256,18 +257,18 @@ Rules:
   } catch (e) { console.error(`  [enrich] Groq failed: ${e.message?.slice(0, 100)}`); }
 
   let fluxJson = {};
-  let pixabayKeywords = [];
+  let imageKeywords = [];
 
   if (text) {
-    const parts = text.split('---PIXABAY---');
+    const parts = text.split('---IMAGE_KEYWORDS---');
     try {
       const first = parts[0].replace(/^\s*json\s*/i, '').trim();
       fluxJson = JSON.parse(first);
     } catch {}
     try {
-      const pixPart = parts.length > 1 ? parts[1] : parts[0];
-      const pixParsed = JSON.parse(pixPart.replace(/^\s*json\s*/i, '').trim());
-      pixabayKeywords = pixParsed.pixabay_keywords || [];
+      const kwPart = parts.length > 1 ? parts[1] : parts[0];
+      const kwParsed = JSON.parse(kwPart.replace(/^\s*json\s*/i, '').trim());
+      imageKeywords = kwParsed.image_keywords || [];
     } catch {}
   }
 
@@ -281,7 +282,7 @@ Rules:
     'high quality, detailed, sharp focus, no text, no logos, no watermarks',
   ].filter(Boolean).join(', ');
 
-  return { fluxPrompt, pixabayKeywords };
+  return { fluxPrompt, imageKeywords };
 }
 
 const HF_FLUX_SCHNELL = 'black-forest-labs/FLUX.1-schnell';
@@ -330,15 +331,53 @@ async function callFlux(model, prompt, timeoutMs = 90000, retries = 0) {
 }
 
 async function fetchFeaturedImage(title, categories) {
-  const { fluxPrompt, pixabayKeywords } = await enrichImagePrompt(title, categories);
+  const { fluxPrompt, imageKeywords } = await enrichImagePrompt(title, categories);
   console.log(`  [image] Flux prompt: "${fluxPrompt.slice(0, 80)}..."`);
 
   let image = await callFlux(HF_FLUX_SCHNELL, fluxPrompt, 120000);
   if (image) { console.log('  [image] <- FLUX.1-schnell'); return image; }
 
-  if (PIXABAY_KEY && pixabayKeywords.length > 0) {
-    console.log(`  [image] Flux failed, trying Pixabay with ${pixabayKeywords.length} keyword sets`);
-    for (const kw of pixabayKeywords) {
+  const kws = imageKeywords || [];
+
+  if (UNSPLASH_KEY && kws.length > 0) {
+    console.log(`  [image] Flux failed, trying Unsplash with ${kws.length} keyword sets`);
+    for (const kw of kws) {
+      try {
+        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(kw)}&per_page=3&orientation=landscape&client_id=${UNSPLASH_KEY}`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.results && data.results.length > 0) {
+            const raw = data.results[0].urls.raw;
+            const finalUrl = raw.includes('?') ? raw.split('?')[0] + '?w=800' : raw + '?w=800';
+            console.log(`  [image] <- Unsplash (keyword: "${kw}")`);
+            return finalUrl;
+          }
+        }
+      } catch {}
+    }
+  }
+
+  if (kws.length > 0) {
+    console.log(`  [image] Unsplash failed, trying Pexels with ${kws.length} keyword sets`);
+    for (const kw of kws) {
+      try {
+        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(kw)}&per_page=3&orientation=landscape`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.photos && data.photos.length > 0) {
+            console.log(`  [image] <- Pexels (keyword: "${kw}")`);
+            return data.photos[0].src.medium;
+          }
+        }
+      } catch {}
+    }
+  }
+
+  if (PIXABAY_KEY && kws.length > 0) {
+    console.log(`  [image] Pexels failed, trying Pixabay with ${kws.length} keyword sets`);
+    for (const kw of kws) {
       try {
         const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(kw)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
         const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
@@ -382,6 +421,7 @@ Human Writing Rules
 \u2022 Vary sentence length constantly. Mix short, medium and longer sentences.
 \u2022 Every paragraph should feel like the next natural thought, not another section of a template.
 \u2022 Avoid sounding like you're trying to impress the reader.
+\u2022 Make every post interactive, educative, and relatable. Every sentence must serve the specific topic\u2014no generic filler or formulaic content.
 
 Style
 \u2022 Short punchy paragraphs (2-3 sentences).
@@ -406,7 +446,8 @@ Reader Experience
 \u2022 Each section should introduce a genuinely new idea rather than restating the previous one.
 
 Ending
-\u2022 End with one memorable sentence that feels earned\u2014not a generic summary or call to action. Leave the reader with a thought they'll remember.
+\u2022 Never end with a generic summary. End with an observation that leaves the reader thinking\u2014one memorable, earned sentence tailored to the post\u2019s topic and body, not a generic wrap-up or call to action.
+\u2022 If a summary is included, it must be specific to the content and the body of the post\u2014never a generic recap.
 
 Write an in-depth, original blog post on this topic:
 "${topic.title}"

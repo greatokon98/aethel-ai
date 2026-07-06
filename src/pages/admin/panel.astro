@@ -641,7 +641,7 @@ window.AdminAPI = (function() {
           '<div class="editor-field"><label>Tags (comma-separated)</label><input type="text" id="ed-tags" value="' + escapeHtml(tags) + '" /></div>' +
         '</div>' +
         '<div class="editor-field"><label>Featured Image URL</label><div class="editor-image-row"><input type="url" id="ed-image" value="' + escapeHtml(p.featuredImage || '') + '" />' +
-          (isNew ? '<button type="button" class="btn-search-images" id="btn-generate-image">Generate Image</button>' : '') +
+          '<button type="button" class="btn-search-images" id="btn-generate-image">Generate Image</button>' +
           '<button type="button" class="btn-search-images" id="btn-search-images">Search</button></div></div>' +
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-featured" ' + (p.featured ? 'checked' : '') + ' /> Featured post</label></div>' +
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-draft" ' + (p.draft ? 'checked' : '') + ' /> Save as draft (hidden from live site)</label></div>' +
@@ -1116,6 +1116,20 @@ window.AdminAPI = (function() {
         genImgBtn.addEventListener('click', handleGenerateImage);
       }
 
+      // Image URL normalize on blur
+      var edImage = document.getElementById('ed-image');
+      if (edImage) {
+        edImage.addEventListener('blur', function() {
+          var val = this.value.trim();
+          if (!val) return;
+          if (val.match(/(unsplash\.com\/photos|pexels\.com\/photo)/)) {
+            AdminAPI.apiPost('/api/generate/images/normalize', { url: val })
+              .then(function(d) { if (d.normalizedUrl) edImage.value = d.normalizedUrl; })
+              .catch(function() {});
+          }
+        });
+      }
+
       // Generate with Gemini
       var genGeminiBtn = document.getElementById('btn-generate-gemini');
       if (genGeminiBtn) {
@@ -1159,12 +1173,12 @@ window.AdminAPI = (function() {
           };
           state.view = 'editor';
           render();
-          // Auto-fetch featured image from title
+          // Auto-generate featured image from title
           try {
-            var data = await AdminAPI.apiPost('/api/generate/images/search', { query: title });
-            if (data.images && data.images.length > 0) {
+            var data = await AdminAPI.apiPost('/api/generate/images/generate', { title: title });
+            if (data.url) {
               var imgEl = document.getElementById('ed-image');
-              if (imgEl) imgEl.value = data.images[0].url;
+              if (imgEl) imgEl.value = data.url;
             }
           } catch (e) {
             // Silent fail — user can manually search
@@ -1647,7 +1661,7 @@ window.AdminAPI = (function() {
       }
     }
 
-    // --- Generate Image from Title ---
+    // --- Generate Image from Title (Flux → Unsplash → Pexels → Pixabay) ---
     async function handleGenerateImage() {
       var title = document.getElementById('ed-title').value.trim();
       if (!title) {
@@ -1655,17 +1669,18 @@ window.AdminAPI = (function() {
         return;
       }
       var btn = document.getElementById('btn-generate-image');
+      if (!btn) return;
       btn.disabled = true;
-      btn.textContent = 'Searching...';
+      btn.textContent = 'Generating...';
       try {
-        var data = await AdminAPI.apiPost('/api/generate/images/search', { query: title });
-        if (data.images && data.images.length > 0) {
-          document.getElementById('ed-image').value = data.images[0].url;
+        var data = await AdminAPI.apiPost('/api/generate/images/generate', { title: title });
+        if (data.url) {
+          document.getElementById('ed-image').value = data.url;
         } else {
-          alert('No images found for this topic. Try a different title or use Search.');
+          alert('No image could be generated for this topic. Try Search instead.');
         }
       } catch (err) {
-        alert('Image search failed: ' + err.message);
+        alert('Image generation failed: ' + err.message);
       } finally {
         btn.disabled = false;
         btn.textContent = 'Generate Image';
@@ -1703,16 +1718,40 @@ window.AdminAPI = (function() {
               grid.innerHTML = '<div class="empty-state"><p>No images found. Try a different search.</p></div>';
               return;
             }
-            grid.innerHTML = data.images.map(function(img) {
-              return '<div class="image-modal-item" data-url="' + img.url + '">' +
-                '<img src="' + img.preview + '" alt="' + escapeHtml(img.tags) + '" loading="lazy" />' +
-                '<div class="image-modal-item-tags">' + escapeHtml(img.tags) + '</div>' +
-              '</div>';
-            }).join('');
+            var sources = { unsplash: [], pexels: [], pixabay: [] };
+            data.images.forEach(function(img) {
+              if (sources[img.source]) sources[img.source].push(img);
+            });
+            var html = '';
+            Object.keys(sources).forEach(function(src) {
+              var items = sources[src];
+              if (items.length === 0) return;
+              html += '<div style="grid-column:1/-1;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 0 2px;color:#64748B">' + src + '</div>';
+              items.forEach(function(img) {
+                html += '<div class="image-modal-item" data-url="' + img.url + '">' +
+                  '<span class="image-modal-item-source ' + img.source + '">' + img.source + '</span>' +
+                  '<img src="' + img.preview + '" alt="' + escapeHtml(img.tags) + '" loading="lazy" />' +
+                  '<div class="image-modal-item-tags">' + escapeHtml(img.tags) + '</div>' +
+                '</div>';
+              });
+            });
+            if (!html) {
+              grid.innerHTML = '<div class="empty-state"><p>No images found. Try a different search.</p></div>';
+              return;
+            }
+            grid.innerHTML = html;
             grid.querySelectorAll('.image-modal-item').forEach(function(item) {
               item.addEventListener('click', function() {
-                document.getElementById('ed-image').value = this.dataset.url;
+                var imgEl = document.getElementById('ed-image');
+                imgEl.value = this.dataset.url;
                 close();
+                // Normalize if needed
+                var val = imgEl.value.trim();
+                if (val.match(/(unsplash\.com\/photos|pexels\.com\/photo)/)) {
+                  AdminAPI.apiPost('/api/generate/images/normalize', { url: val })
+                    .then(function(d) { if (d.normalizedUrl) imgEl.value = d.normalizedUrl; })
+                    .catch(function() {});
+                }
               });
             });
           })
