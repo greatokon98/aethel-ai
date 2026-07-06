@@ -1220,15 +1220,33 @@ window.AdminAPI = (function() {
       });
 
       // Post filter bar
+      var _filterTimer = null;
       function applyFilter() {
-        var searchEl = document.getElementById('pf-search');
-        var statusEl = document.getElementById('pf-status');
-        var catEl = document.getElementById('pf-category');
-        if (searchEl) state.postFilter.search = searchEl.value;
-        if (statusEl) state.postFilter.status = statusEl.value;
-        if (catEl) state.postFilter.category = catEl.value;
-        state.view = 'list';
-        render();
+        var activeEl = document.activeElement;
+        var activeId = activeEl ? activeEl.id : null;
+        var selStart, selEnd;
+        if (activeEl && activeEl.tagName === 'INPUT') {
+          selStart = activeEl.selectionStart;
+          selEnd = activeEl.selectionEnd;
+        }
+        clearTimeout(_filterTimer);
+        _filterTimer = setTimeout(function() {
+          var searchEl = document.getElementById('pf-search');
+          var statusEl = document.getElementById('pf-status');
+          var catEl = document.getElementById('pf-category');
+          if (searchEl) state.postFilter.search = searchEl.value;
+          if (statusEl) state.postFilter.status = statusEl.value;
+          if (catEl) state.postFilter.category = catEl.value;
+          state.view = 'list';
+          render();
+          if (activeId) {
+            var newEl = document.getElementById(activeId);
+            if (newEl) {
+              newEl.focus();
+              if (selStart !== undefined) newEl.setSelectionRange(selStart, selEnd);
+            }
+          }
+        }, 300);
       }
       var pfSearch = document.getElementById('pf-search');
       var pfStatus = document.getElementById('pf-status');
