@@ -4,11 +4,12 @@ excerpt: "People need a simple framework to pick the right AI for their specific
 publishDate: "2026-07-05"
 featuredImage: "https://images.unsplash.com/photo-1569011312883-031325587704?w=800"
 featured: false
+draft: false
 categories:
-  - AI News
+  - "AI TOOLS"
 tags:
-  - AI
-  - automation
+  - "AI"
+  - "automation"
 author: "Aethel"
 ---
 
