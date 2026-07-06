@@ -6,7 +6,7 @@ featuredImage: "https://images.unsplash.com/photo-1649734926695-1b1664e98842?w=8
 featured: false
 draft: false
 categories:
-  - "BUSINESS News"
+  - "Tech News"
 tags:
   - "trending"
   - "automation"

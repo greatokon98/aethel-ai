@@ -6,7 +6,7 @@ featuredImage: "https://images.unsplash.com/photo-1569011312883-031325587704?w=8
 featured: false
 draft: false
 categories:
-  - "AI TOOLS"
+  - "AI Tools"
 tags:
   - "AI"
   - "automation"

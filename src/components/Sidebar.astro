@@ -71,34 +71,36 @@ const displayPopular = (() => {
 
   <div class="sidebar__widget">
     <h3 class="sidebar__widget-title">Trending Now</h3>
-    <div class="sidebar__trending">
-      {trendingPosts.length > 0 ? (
-        trendingPosts.slice(0, 4).map((post, i) => (
-          <a href={`/posts/${post.slug}`} class="sidebar__trending-item">
-            <span class="sidebar__trending-number">{String(i + 1).padStart(2, '0')}</span>
-            <div class="sidebar__trending-content">
-              <span class="sidebar__trending-title">{post.title}</span>
-              <time class="sidebar__trending-date" datetime={post.publishDate.toISOString()}>
-                {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </time>
-            </div>
-          </a>
-        ))
-      ) : recentPosts.length > 0 ? (
-        recentPosts.slice(0, 4).map((post, i) => (
-          <a href={`/posts/${post.slug}`} class="sidebar__trending-item">
-            <span class="sidebar__trending-number">{String(i + 1).padStart(2, '0')}</span>
-            <div class="sidebar__trending-content">
-              <span class="sidebar__trending-title">{post.title}</span>
-              <time class="sidebar__trending-date" datetime={post.publishDate.toISOString()}>
-                {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </time>
-            </div>
-          </a>
-        ))
-      ) : (
-        <p class="sidebar__text">No trending stories right now</p>
-      )}
+    <div class="sidebar__trending-scroll" id="sidebar-trending-scroll">
+      <div class="sidebar__trending-inner" id="sidebar-trending-list">
+        {trendingPosts.length > 0 ? (
+          trendingPosts.slice(0, 4).map((post, i) => (
+            <a href={`/posts/${post.slug}`} class="sidebar__trending-item">
+              <span class="sidebar__trending-number">{String(i + 1).padStart(2, '0')}</span>
+              <div class="sidebar__trending-content">
+                <span class="sidebar__trending-title">{post.title}</span>
+                <time class="sidebar__trending-date" datetime={post.publishDate.toISOString()}>
+                  {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </time>
+              </div>
+            </a>
+          ))
+        ) : recentPosts.length > 0 ? (
+          recentPosts.slice(0, 4).map((post, i) => (
+            <a href={`/posts/${post.slug}`} class="sidebar__trending-item">
+              <span class="sidebar__trending-number">{String(i + 1).padStart(2, '0')}</span>
+              <div class="sidebar__trending-content">
+                <span class="sidebar__trending-title">{post.title}</span>
+                <time class="sidebar__trending-date" datetime={post.publishDate.toISOString()}>
+                  {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </time>
+              </div>
+            </a>
+          ))
+        ) : (
+          <p class="sidebar__text">No trending stories right now</p>
+        )}
+      </div>
     </div>
   </div>
 
@@ -124,28 +126,32 @@ const displayPopular = (() => {
 
   <div class="sidebar__widget">
     <h3 class="sidebar__widget-title">Popular Posts</h3>
-    <ul class="sidebar__posts">
-      {displayPopular.length > 0 ? (
-        displayPopular.map((post) => (
-          <li class="sidebar__post-item">
-            <div class="sidebar__post-body">
-              <a href={`/posts/${post.slug}`} class="sidebar__post-link">
-                {post.title}
-              </a>
-            </div>
-            <time datetime={post.publishDate.toISOString()} class="sidebar__post-date">
-              {post.publishDate.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </time>
-          </li>
-        ))
-      ) : (
-        <li><span class="sidebar__text">No posts yet</span></li>
-      )}
-    </ul>
+    <div class="sidebar__popular-scroll" id="sidebar-popular-scroll">
+      <div class="sidebar__popular-inner" id="sidebar-popular-list">
+        <ul class="sidebar__posts">
+          {displayPopular.length > 0 ? (
+            displayPopular.map((post) => (
+              <li class="sidebar__post-item">
+                <div class="sidebar__post-body">
+                  <a href={`/posts/${post.slug}`} class="sidebar__post-link">
+                    {post.title}
+                  </a>
+                </div>
+                <time datetime={post.publishDate.toISOString()} class="sidebar__post-date">
+                  {post.publishDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </time>
+              </li>
+            ))
+          ) : (
+            <li><span class="sidebar__text">No posts yet</span></li>
+          )}
+        </ul>
+      </div>
+    </div>
   </div>
 
   <div class="sidebar__widget sidebar__newsletter">
@@ -157,6 +163,45 @@ const displayPopular = (() => {
     </form>
   </div>
 </aside>
+
+<script>
+(function() {
+  function initSidebarScroll(containerId, innerId) {
+    var wrapper = document.getElementById(containerId);
+    var list = document.getElementById(innerId);
+    if (!wrapper || !list) return;
+    var items = list.querySelectorAll(':scope > *');
+    if (items.length < 2) return;
+    var gap = 16;
+    var itemHeight = items[0].offsetHeight + gap;
+    var visible = 4;
+    wrapper.style.maxHeight = (visible * itemHeight) + 'px';
+    var clone = list.cloneNode(true);
+    clone.id = innerId + '-clone';
+    wrapper.appendChild(clone);
+    var scrollSpeed = 0.5;
+    var isPaused = false;
+    var rafId = null;
+    var pos = 0;
+    var totalHeight = list.scrollHeight;
+    wrapper.onmouseenter = function() { isPaused = true; };
+    wrapper.onmouseleave = function() { isPaused = false; };
+    function step() {
+      if (!isPaused) {
+        pos += scrollSpeed;
+        if (pos >= totalHeight) pos = 0;
+        wrapper.scrollTop = pos;
+      }
+      rafId = requestAnimationFrame(step);
+    }
+    rafId = requestAnimationFrame(step);
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    initSidebarScroll('sidebar-trending-scroll', 'sidebar-trending-list');
+    initSidebarScroll('sidebar-popular-scroll', 'sidebar-popular-list');
+  });
+})();
+</script>
 
 <style>
   .sidebar {
@@ -365,6 +410,12 @@ const displayPopular = (() => {
   .sidebar__link:hover .sidebar__link-arrow {
     opacity: 1;
     transform: translateX(2px);
+  }
+
+  .sidebar__trending-scroll,
+  .sidebar__popular-scroll {
+    overflow: hidden;
+    position: relative;
   }
 
   .sidebar__posts {

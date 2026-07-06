@@ -6,7 +6,7 @@ featuredImage: "https://picsum.photos/seed/ai-for-your-voice%3A-make/1200/630"
 featured: false
 draft: false
 categories:
-  - "WORKFLOW"
+  - "Content Creation"
 tags:
   - "trending"
   - "AI writing tools"

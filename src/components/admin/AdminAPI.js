@@ -59,11 +59,20 @@ window.AdminAPI = (function() {
     }
   }
 
-  async function ghSaveFile(path, content, sha) {
+  async function ghSaveFile(path, content, sha, retries) {
+    if (retries === undefined) retries = 2;
     var payload = { message: 'Update ' + path, content: btoa(content), branch: CONFIG.branch };
     if (sha) payload.sha = sha;
-    var data = await apiFetch(GITHUB_API + '/contents/' + path, { method: 'PUT', body: payload });
-    return data.content.sha;
+    try {
+      var data = await apiFetch(GITHUB_API + '/contents/' + path, { method: 'PUT', body: payload });
+      return data.content.sha;
+    } catch(e) {
+      if (retries > 0 && e.message && e.message.indexOf('does not match') !== -1) {
+        var fileData = await apiFetch(GITHUB_API + '/contents/' + path + '?ref=' + CONFIG.branch);
+        return ghSaveFile(path, content, fileData.sha, retries - 1);
+      }
+      throw e;
+    }
   }
 
   async function ghDeleteFile(path, sha) {

@@ -11,12 +11,14 @@ const PIXABAY_CAT_MAP = {
   'Productivity': 'business', 'Creativity': 'education', 'AI News': 'science',
   'AI in Healthcare': 'health', 'Automation': 'industry', 'Entrepreneurship': 'business',
   'Workflow': 'business', 'Industry': 'industry',
+  'Tech News': 'technology', 'Business News': 'business',
 };
 const SEARCH_CAT_MAP = {
   'Future of Work': 'business office', 'AI Tools': 'technology computer', 'Content Creation': null,
   'Productivity': 'business workflow', 'Creativity': 'creative design', 'AI News': 'technology science',
   'AI in Healthcare': 'health medical', 'Automation': 'industry technology', 'Entrepreneurship': 'business startup',
   'Workflow': 'business organization', 'Industry': 'industry factory',
+  'Tech News': 'technology news', 'Business News': 'business news',
 };
 function getPixabayCategory(cat) { return PIXABAY_CAT_MAP[cat] || ''; }
 function getSearchCategory(title, cat) {

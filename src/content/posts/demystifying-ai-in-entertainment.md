@@ -5,7 +5,7 @@ publishDate: "2026-07-05"
 featuredImage: "https://picsum.photos/seed/demystifying-ai-in-entertainment/1200/630"
 featured: false
 categories:
-  - AI News
+  - Creativity
 tags:
   - AI
   - automation

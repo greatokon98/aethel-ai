@@ -9,7 +9,7 @@ const GROQ_KEY = process.env.GROQ_API_KEY;
 const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
 const PEXELS_KEY = process.env.PEXELS_API_KEY;
 const PIXABAY_KEY = process.env.PIXABAY_API_KEY;
-const VALID_CATS = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work'];
+const VALID_CATS = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work', 'Tech News', 'Business News'];
 
 const PIXABAY_CAT_MAP = {
   'Future of Work': 'business',
@@ -23,6 +23,8 @@ const PIXABAY_CAT_MAP = {
   'Entrepreneurship': 'business',
   'Workflow': 'business',
   'Industry': 'industry',
+  'Tech News': 'technology',
+  'Business News': 'business',
 };
 
 const SEARCH_CAT_MAP = {
@@ -37,6 +39,8 @@ const SEARCH_CAT_MAP = {
   'Entrepreneurship': 'business startup',
   'Workflow': 'business organization',
   'Industry': 'industry factory',
+  'Tech News': 'technology news',
+  'Business News': 'business news',
 };
 
 function getPixabayCategory(cat) { return PIXABAY_CAT_MAP[cat] || ''; }
