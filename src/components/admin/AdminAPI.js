@@ -163,7 +163,7 @@ window.AdminAPI = (function() {
           title: parsed.attrs.title || slug, excerpt: parsed.attrs.excerpt || '',
           publishDate: parsed.attrs.publishDate || '',
           categories: parsed.attrs.categories || [], tags: parsed.attrs.tags || [],
-          featured: parsed.attrs.featured || false, author: parsed.attrs.author || 'Aethel',
+          draft: parsed.attrs.draft || false, featured: parsed.attrs.featured || false, author: parsed.attrs.author || 'Aethel',
           featuredImage: parsed.attrs.featuredImage || '', body: parsed.body,
         });
       } catch(e) {}

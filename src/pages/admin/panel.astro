@@ -174,7 +174,7 @@ window.AdminAPI = (function() {
           title: parsed.attrs.title || slug, excerpt: parsed.attrs.excerpt || '',
           publishDate: parsed.attrs.publishDate || '',
           categories: parsed.attrs.categories || [], tags: parsed.attrs.tags || [],
-          featured: parsed.attrs.featured || false, author: parsed.attrs.author || 'Aethel',
+          draft: parsed.attrs.draft || false, featured: parsed.attrs.featured || false, author: parsed.attrs.author || 'Aethel',
           featuredImage: parsed.attrs.featuredImage || '', body: parsed.body,
         };
       } catch(e) { return null; }
@@ -549,15 +549,24 @@ window.AdminAPI = (function() {
     function renderDashboard() {
       var postsCount = state.posts.length;
       var featuredCount = state.posts.filter(function(p) { return p.featured; }).length;
+      var draftCount = state.posts.filter(function(p) { return p.draft; }).length;
+      var popularCount = state.posts.filter(function(p) { return p.tags && p.tags.indexOf('popular') !== -1; }).length;
+      var trendingCount = state.trendingItems ? state.trendingItems.length : 0;
       var msgCount = state.messages ? state.messages.messages.length : 0;
       var unreadCount = state.messages ? state.messages.messages.filter(function(m) { return !m.read; }).length : 0;
       var searchCount = state.searchData ? state.searchData.queries.length : 0;
       var lastRun = state.automationRuns && state.automationRuns.runs.length > 0 ? state.automationRuns.runs[0] : null;
 
+      var featuredSub = featuredCount + ' featured · ' + draftCount + ' draft · ' + trendingCount + ' trending · ' + popularCount + ' popular';
+
       return '<div>' +
         '<div class="post-list-header"><h1>Dashboard</h1></div>' +
         '<div class="dashboard-grid">' +
-          statCard('Total Posts', postsCount, featuredCount + ' featured', '📝') +
+          statCard('Total Posts', postsCount, featuredSub, '📝') +
+          clickableCard('Featured', featuredCount, '⭐', 'featured') +
+          clickableCard('Draft', draftCount, '📄', 'draft') +
+          clickableCard('Trending', trendingCount, '🔥', 'trending') +
+          clickableCard('Popular', popularCount, '📈', 'popular') +
           statCard('Messages', msgCount, unreadCount + ' unread', '✉️') +
           statCard('Search Queries', searchCount, 'All time', '🔍') +
           statCard('Latest Post', state.posts.length > 0 ? formatDate(state.posts[0].publishDate) : '—', state.posts.length > 0 ? escapeHtml(state.posts[0].title) : 'No posts yet', '📄') +
@@ -576,6 +585,14 @@ window.AdminAPI = (function() {
         '<div class="stat-card__label">' + icon + ' ' + label + '</div>' +
         '<div class="stat-card__value">' + value + '</div>' +
         (sub ? '<div class="stat-card__sub">' + sub + '</div>' : '') +
+      '</div>';
+    }
+
+    function clickableCard(label, value, icon, filterType) {
+      return '<div class="stat-card stat-card--clickable" data-filter="' + filterType + '">' +
+        '<div class="stat-card__label">' + icon + ' ' + label + '</div>' +
+        '<div class="stat-card__value">' + value + '</div>' +
+        (value > 0 ? '<div class="stat-card__sub">View all →</div>' : '<div class="stat-card__sub">None</div>') +
       '</div>';
     }
 
@@ -701,12 +718,41 @@ window.AdminAPI = (function() {
           '</div>' +
         '</div>';
       }).join('');
-      return '<div class="post-list-header">' +
+      var trendingHtml = '<div class="post-list-header">' +
         '<h1>Trending Now <span class="count">(' + items.length + ')</span></h1>' +
         '<span class="trending-auto-badge">⟳ Auto 30s</span>' +
         '<button class="admin-header__btn" id="btn-refresh-trending">Refresh</button>' +
       '</div>' +
-      '<div class="trending-list">' + rows + '</div>';
+      '<div class="trending-scroll-wrapper" id="trending-scroll-wrapper">' +
+        '<div class="trending-list" id="trending-scroll-list">' + rows + rows + '</div>' +
+      '</div>';
+
+      // Popular section
+      var popularItems = state.posts.filter(function(p) { return p.tags && p.tags.indexOf('popular') !== -1; });
+      var popularHtml = '';
+      if (popularItems.length > 0) {
+        var popularCards = popularItems.map(function(p, i) {
+          var date = p.publishDate ? formatDate(p.publishDate) : '';
+          return '<div class="trending-card">' +
+            '<div class="trending-card__num">' + String(i + 1).padStart(2, '0') + '</div>' +
+            '<div class="trending-card__body">' +
+              '<div class="trending-card__title">' + escapeHtml(p.title) + '</div>' +
+              '<div class="trending-card__meta">' + date + '</div>' +
+            '</div>' +
+            '<div class="trending-card__actions">' +
+              '<button class="admin-header__btn admin-header__btn--outline trending-edit" data-slug="' + p.slug + '">Edit</button>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+        popularHtml = '<div class="post-list-header" style="margin-top:24px">' +
+          '<h2>Popular Posts <span class="count">(' + popularItems.length + ')</span></h2>' +
+        '</div>' +
+        '<div class="trending-scroll-wrapper" id="popular-scroll-wrapper">' +
+          '<div class="trending-list" id="popular-scroll-list">' + popularCards + popularCards + '</div>' +
+        '</div>';
+      }
+
+      return trendingHtml + popularHtml;
     }
 
     // --- Messages ---
@@ -1042,6 +1088,15 @@ window.AdminAPI = (function() {
         });
       }
 
+      // Stat card clicks
+      qsa('.stat-card--clickable').forEach(function(card) {
+        card.addEventListener('click', function() {
+          var filter = this.dataset.filter;
+          var labels = { featured: 'Featured', draft: 'Draft', trending: 'Trending', popular: 'Popular' };
+          showFilteredPosts(filter, labels[filter] || filter);
+        });
+      });
+
       // New post
       var newBtn = document.getElementById('btn-new-post');
       if (newBtn) {
@@ -1228,6 +1283,19 @@ window.AdminAPI = (function() {
         });
       });
 
+      // Trending edit buttons (popular posts)
+      qsa('.trending-edit').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var slug = this.dataset.slug;
+          var post = state.posts.find(function(p) { return p.slug === slug; });
+          if (post) {
+            state.editingPost = JSON.parse(JSON.stringify(post));
+            state.view = 'editor';
+            render();
+          }
+        });
+      });
+
       // Refresh trending
       var refreshBtn = document.getElementById('btn-refresh-trending');
       if (refreshBtn) {
@@ -1386,12 +1454,41 @@ window.AdminAPI = (function() {
       render();
     }
 
+    function initTrendingScroll(wrapperId, listId) {
+      if (window._trendingRaf) { cancelAnimationFrame(window._trendingRaf); window._trendingRaf = null; }
+      var wrapper = document.getElementById(wrapperId);
+      var list = document.getElementById(listId);
+      if (!wrapper || !list) return;
+      wrapper.scrollTop = 0;
+      var card = list.querySelector('.trending-card');
+      if (!card) return;
+      var cardHeight = card.offsetHeight + 12;
+      wrapper.style.maxHeight = (5 * cardHeight) + 'px';
+      var scrollSpeed = 0.5;
+      var isPaused = false;
+      wrapper.onmouseenter = function() { isPaused = true; };
+      wrapper.onmouseleave = function() { isPaused = false; };
+      var cloneHeight = list.scrollHeight / 2;
+      var pos = 0;
+      function step() {
+        if (!isPaused) {
+          pos += scrollSpeed;
+          if (pos >= cloneHeight) pos = 0;
+          wrapper.scrollTop = pos;
+        }
+        window._trendingRaf = requestAnimationFrame(step);
+      }
+      window._trendingRaf = requestAnimationFrame(step);
+    }
+
     async function loadTrending() {
       if (state.view !== 'trending') return;
       clearInterval(_trendingTimer);
       _trendingTimer = null;
       state.trendingItems = [];
       render();
+      initTrendingScroll('trending-scroll-wrapper', 'trending-scroll-list');
+      initTrendingScroll('popular-scroll-wrapper', 'popular-scroll-list');
       try {
         state.trendingItems = await AdminAPI.fetchTrending();
       } catch(e) {
@@ -1399,12 +1496,16 @@ window.AdminAPI = (function() {
       }
       if (state.view !== 'trending') return;
       render();
+      initTrendingScroll('trending-scroll-wrapper', 'trending-scroll-list');
+      initTrendingScroll('popular-scroll-wrapper', 'popular-scroll-list');
       _trendingTimer = setInterval(async function() {
         if (state.view !== 'trending') return;
         try {
           state.trendingItems = await AdminAPI.fetchTrending();
           if (state.view !== 'trending') return;
           render();
+          initTrendingScroll('trending-scroll-wrapper', 'trending-scroll-list');
+          initTrendingScroll('popular-scroll-wrapper', 'popular-scroll-list');
         } catch(e) {}
       }, 30000);
     }
@@ -1811,6 +1912,63 @@ window.AdminAPI = (function() {
       });
     }
 
+    // --- Filter Modal ---
+    function showFilteredPosts(filter, label) {
+      var overlay = document.createElement('div');
+      overlay.className = 'filter-modal-overlay';
+      var filtered = [];
+      if (filter === 'all') filtered = state.posts;
+      else if (filter === 'featured') filtered = state.posts.filter(function(p) { return p.featured; });
+      else if (filter === 'draft') filtered = state.posts.filter(function(p) { return p.draft; });
+      else if (filter === 'popular') filtered = state.posts.filter(function(p) { return p.tags && p.tags.indexOf('popular') !== -1; });
+      else if (filter === 'trending') filtered = state.trendingItems || [];
+
+      var rowsHtml = filtered.map(function(item) {
+        if (filter === 'trending') {
+          var desc = (item.description || '').replace(/<[^>]*>/g, '').slice(0, 100);
+          return '<tr><td>' + escapeHtml(item.title) + '</td><td>' + escapeHtml(item.source || '') + '</td><td>' + (item.pubDate ? formatDate(item.pubDate) : '') + '</td></tr>';
+        }
+        var date = item.publishDate ? formatDate(item.publishDate) : '';
+        var cats = (item.categories || []).map(function(c) { return '<span class="post-cat">' + escapeHtml(c) + '</span>'; }).join('');
+        var tags = (item.tags || []).slice(0, 3).map(function(t) { return '<span class="post-cat" style="background:#E0E7FF;color:#4F46E5">' + escapeHtml(t) + '</span>'; }).join('');
+        var draftBadge = item.draft ? '<span class="post-draft-badge">Draft</span>' : '';
+        return '<tr>' +
+          '<td><div class="post-title">' + escapeHtml(item.title) + draftBadge + '</div></td>' +
+          '<td><div class="post-cats">' + cats + '</div></td>' +
+          '<td><div class="post-cats">' + tags + '</div></td>' +
+          '<td class="post-date">' + date + '</td>' +
+          '<td>' + (item.slug ? '<button class="btn-edit filter-edit" data-slug="' + item.slug + '">Edit</button>' : '') + '</td>' +
+        '</tr>';
+      }).join('');
+
+      overlay.innerHTML = '<div class="filter-modal">' +
+        '<div class="filter-modal-header">' +
+          '<h3>' + label + ' (' + filtered.length + ')</h3>' +
+          '<button class="filter-modal-close">&times;</button>' +
+        '</div>' +
+        '<div class="filter-modal-body">' +
+          (filtered.length === 0 ? '<div class="filter-modal-empty">No ' + label.toLowerCase() + ' yet</div>' :
+          '<table class="filter-modal-table"><thead><tr>' +
+            (filter === 'trending' ? '<th>Title</th><th>Source</th><th>Date</th>' : '<th>Title</th><th>Categories</th><th>Tags</th><th>Date</th><th></th>') +
+          '</tr></thead><tbody>' + rowsHtml + '</tbody></table>') +
+        '</div>' +
+      '</div>';
+
+      function close() { overlay.remove(); }
+      overlay.querySelector('.filter-modal-close').addEventListener('click', close);
+      overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
+      var editBtns = overlay.querySelectorAll('.filter-edit');
+      editBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var slug = this.dataset.slug;
+          var post = state.posts.find(function(p) { return p.slug === slug; });
+          if (post) { state.editingPost = post; state.view = 'editor'; render(); }
+          close();
+        });
+      });
+      document.body.appendChild(overlay);
+    }
+
     // --- Post CRUD ---
     async function handleSave() {
       var slugEl = document.getElementById('ed-slug');
@@ -1870,7 +2028,7 @@ window.AdminAPI = (function() {
         state.view = 'list';
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
-            return { slug: slug, name: slug + '.md', sha: attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, body: body };
+            return { slug: slug, name: slug + '.md', sha: attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, body: body };
           }
           if (p.slug === state.editingPost && state.editingPost.slug && state.editingPost.slug !== slug) {
             return null;

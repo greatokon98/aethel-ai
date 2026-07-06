@@ -126,22 +126,30 @@ const popularPosts = posts.filter((p) => p.tags && p.tags.includes('popular'));
   <section class="section featured-section">
     <div class="container">
       <h2 class="section-title fade-in">Featured Stories</h2>
-      <div class="featured-grid">
-        {posts.filter(p => p.featured).map((post, i) => (
-          <div class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}>
-            <PostCard
-              title={post.title}
-              excerpt={post.excerpt}
-              publishDate={post.publishDate}
-              slug={post.slug}
-              featuredImage={post.featuredImage}
-              categories={post.categories}
-              author={post.author}
-              readingTime={post.readingTime}
-              featured={false}
-            />
-          </div>
-        ))}
+      <div class="featured-carousel">
+        <button class="fscar-btn fscar-btn--prev" id="fscar-prev" aria-label="Previous featured">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="fscar-btn fscar-btn--next" id="fscar-next" aria-label="Next featured">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="featured-grid">
+          {posts.filter(p => p.featured).map((post, i) => (
+            <div class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}>
+              <PostCard
+                title={post.title}
+                excerpt={post.excerpt}
+                publishDate={post.publishDate}
+                slug={post.slug}
+                featuredImage={post.featuredImage}
+                categories={post.categories}
+                author={post.author}
+                readingTime={post.readingTime}
+                featured={false}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   </section>
@@ -169,6 +177,22 @@ const popularPosts = posts.filter((p) => p.tags && p.tags.includes('popular'));
     display: flex;
   }
 
+  .featured-carousel { position: relative; }
+  .fscar-btn {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    z-index: 5; width: 36px; height: 36px; border-radius: 50%;
+    background: var(--color-surface); color: var(--color-text);
+    border: 1px solid var(--color-border); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.3s, box-shadow 0.3s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .featured-carousel:hover .fscar-btn { opacity: 1; }
+  .fscar-btn:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+  .fscar-btn--prev { left: -18px; }
+  .fscar-btn--next { right: -18px; }
+  .fscar-btn--hidden { display: none; }
+
   .mobile-search-bar {
     display: none;
   }
@@ -176,6 +200,10 @@ const popularPosts = posts.filter((p) => p.tags && p.tags.includes('popular'));
   @media (max-width: 768px) {
     .featured-grid { gap: var(--space-4); }
     .featured-grid > * { flex: 0 0 300px; }
+
+    .fscar-btn--prev { left: 4px; }
+    .fscar-btn--next { right: 4px; }
+    .featured-carousel .fscar-btn { width: 28px; height: 28px; }
 
     .mobile-search-bar {
       display: flex;
@@ -350,34 +378,66 @@ const popularPosts = posts.filter((p) => p.tags && p.tags.includes('popular'));
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
+    // ---- Mobile category toggle ----
     const toggle = document.querySelector('[data-category-toggle]');
     const menu = document.querySelector('[data-category-menu]');
     const label = document.querySelector('[data-category-label]');
 
-    if (!toggle || !menu) return;
+    if (toggle && menu) {
+      function close() {
+        menu.classList.remove('mobile-category-menu--open');
+        toggle.setAttribute('aria-expanded', 'false');
+      }
 
-    function close() {
-      menu.classList.remove('mobile-category-menu--open');
-      toggle.setAttribute('aria-expanded', 'false');
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = menu.classList.toggle('mobile-category-menu--open');
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+
+      menu.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', () => {
+          if (label) label.textContent = link.textContent;
+          close();
+        });
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!toggle.contains(e.target) && !menu.contains(e.target)) {
+          close();
+        }
+      });
     }
 
-    toggle.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isOpen = menu.classList.toggle('mobile-category-menu--open');
-      toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    });
-
-    menu.querySelectorAll('a').forEach((link) => {
-      link.addEventListener('click', () => {
-        if (label) label.textContent = link.textContent;
-        close();
-      });
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!toggle.contains(e.target) && !menu.contains(e.target)) {
-        close();
+    // ---- Featured Stories carousel ----
+    const grid = document.querySelector('.featured-grid');
+    const prevBtn = document.getElementById('fscar-prev');
+    const nextBtn = document.getElementById('fscar-next');
+    if (grid && prevBtn && nextBtn) {
+      function updateArrows() {
+        const atStart = grid.scrollLeft <= 10;
+        const atEnd = grid.scrollLeft + grid.clientWidth >= grid.scrollWidth - 10;
+        prevBtn.classList.toggle('fscar-btn--hidden', atStart);
+        nextBtn.classList.toggle('fscar-btn--hidden', atEnd);
       }
-    });
+      function scrollBy(amount) {
+        grid.scrollBy({ left: amount, behavior: 'smooth' });
+        setTimeout(updateArrows, 350);
+      }
+      prevBtn.addEventListener('click', () => {
+        const card = grid.querySelector('.featured-grid > *');
+        const gap = 24;
+        const width = card ? card.offsetWidth + gap : 384;
+        scrollBy(-width);
+      });
+      nextBtn.addEventListener('click', () => {
+        const card = grid.querySelector('.featured-grid > *');
+        const gap = 24;
+        const width = card ? card.offsetWidth + gap : 384;
+        scrollBy(width);
+      });
+      grid.addEventListener('scroll', updateArrows);
+      setTimeout(updateArrows, 100);
+    }
   });
 </script>
