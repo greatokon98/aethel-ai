@@ -353,6 +353,41 @@ window.AdminAPI = (function() {
     }
   }
 
+  // ---- Popular ----
+  async function fetchPopular() {
+    if (CONFIG.type === 'render') {
+      var data = await apiFetch(BASE + '/api/popular');
+      return data.items || [];
+    } else {
+      var feeds = [
+        { url: 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en', source: 'Google News' },
+        { url: 'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml', source: 'NYT Tech' },
+        { url: 'https://feeds.feedburner.com/TechCrunch', source: 'TechCrunch' },
+        { url: 'https://www.wired.com/feed/rss', source: 'Wired' },
+      ];
+      var allItems = [];
+      var proxy = 'https://api.rss2json.com/v1/api.json?rss_url=';
+      for (var i = 0; i < feeds.length; i++) {
+        try {
+          var res = await fetch(proxy + encodeURIComponent(feeds[i].url));
+          if (!res.ok) continue;
+          var data = await res.json();
+          if (data.status !== 'ok' || !data.items) continue;
+          data.items.forEach(function(item) {
+            allItems.push({
+              title: item.title || '',
+              description: (item.description || '').replace(/<[^>]*>/g, '').slice(0, 200),
+              pubDate: item.pubDate || item.pub_date || '',
+              source: feeds[i].source, link: item.link || '',
+            });
+          });
+        } catch(e) {}
+      }
+      allItems.sort(function(a, b) { return new Date(b.pubDate) - new Date(a.pubDate); });
+      return allItems.slice(0, 30);
+    }
+  }
+
   // ---- Public API ----
   return {
     CONFIG: CONFIG,
@@ -366,6 +401,7 @@ window.AdminAPI = (function() {
     loadAutomationRuns: loadAutomationRuns, saveAutomationRuns: saveAutomationRuns,
     triggerWorkflow: triggerWorkflow, getWorkflowStatus: getWorkflowStatus,
     fetchTrending: fetchTrending,
+    fetchPopular: fetchPopular,
     getFile: ghGetFile, saveFile: ghSaveFile,
   };
 })();

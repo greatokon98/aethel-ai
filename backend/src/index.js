@@ -10,6 +10,7 @@ import messagesRoutes from './routes/messages.js';
 import searchRoutes from './routes/search.js';
 import automationRoutes from './routes/automation.js';
 import trendingRoutes from './routes/trending.js';
+import popularRoutes from './routes/popular.js';
 import generateRoutes from './routes/generate.js';
 import healthRoutes from './routes/health.js';
 
@@ -28,6 +29,7 @@ app.use('/api/messages', requireAuth, messagesRoutes);
 app.use('/api/search-queries', requireAuth, searchRoutes);
 app.use('/api/automation-runs', requireAuth, automationRoutes);
 app.use('/api/trending', requireAuth, trendingRoutes);
+app.use('/api/popular', requireAuth, popularRoutes);
 app.use('/api/generate', requireAuth, generateRoutes);
 
 // 404

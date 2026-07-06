@@ -408,6 +408,41 @@ window.AdminAPI = (function() {
     }
   }
 
+  // ---- Popular ----
+  async function fetchPopular() {
+    if (CONFIG.type === 'render') {
+      var data = await apiFetch(BASE + '/api/popular');
+      return data.items || [];
+    } else {
+      var feeds = [
+        { url: 'https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en', source: 'Google News' },
+        { url: 'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml', source: 'NYT Tech' },
+        { url: 'https://feeds.feedburner.com/TechCrunch', source: 'TechCrunch' },
+        { url: 'https://www.wired.com/feed/rss', source: 'Wired' },
+      ];
+      var allItems = [];
+      var proxy = 'https://api.rss2json.com/v1/api.json?rss_url=';
+      for (var i = 0; i < feeds.length; i++) {
+        try {
+          var res = await fetch(proxy + encodeURIComponent(feeds[i].url));
+          if (!res.ok) continue;
+          var data = await res.json();
+          if (data.status !== 'ok' || !data.items) continue;
+          data.items.forEach(function(item) {
+            allItems.push({
+              title: item.title || '',
+              description: (item.description || '').replace(/<[^>]*>/g, '').slice(0, 200),
+              pubDate: item.pubDate || item.pub_date || '',
+              source: feeds[i].source, link: item.link || '',
+            });
+          });
+        } catch(e) {}
+      }
+      allItems.sort(function(a, b) { return new Date(b.pubDate) - new Date(a.pubDate); });
+      return allItems.slice(0, 30);
+    }
+  }
+
   // ---- Public API ----
   function apiPost(path, body) {
     return apiFetch(BASE + path, { method: 'POST', body: body });
@@ -425,6 +460,7 @@ window.AdminAPI = (function() {
     loadAutomationRuns: loadAutomationRuns, saveAutomationRuns: saveAutomationRuns,
     triggerWorkflow: triggerWorkflow, getWorkflowStatus: getWorkflowStatus,
     fetchTrending: fetchTrending,
+    fetchPopular: fetchPopular,
     generatePost: generatePost, regeneratePost: regeneratePost,
     generatePostGemini: generatePostGemini, regeneratePostGemini: regeneratePostGemini,
     getFile: ghGetFile, saveFile: ghSaveFile,
@@ -493,6 +529,7 @@ window.AdminAPI = (function() {
       posts: [],
       editingPost: null,
       trendingItems: [],
+      popularItems: [],
       settings: null,
       messages: null,
       searchData: null,
@@ -503,6 +540,7 @@ window.AdminAPI = (function() {
     };
 
     var _trendingTimer = null;
+    var _popularTimer = null;
     var _dashboardTimer = null;
 
     // --- View Renderers ---
@@ -728,26 +766,32 @@ window.AdminAPI = (function() {
       '</div>';
 
       // Popular section
-      var popularItems = state.posts.filter(function(p) { return p.tags && p.tags.indexOf('popular') !== -1; });
+      var popularItems = state.popularItems || [];
       var popularHtml = '';
       if (popularItems.length > 0) {
-        var popularCards = popularItems.map(function(p, i) {
-          var date = p.publishDate ? formatDate(p.publishDate) : '';
+        var popularCards = popularItems.map(function(item, i) {
+          var date = item.pubDate ? formatDate(item.pubDate) : '';
+          var desc = (item.description || '').replace(/<[^>]*>/g, '').slice(0, 120);
+          var slug = slugify(item.title);
           return '<div class="trending-card">' +
             '<div class="trending-card__num">' + String(i + 1).padStart(2, '0') + '</div>' +
             '<div class="trending-card__body">' +
-              '<div class="trending-card__title">' + escapeHtml(p.title) + '</div>' +
-              '<div class="trending-card__meta">' + date + '</div>' +
+              '<div class="trending-card__title">' + escapeHtml(item.title) + '</div>' +
+              '<div class="trending-card__meta">' + escapeHtml(item.source) + ' · ' + date + '</div>' +
+              (desc ? '<div class="trending-card__desc">' + escapeHtml(desc) + '…</div>' : '') +
             '</div>' +
             '<div class="trending-card__actions">' +
-              '<button class="admin-header__btn admin-header__btn--outline trending-edit" data-slug="' + p.slug + '">Edit</button>' +
+              '<button class="admin-header__btn admin-header__btn--outline trending-write" data-title="' + escapeHtml(item.title) + '" data-slug="' + slug + '">Write</button>' +
+              '<button class="admin-header__btn admin-header__btn--primary trending-auto" data-title="' + escapeHtml(item.title) + '" data-slug="' + slug + '">Auto Write</button>' +
             '</div>' +
           '</div>';
         }).join('');
         popularHtml = '<div class="post-list-header" style="margin-top:24px">' +
-          '<h2>Popular Posts <span class="count">(' + popularItems.length + ')</span></h2>' +
+          '<h2>Popular Now <span class="count">(' + popularItems.length + ')</span></h2>' +
+          '<span class="trending-auto-badge" style="color:#8B5CF6">⟳ Auto 30s</span>' +
+          '<button class="admin-header__btn" id="btn-refresh-popular">Refresh</button>' +
         '</div>' +
-        '<div class="trending-scroll-wrapper" id="popular-scroll-wrapper">' +
+        '<div class="popular-scroll-wrapper" id="popular-scroll-wrapper">' +
           '<div class="trending-list" id="popular-scroll-list">' + popularCards + popularCards + '</div>' +
         '</div>';
       }
@@ -1306,6 +1350,24 @@ window.AdminAPI = (function() {
         });
       }
 
+      // Refresh popular
+      var refreshPopularBtn = document.getElementById('btn-refresh-popular');
+      if (refreshPopularBtn) {
+        refreshPopularBtn.addEventListener('click', function() {
+          state.popularItems = [];
+          render();
+          loadPopular();
+        });
+      }
+
+      // Init auto-scroll on re-render (handles cached data path)
+      if (state.view === 'trending') {
+        setTimeout(function() {
+          initTrendingScroll('trending-scroll-wrapper', 'trending-scroll-list');
+          initTrendingScroll('popular-scroll-wrapper', 'popular-scroll-list');
+        }, 50);
+      }
+
       // Settings: add nav link
       var addNavBtn = document.getElementById('btn-add-nav-link');
       if (addNavBtn) {
@@ -1388,6 +1450,8 @@ window.AdminAPI = (function() {
       if (view !== 'trending') {
         clearInterval(_trendingTimer);
         _trendingTimer = null;
+        clearInterval(_popularTimer);
+        _popularTimer = null;
       }
       if (view !== 'dashboard') {
         clearInterval(_dashboardTimer);
@@ -1397,8 +1461,9 @@ window.AdminAPI = (function() {
       try { sessionStorage.setItem('aa_active_tab', view); } catch(e) {}
       if (view === 'dashboard') {
         loadDashboard();
-      } else if (view === 'trending' && state.trendingItems.length === 0) {
+      } else if (view === 'trending') {
         loadTrending();
+        loadPopular();
       } else if (view === 'settings') {
         loadSettings();
       } else if (view === 'messages') {
@@ -1502,6 +1567,35 @@ window.AdminAPI = (function() {
         if (state.view !== 'trending') return;
         try {
           state.trendingItems = await AdminAPI.fetchTrending();
+          if (state.view !== 'trending') return;
+          render();
+          initTrendingScroll('trending-scroll-wrapper', 'trending-scroll-list');
+          initTrendingScroll('popular-scroll-wrapper', 'popular-scroll-list');
+        } catch(e) {}
+      }, 30000);
+    }
+
+    async function loadPopular() {
+      if (state.view !== 'trending') return;
+      clearInterval(_popularTimer);
+      _popularTimer = null;
+      state.popularItems = [];
+      render();
+      initTrendingScroll('trending-scroll-wrapper', 'trending-scroll-list');
+      initTrendingScroll('popular-scroll-wrapper', 'popular-scroll-list');
+      try {
+        state.popularItems = await AdminAPI.fetchPopular();
+      } catch(e) {
+        state.popularItems = [];
+      }
+      if (state.view !== 'trending') return;
+      render();
+      initTrendingScroll('trending-scroll-wrapper', 'trending-scroll-list');
+      initTrendingScroll('popular-scroll-wrapper', 'popular-scroll-list');
+      _popularTimer = setInterval(async function() {
+        if (state.view !== 'trending') return;
+        try {
+          state.popularItems = await AdminAPI.fetchPopular();
           if (state.view !== 'trending') return;
           render();
           initTrendingScroll('trending-scroll-wrapper', 'trending-scroll-list');

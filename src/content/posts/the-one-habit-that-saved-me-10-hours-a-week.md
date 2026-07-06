@@ -4,6 +4,7 @@ excerpt: "It wasn't a new app or a fancy tool. It was a simple question I starte
 publishDate: "2026-06-13"
 featuredImage: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=800"
 featured: false
+draft: true
 categories:
   - Productivity
   - Workflow
