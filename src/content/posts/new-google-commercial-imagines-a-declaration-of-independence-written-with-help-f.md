@@ -2,7 +2,7 @@
 title: "New Google commercial imagines a Declaration of Independence written with help from AI"
 excerpt: "As I watched the new Google commercial imagining a Declaration of Independence written with help from AI, I couldn't help but wonder what this means for the ..."
 publishDate: "2026-07-05"
-featuredImage: "https://pixabay.com/get/g3f1a370e02846a836c61eb58b19cd6e0679796ac339ffc25d60604165b59f11d521489dde5bcea4f4d4b81ee39a6bb3cdb1ae1ae4f8e1bcf5ede4ed01ee804c4_1280.jpg"
+featuredImage: "https://images.unsplash.com/photo-1678483789887-e7a72d6b872f?w=800"
 featured: false
 draft: false
 categories:
