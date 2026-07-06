@@ -4,6 +4,7 @@ excerpt: "People use AI chatbots daily and need practical guidance to avoid inad
 publishDate: "2026-07-05"
 featuredImage: "https://picsum.photos/seed/don't-leak-your-secrets%3A-safe/1200/630"
 featured: false
+draft: true
 categories:
   - AI Tools
 tags:

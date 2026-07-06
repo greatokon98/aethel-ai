@@ -4,6 +4,7 @@ excerpt: "Everyday creators need to understand how AI impacts ownership and usag
 publishDate: "2026-07-05"
 featuredImage: "https://images.unsplash.com/photo-1613666517563-d19a4585d1fe?w=800"
 featured: false
+draft: true
 categories:
   - "Creativity"
 tags:

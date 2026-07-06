@@ -13,13 +13,21 @@ const PIXABAY_CAT_MAP = {
   'Workflow': 'business', 'Industry': 'industry',
 };
 const SEARCH_CAT_MAP = {
-  'Future of Work': 'business office', 'AI Tools': 'technology computer', 'Content Creation': 'creative writing',
+  'Future of Work': 'business office', 'AI Tools': 'technology computer', 'Content Creation': null,
   'Productivity': 'business workflow', 'Creativity': 'creative design', 'AI News': 'technology science',
   'AI in Healthcare': 'health medical', 'Automation': 'industry technology', 'Entrepreneurship': 'business startup',
   'Workflow': 'business organization', 'Industry': 'industry factory',
 };
 function getPixabayCategory(cat) { return PIXABAY_CAT_MAP[cat] || ''; }
-function getSearchCategory(cat) { return SEARCH_CAT_MAP[cat] || ''; }
+function getSearchCategory(title, cat) {
+  if (cat === 'Content Creation' && title) {
+    const lower = title.toLowerCase();
+    if (/\b(education|learning|teach|course|tutorial|class|student|school|college|university)\b/.test(lower)) return 'education';
+    if (/\b(write|writing|author|story|storytelling|article|blog|content|creative)\b/.test(lower)) return 'creative writing';
+    return 'creative content';
+  }
+  return SEARCH_CAT_MAP[cat] || '';
+}
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const REPO = 'greatokon98/aethel-ai';
 const API_BASE = `https://api.github.com/repos/${REPO}`;
@@ -151,7 +159,7 @@ async function callGroq(prompt) {
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
-      max_tokens: 2500,
+      max_tokens: 8192,
     }),
   });
   if (!res.ok) {
@@ -355,7 +363,7 @@ async function fetchFeaturedImage(title, categories) {
 
   const kws = imageKeywords || [];
   const cat = categories || '';
-  const searchCat = getSearchCategory(cat);
+  const searchCat = getSearchCategory(title, cat);
   const pixCat = getPixabayCategory(cat);
   const pexelsHeaders = { 'Authorization': PEXELS_KEY ? `Bearer ${PEXELS_KEY}` : '' };
 
@@ -364,7 +372,7 @@ async function fetchFeaturedImage(title, categories) {
     for (const kw of kws) {
       const enriched = searchCat ? `${kw} ${searchCat}` : kw;
       try {
-        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(enriched)}&per_page=3&orientation=landscape&client_id=${UNSPLASH_KEY}`;
+        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(enriched)}&per_page=10&orientation=landscape&client_id=${UNSPLASH_KEY}`;
         const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
@@ -384,13 +392,24 @@ async function fetchFeaturedImage(title, categories) {
     for (const kw of kws) {
       const enriched = searchCat ? `${kw} ${searchCat}` : kw;
       try {
-        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(enriched)}&per_page=3&orientation=landscape`;
+        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(enriched)}&per_page=10&orientation=landscape`;
         const res = await fetch(url, { headers: pexelsHeaders, signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
           if (data.photos && data.photos.length > 0) {
             console.log(`  [image] <- Pexels (keyword: "${enriched}")`);
             return data.photos[0].src.medium;
+          }
+          if (data.photos && data.photos.length === 0 && enriched !== kw) {
+            const fallbackUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(kw)}&per_page=10&orientation=landscape`;
+            const fallbackRes = await fetch(fallbackUrl, { headers: pexelsHeaders, signal: AbortSignal.timeout(5000) });
+            if (fallbackRes.ok) {
+              const fallbackData = await fallbackRes.json();
+              if (fallbackData.photos && fallbackData.photos.length > 0) {
+                console.log(`  [image] <- Pexels (fallback kw: "${kw}")`);
+                return fallbackData.photos[0].src.medium;
+              }
+            }
           }
         }
       } catch {}
@@ -401,7 +420,7 @@ async function fetchFeaturedImage(title, categories) {
     console.log(`  [image] Pexels failed, trying Pixabay with ${kws.length} keyword sets`);
     for (const kw of kws) {
       try {
-        let url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(kw)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
+        let url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(kw)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=10`;
         if (pixCat) url += `&category=${pixCat}`;
         const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
         if (res.ok) {

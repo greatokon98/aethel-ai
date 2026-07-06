@@ -655,12 +655,13 @@ window.AdminAPI = (function() {
           (isNew ? '<button class="btn-regenerate btn-gemini" id="btn-generate-gemini">Generate with Gemini</button>' : '') +
           (!isNew ? '<button class="btn-regenerate btn-gemini" id="btn-regenerate-gemini">Regenerate with Gemini</button>' : '') +
           (!isNew ? '<button class="btn-delete" id="btn-editor-delete">Delete Post</button>' : '') +
+          (!isNew ? '<button class="btn-regenerate btn-complete-ai" id="btn-complete-ai">Complete with AI</button>' : '') +
         '</div>' +
       '</div>' +
       '<div class="image-modal-overlay" id="image-modal-overlay" style="display:none">' +
         '<div class="image-modal">' +
           '<div class="image-modal-header">' +
-            '<h3>Search Pixabay</h3>' +
+            '<h3>Search Image</h3>' +
             '<button type="button" class="image-modal-close" id="image-modal-close">&times;</button>' +
           '</div>' +
           '<div class="image-modal-search">' +
@@ -1140,6 +1141,12 @@ window.AdminAPI = (function() {
       var regenGeminiBtn = document.getElementById('btn-regenerate-gemini');
       if (regenGeminiBtn) {
         regenGeminiBtn.addEventListener('click', handleRegenerateGemini);
+      }
+
+      // Complete with AI
+      var completeAiBtn = document.getElementById('btn-complete-ai');
+      if (completeAiBtn) {
+        completeAiBtn.addEventListener('click', handleCompleteAI);
       }
 
       // Image search modal
@@ -1658,6 +1665,35 @@ window.AdminAPI = (function() {
       } finally {
         btn.disabled = false;
         btn.textContent = 'Regenerate with Gemini';
+      }
+    }
+
+    // --- Complete with AI (for truncated posts) ---
+    async function handleCompleteAI() {
+      var title = document.getElementById('ed-title').value.trim();
+      var body = document.getElementById('ed-body').value.trim();
+      if (!title || !body) {
+        alert('Title and body are required to complete.');
+        return;
+      }
+      var btn = document.getElementById('btn-complete-ai');
+      btn.disabled = true;
+      btn.textContent = 'Completing...';
+      try {
+        var result = await AdminAPI.apiPost('/api/generate/content/complete', { title: title, body: body });
+        if (result.completedContent) {
+          document.getElementById('ed-body').value = body + '\n\n' + result.completedContent;
+          state.editingPost.body = document.getElementById('ed-body').value;
+          window.updatePreview();
+          showToast('Content completed! Review and save.', 'success');
+        } else {
+          alert('Completion returned empty. Try again.');
+        }
+      } catch (err) {
+        alert('Completion failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Complete with AI';
       }
     }
 

@@ -4,6 +4,7 @@ excerpt: "Many people struggle to get useful outputs from AI because they don't 
 publishDate: "2026-07-05"
 featuredImage: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800"
 featured: false
+draft: true
 categories:
   - "Productivity"
 tags:

@@ -28,7 +28,7 @@ const PIXABAY_CAT_MAP = {
 const SEARCH_CAT_MAP = {
   'Future of Work': 'business office',
   'AI Tools': 'technology computer',
-  'Content Creation': 'creative writing',
+  'Content Creation': null,
   'Productivity': 'business workflow',
   'Creativity': 'creative design',
   'AI News': 'technology science',
@@ -40,7 +40,15 @@ const SEARCH_CAT_MAP = {
 };
 
 function getPixabayCategory(cat) { return PIXABAY_CAT_MAP[cat] || ''; }
-function getSearchCategory(cat) { return SEARCH_CAT_MAP[cat] || ''; }
+function getSearchCategory(title, cat) {
+  if (cat === 'Content Creation' && title) {
+    const lower = title.toLowerCase();
+    if (/\b(education|learning|teach|course|tutorial|class|student|school|college|university)\b/.test(lower)) return 'education';
+    if (/\b(write|writing|author|story|storytelling|article|blog|content|creative)\b/.test(lower)) return 'creative writing';
+    return 'creative content';
+  }
+  return SEARCH_CAT_MAP[cat] || '';
+}
 
 function extractKeywords(title, categories) {
   const stopWords = new Set(['how','to','the','a','an','is','are','was','were','for','with','in','on','at','and','or','of','its','this','that','what','why','when','where','which','who','does','do','can','will','has','have','had','but','not','all','be','by','from','it','no','so','up','if','as','about','into','than','then','them','they','your','you']);
@@ -186,7 +194,7 @@ async function fetchFeaturedImage(title, categories) {
 
   const kws = imageKeywords || [];
   const cat = categories || '';
-  const searchCat = getSearchCategory(cat);
+  const searchCat = getSearchCategory(title, cat);
   const pixCat = getPixabayCategory(cat);
 
   if (UNSPLASH_KEY && kws.length > 0) {
@@ -194,7 +202,7 @@ async function fetchFeaturedImage(title, categories) {
     for (const kw of kws) {
       const enriched = searchCat ? `${kw} ${searchCat}` : kw;
       try {
-        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(enriched)}&per_page=3&orientation=landscape&client_id=${UNSPLASH_KEY}`;
+        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(enriched)}&per_page=10&orientation=landscape&client_id=${UNSPLASH_KEY}`;
         const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
@@ -215,13 +223,24 @@ async function fetchFeaturedImage(title, categories) {
     for (const kw of kws) {
       const enriched = searchCat ? `${kw} ${searchCat}` : kw;
       try {
-        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(enriched)}&per_page=3&orientation=landscape`;
+        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(enriched)}&per_page=10&orientation=landscape`;
         const res = await fetch(url, { headers: pexelsHeaders, signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
           if (data.photos && data.photos.length > 0) {
             console.log(`  [image] <- Pexels (keyword: "${enriched}")`);
             return data.photos[0].src.medium;
+          }
+          if (data.photos && data.photos.length === 0 && enriched !== kw) {
+            const fallbackUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(kw)}&per_page=10&orientation=landscape`;
+            const fallbackRes = await fetch(fallbackUrl, { headers: pexelsHeaders, signal: AbortSignal.timeout(5000) });
+            if (fallbackRes.ok) {
+              const fallbackData = await fallbackRes.json();
+              if (fallbackData.photos && fallbackData.photos.length > 0) {
+                console.log(`  [image] <- Pexels (fallback kw: "${kw}")`);
+                return fallbackData.photos[0].src.medium;
+              }
+            }
           }
         }
       } catch {}
@@ -232,7 +251,7 @@ async function fetchFeaturedImage(title, categories) {
     console.log(`  [image] Pexels failed, trying Pixabay with ${kws.length} keyword sets`);
     for (const kw of kws) {
       try {
-        let url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(kw)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
+        let url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(kw)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=10`;
         if (pixCat) url += `&category=${pixCat}`;
         const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
         if (res.ok) {
@@ -435,7 +454,7 @@ async function callGroq(prompt) {
       model: 'llama-3.3-70b-versatile',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
-      max_tokens: 2500,
+      max_tokens: 8192,
     }),
   });
   if (!res.ok) {
@@ -633,18 +652,17 @@ router.post('/images/search', async (req, res) => {
       return res.status(400).json({ error: 'query is required' });
     }
     const keywords = extractKeywords(query);
-    const searchCat = getSearchCategory(category || '');
+    const searchCat = getSearchCategory(query, category || '');
     const pixCat = getPixabayCategory(category || '');
     const enriched = searchCat ? `${keywords} ${searchCat}` : keywords;
     const pexelsHeaders = { 'Authorization': PEXELS_KEY ? `Bearer ${PEXELS_KEY}` : '' };
 
-    const [unsplashRes, pexelsRes, pixabayRes] = await Promise.allSettled([
+    const [unsplashRes, pixabayRes] = await Promise.allSettled([
       UNSPLASH_KEY
-        ? fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(enriched)}&per_page=6&orientation=landscape&client_id=${UNSPLASH_KEY}`, { signal: AbortSignal.timeout(6000) })
+        ? fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(enriched)}&per_page=10&orientation=landscape&client_id=${UNSPLASH_KEY}`, { signal: AbortSignal.timeout(6000) })
         : Promise.reject(new Error('no key')),
-      fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(enriched)}&per_page=6&orientation=landscape`, { headers: pexelsHeaders, signal: AbortSignal.timeout(6000) }),
       PIXABAY_KEY
-        ? fetch(`https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=6${pixCat ? `&category=${pixCat}` : ''}`, { signal: AbortSignal.timeout(6000) })
+        ? fetch(`https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=10${pixCat ? `&category=${pixCat}` : ''}`, { signal: AbortSignal.timeout(6000) })
         : Promise.reject(new Error('no key')),
     ]);
 
@@ -669,22 +687,32 @@ router.post('/images/search', async (req, res) => {
       } catch {}
     }
 
-    if (pexelsRes.status === 'fulfilled' && pexelsRes.value.ok) {
-      try {
-        const data = await pexelsRes.value.json();
-        if (data.photos) {
-          for (const p of data.photos) {
-            images.push({
-              url: p.src.large,
-              preview: p.src.medium,
-              tags: p.alt || '',
-              author: p.photographer || '',
-              source: 'pexels',
-            });
+    try {
+      let pexelsUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(enriched)}&per_page=10&orientation=landscape`;
+      const pexelsRes = await fetch(pexelsUrl, { headers: pexelsHeaders, signal: AbortSignal.timeout(6000) });
+      if (pexelsRes.ok) {
+        const data = await pexelsRes.json();
+        let pexelsPhotos = data.photos || [];
+        if (pexelsPhotos.length === 0 && enriched !== keywords) {
+          const fallbackUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(keywords)}&per_page=10&orientation=landscape`;
+          const fallbackRes = await fetch(fallbackUrl, { headers: pexelsHeaders, signal: AbortSignal.timeout(6000) });
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json();
+            pexelsPhotos = fallbackData.photos || [];
+            if (pexelsPhotos.length > 0) console.log(`  [search] Pexels fallback kw: "${keywords}"`);
           }
         }
-      } catch {}
-    }
+        for (const p of pexelsPhotos) {
+          images.push({
+            url: p.src.large,
+            preview: p.src.medium,
+            tags: p.alt || '',
+            author: p.photographer || '',
+            source: 'pexels',
+          });
+        }
+      }
+    } catch {}
 
     if (pixabayRes.status === 'fulfilled' && pixabayRes.value.ok) {
       try {
@@ -704,6 +732,45 @@ router.post('/images/search', async (req, res) => {
     }
 
     return res.json({ images });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/content/complete', async (req, res) => {
+  try {
+    const { title, body } = req.body;
+    if (!title || !body) {
+      return res.status(400).json({ error: 'title and body are required' });
+    }
+
+    const prompt = `You are an AI writing assistant that completes blog posts for Aethel_AI, a blog about AI and automation for everyday people.
+
+Below is an existing blog post that was truncated (cut off mid-sentence). Your task is to COMPLETE it without changing a single word of the existing text.
+
+EXISTING TITLE:
+${title}
+
+EXISTING CONTENT:
+${body}
+
+INSTRUCTIONS:
+1. Do NOT modify, remove, or rewrite any existing text. Append only.
+2. Analyze the writing style of the existing content — its sentence structure, vocabulary, use of examples, paragraph length, and overall tone.
+3. Complete the content naturally from where it was cut off.
+4. Target total article length: 800-1200 words (including existing content).
+5. Maintain the "Aethel voice": professional yet conversational, insightful yet accessible, uses real-world examples, first-person when natural.
+6. End with a "The Takeaway" section with 3 key points marked as **Takeaway 1**, **Takeaway 2**, **Takeaway 3**.
+7. Format in Markdown.
+
+Output ONLY the completed portion — the text that should be appended to the existing content. Do not repeat any existing text.`;
+
+    const completed = await callGroq(prompt);
+    if (!completed) {
+      return res.status(500).json({ error: 'Completion failed: Groq returned empty response' });
+    }
+
+    return res.json({ completedContent: completed });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
