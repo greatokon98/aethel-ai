@@ -92,4 +92,4 @@ Here is how these tools fit together for a typical content creator:
 
 AI tools are accelerators, not creators. They are most powerful when you bring the strategy, the expertise, and the voice. The tool just makes it faster.
 
-Pick one tool from this list — just one — and master it before trying the next. That is how you build a workflow that actually sticks
+Pick one tool from this list — just one — and master it before trying the next. That is how you build a workflow that actually sticks.
