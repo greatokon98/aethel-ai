@@ -2,7 +2,7 @@
 title: "AI Writing Assistant: Keep Your Voice Intact"
 excerpt: "As you consider using an AI writing assistant, you're likely wondering how to keep your unique voice and style intact, rather than ending up with generic, ro..."
 publishDate: "2026-07-05"
-featuredImage: "https://pixabay.com/get/g7c9b1ca27577c15af96425658e5e884f5e814d3371df592baca82a21b540ba5d38de282bcaf89e2a7128410e6e24b3e21c10221b3de133b8aaac46b11e0b57ad_1280.jpg"
+featuredImage: "https://images.unsplash.com/photo-1515378960530-7c0da6231fb1?w=800"
 featured: false
 draft: false
 categories:
