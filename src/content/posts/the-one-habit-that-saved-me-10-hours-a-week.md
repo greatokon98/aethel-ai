@@ -3,14 +3,14 @@ title: "The One Habit That Saved Me 10 Hours a Week"
 excerpt: "It wasn't a new app or a fancy tool. It was a simple question I started asking before every task."
 publishDate: "2026-06-13"
 featuredImage: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=800"
-featured: false
-draft: true
+featured: true
+draft: false
 categories:
-  - Productivity
-  - Workflow
+  - "Productivity"
+  - "Workflow"
 tags:
-  - habits
-  - time management
+  - "habits"
+  - "time management"
 author: "Aethel"
 ---
 
@@ -57,3 +57,4 @@ Here's your challenge: this week, before every recurring task, ask yourself the 
 "Could this be done automatically?"
 
 The answer might surprise you. And you might get your evening back.
+
