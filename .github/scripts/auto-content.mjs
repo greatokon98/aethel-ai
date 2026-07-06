@@ -550,7 +550,7 @@ Reply with just the category name.`;
   let category = 'AI News';
   try {
     const catResponse = await callGemini(catPrompt);
-    const validCats = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work'];
+    const validCats = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work', 'Tech News', 'Business News'];
     const matched = validCats.find(c => catResponse.includes(c));
     if (matched) category = matched;
   } catch {}

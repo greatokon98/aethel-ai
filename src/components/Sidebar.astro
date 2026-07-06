@@ -154,29 +154,37 @@ const displayPopular = (() => {
     var gap = 16;
     var itemHeight = items[0].offsetHeight + gap;
     var visible = 5;
-    wrapper.style.maxHeight = (visible * itemHeight) + 'px';
     var clone = list.cloneNode(true);
     clone.id = innerId + '-clone';
     wrapper.appendChild(clone);
     var scrollSpeed = 0.5;
+    var currentSpeed = 0;
+    var accelerating = false;
     var isPaused = false;
-    var rafId = null;
+    var intervalId = null;
     var pos = 0;
     var totalHeight = list.scrollHeight;
-    wrapper.onmouseenter = function() { isPaused = true; };
-    wrapper.onmouseleave = function() { isPaused = false; };
+    wrapper.onmouseenter = function() { isPaused = true; accelerating = false; };
+    wrapper.onmouseleave = function() { isPaused = false; accelerating = true; currentSpeed = 0.05; };
     function step() {
       if (!isPaused) {
-        pos += scrollSpeed;
+        if (accelerating) {
+          currentSpeed = Math.min(currentSpeed + 0.015, scrollSpeed);
+          if (currentSpeed >= scrollSpeed) accelerating = false;
+        }
+        pos += currentSpeed;
         if (pos >= totalHeight) pos = 0;
         wrapper.scrollTop = pos;
       }
-      rafId = requestAnimationFrame(step);
     }
-    rafId = requestAnimationFrame(step);
-    return { wrapper: wrapper, list: list, clone: clone, rafId: rafId, reset: function() {
+    intervalId = setInterval(step, 16);
+    return { wrapper: wrapper, list: list, clone: clone, intervalId: intervalId, reset: function() {
       pos = 0;
       wrapper.scrollTop = 0;
+    }, setPaused: function(p) {
+      isPaused = p;
+      if (!p) { accelerating = true; currentSpeed = 0.05; }
+      else { accelerating = false; currentSpeed = 0; }
     }};
   }
 
@@ -210,6 +218,20 @@ const displayPopular = (() => {
     }, 300);
   }
 
+  function syncWidgetHeights() {
+    var popularContainer = document.getElementById('sidebar-popular-posts');
+    var trendingScroll = document.getElementById('sidebar-trending-scroll');
+    if (!popularContainer || !trendingScroll) return;
+    var popularWidget = popularContainer.closest('.sidebar__widget');
+    var trendingWidget = trendingScroll.closest('.sidebar__widget');
+    if (!popularWidget || !trendingWidget) return;
+    var popularHeight = popularWidget.offsetHeight;
+    var titleEl = trendingWidget.querySelector('.sidebar__widget-title');
+    var titleHeight = titleEl ? titleEl.offsetHeight : 0;
+    var padding = 48;
+    trendingScroll.style.maxHeight = Math.max(200, popularHeight - titleHeight - padding) + 'px';
+  }
+
   document.addEventListener('DOMContentLoaded', function() {
     // --- Trending Now: batch cycle with scroll ---
     var trendingList = document.getElementById('sidebar-trending-list');
@@ -225,22 +247,32 @@ const displayPopular = (() => {
     var trendingIdx = 0;
     var trendingScroll = initSidebarScroll('sidebar-trending-scroll', 'sidebar-trending-list');
     if (trendingBatches.length > 1) {
+      var trendingTick = 0;
       setInterval(function() {
-        trendingIdx = (trendingIdx + 1) % trendingBatches.length;
-        renderTrendingBatch(trendingBatches[trendingIdx]);
-        // Re-init scroll with new content
-        if (trendingScroll) trendingScroll.reset();
-        var w = document.getElementById('sidebar-trending-scroll');
-        var l = document.getElementById('sidebar-trending-list');
-        if (w && l) {
-          // Remove old clone if any
-          var oldClone = document.getElementById('sidebar-trending-list-clone');
-          if (oldClone) oldClone.remove();
-          // Re-init scroll
-          var ns = initSidebarScroll('sidebar-trending-scroll', 'sidebar-trending-list');
-          if (ns) trendingScroll = ns;
+        trendingTick++;
+        if (trendingTick % 2 === 1) {
+          // Odd tick: pause scroll
+          if (trendingScroll && trendingScroll.setPaused)
+            trendingScroll.setPaused(true);
+        } else {
+          // Even tick: switch batch, unpause
+          trendingTick = 0;
+          trendingIdx = (trendingIdx + 1) % trendingBatches.length;
+          renderTrendingBatch(trendingBatches[trendingIdx]);
+          if (trendingScroll) trendingScroll.reset();
+          var w = document.getElementById('sidebar-trending-scroll');
+          var l = document.getElementById('sidebar-trending-list');
+          if (w && l) {
+            var oldClone = document.getElementById('sidebar-trending-list-clone');
+            if (oldClone) oldClone.remove();
+            var ns = initSidebarScroll('sidebar-trending-scroll', 'sidebar-trending-list');
+            if (ns) {
+              trendingScroll = ns;
+              trendingScroll.setPaused(false);
+            }
+          }
         }
-      }, 60000);
+      }, 30000);
     }
 
     // --- Popular Posts: batch cycle with fade ---
@@ -260,6 +292,14 @@ const displayPopular = (() => {
         renderPopularBatch(popularBatches[popularIdx]);
       }, 60000);
     }
+
+    // Sync trending height to popular widget
+    syncWidgetHeights();
+    var _resizeTimer = null;
+    window.addEventListener('resize', function() {
+      clearTimeout(_resizeTimer);
+      _resizeTimer = setTimeout(syncWidgetHeights, 200);
+    });
   });
 })();
 </script>
@@ -343,7 +383,8 @@ const displayPopular = (() => {
   }
 
   .sidebar__trending-item {
-    display: block;
+    display: flex;
+    flex-direction: column;
     text-decoration: none;
     padding-bottom: var(--space-4);
     border-bottom: 1px solid var(--color-border);
@@ -363,6 +404,9 @@ const displayPopular = (() => {
     line-height: var(--leading-snug);
     transition: color var(--transition);
     position: relative;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
   }
   .sidebar__trending-title::after {
     content: '';
@@ -390,6 +434,7 @@ const displayPopular = (() => {
     font-family: var(--font-body);
     font-size: var(--text-sm);
     color: var(--color-text-muted);
+    margin-top: auto;
   }
   .sidebar__popular-fade {
     transition: opacity 300ms ease;
@@ -465,6 +510,7 @@ const displayPopular = (() => {
   .sidebar__trending-scroll {
     overflow: hidden;
     position: relative;
+    will-change: scroll-position;
   }
 
   .sidebar__posts {

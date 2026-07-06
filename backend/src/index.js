@@ -13,6 +13,7 @@ import trendingRoutes from './routes/trending.js';
 import popularRoutes from './routes/popular.js';
 import generateRoutes from './routes/generate.js';
 import healthRoutes from './routes/health.js';
+import postsRoutes from './routes/posts.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +32,7 @@ app.use('/api/automation-runs', requireAuth, automationRoutes);
 app.use('/api/trending', requireAuth, trendingRoutes);
 app.use('/api/popular', requireAuth, popularRoutes);
 app.use('/api/generate', requireAuth, generateRoutes);
+app.use('/api/posts', requireAuth, postsRoutes);
 
 // 404
 app.use((_req, res) => {
