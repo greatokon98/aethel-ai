@@ -10,7 +10,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "dev:admin": "npx decap-server"
+    "dev:admin": "npx decap-server",
+    "redeploy": "HOOK=$(cat .deploy-hook-url 2>/dev/null) && test -n \"$HOOK\" && curl -s -X POST \"$HOOK\" || echo 'No .deploy-hook-url file found. Run: echo \"YOUR_HOOK_URL\" > .deploy-hook-url'"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.2",

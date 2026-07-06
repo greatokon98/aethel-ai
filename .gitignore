@@ -1,8 +1,11 @@
 node_modules/
 dist/
-.vercel/
-.astro/
-.netlify/
+.env
+.env.local
 .DS_Store
 *.log
-.env
+.vite/
+.astro/
+.vercel/
+.netlify/
+.deploy-hook-url

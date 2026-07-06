@@ -587,6 +587,16 @@ router.post('/images/normalize', async (req, res) => {
   }
 });
 
+router.get('/images/debug', (req, res) => {
+  res.json({
+    unsplash_key_set: !!UNSPLASH_KEY,
+    unsplash_key_len: UNSPLASH_KEY ? UNSPLASH_KEY.length : 0,
+    pixabay_key_set: !!PIXABAY_KEY,
+    groq_key_set: !!GROQ_KEY,
+    node_version: process.version,
+  });
+});
+
 router.post('/images/search', async (req, res) => {
   try {
     const { query } = req.body;
