@@ -4,13 +4,13 @@ excerpt: "Need an image for a presentation, blog post, or social media? Describe
 publishDate: "2026-06-10"
 featuredImage: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=800"
 featured: false
-draft: true
+draft: false
 categories:
-  - Smart Tools
-  - Creativity
+  - "Smart Tools"
+  - "Creativity"
 tags:
-  - images
-  - design
+  - "images"
+  - "design"
 author: "Aethel"
 ---
 
