@@ -23,18 +23,6 @@ app.use(express.json({ limit: '2mb' }));
 // Public routes (no auth)
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
-app.get('/api/env-check', (req, res) => {
-  res.json({
-    unsplash_key_set: !!process.env.UNSPLASH_ACCESS_KEY,
-    unsplash_key_len: process.env.UNSPLASH_ACCESS_KEY ? process.env.UNSPLASH_ACCESS_KEY.length : 0,
-    pixabay_key_set: !!process.env.PIXABAY_API_KEY,
-    groq_key_set: !!process.env.GROQ_API_KEY,
-    gemini_key_set: !!process.env.GEMINI_API_KEY,
-    hf_key_set: !!process.env.HF_API_KEY,
-    node_version: process.version,
-  });
-});
-
 // Protected routes
 app.use('/api/messages', requireAuth, messagesRoutes);
 app.use('/api/search-queries', requireAuth, searchRoutes);

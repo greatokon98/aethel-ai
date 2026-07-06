@@ -1175,7 +1175,7 @@ window.AdminAPI = (function() {
           render();
           // Auto-generate featured image from title
           try {
-            var data = await AdminAPI.apiPost('/api/generate/images/generate', { title: title });
+            var data = await AdminAPI.apiPost('/api/generate/images/generate', { title: title, category: 'AI News' });
             if (data.url) {
               var imgEl = document.getElementById('ed-image');
               if (imgEl) imgEl.value = data.url;
@@ -1673,7 +1673,8 @@ window.AdminAPI = (function() {
       btn.disabled = true;
       btn.textContent = 'Generating...';
       try {
-        var data = await AdminAPI.apiPost('/api/generate/images/generate', { title: title });
+        var cat = state.editingPost && state.editingPost.categories ? state.editingPost.categories[0] : '';
+        var data = await AdminAPI.apiPost('/api/generate/images/generate', { title: title, category: cat });
         if (data.url) {
           document.getElementById('ed-image').value = data.url;
         } else {
@@ -1710,7 +1711,8 @@ window.AdminAPI = (function() {
         goBtn.disabled = true;
         goBtn.textContent = 'Searching...';
 
-        AdminAPI.apiPost('/api/generate/images/search', { query: q })
+        var cat = state.editingPost && state.editingPost.categories ? state.editingPost.categories[0] : '';
+        AdminAPI.apiPost('/api/generate/images/search', { query: q, category: cat })
           .then(function(data) {
             goBtn.disabled = false;
             goBtn.textContent = 'Search';

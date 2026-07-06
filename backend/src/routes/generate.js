@@ -7,8 +7,40 @@ const router = Router();
 
 const GROQ_KEY = process.env.GROQ_API_KEY;
 const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
+const PEXELS_KEY = process.env.PEXELS_API_KEY;
 const PIXABAY_KEY = process.env.PIXABAY_API_KEY;
 const VALID_CATS = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work'];
+
+const PIXABAY_CAT_MAP = {
+  'Future of Work': 'business',
+  'AI Tools': 'computer',
+  'Content Creation': 'education',
+  'Productivity': 'business',
+  'Creativity': 'education',
+  'AI News': 'science',
+  'AI in Healthcare': 'health',
+  'Automation': 'industry',
+  'Entrepreneurship': 'business',
+  'Workflow': 'business',
+  'Industry': 'industry',
+};
+
+const SEARCH_CAT_MAP = {
+  'Future of Work': 'business office',
+  'AI Tools': 'technology computer',
+  'Content Creation': 'creative writing',
+  'Productivity': 'business workflow',
+  'Creativity': 'creative design',
+  'AI News': 'technology science',
+  'AI in Healthcare': 'health medical',
+  'Automation': 'industry technology',
+  'Entrepreneurship': 'business startup',
+  'Workflow': 'business organization',
+  'Industry': 'industry factory',
+};
+
+function getPixabayCategory(cat) { return PIXABAY_CAT_MAP[cat] || ''; }
+function getSearchCategory(cat) { return SEARCH_CAT_MAP[cat] || ''; }
 
 function extractKeywords(title, categories) {
   const stopWords = new Set(['how','to','the','a','an','is','are','was','were','for','with','in','on','at','and','or','of','its','this','that','what','why','when','where','which','who','does','do','can','will','has','have','had','but','not','all','be','by','from','it','no','so','up','if','as','about','into','than','then','them','they','your','you']);
@@ -153,19 +185,23 @@ async function fetchFeaturedImage(title, categories) {
   if (image) { console.log('  [image] <- FLUX.1-schnell'); return image; }
 
   const kws = imageKeywords || [];
+  const cat = categories || '';
+  const searchCat = getSearchCategory(cat);
+  const pixCat = getPixabayCategory(cat);
 
   if (UNSPLASH_KEY && kws.length > 0) {
     console.log(`  [image] Flux failed, trying Unsplash with ${kws.length} keyword sets`);
     for (const kw of kws) {
+      const enriched = searchCat ? `${kw} ${searchCat}` : kw;
       try {
-        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(kw)}&per_page=3&orientation=landscape&client_id=${UNSPLASH_KEY}`;
+        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(enriched)}&per_page=3&orientation=landscape&client_id=${UNSPLASH_KEY}`;
         const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
           if (data.results && data.results.length > 0) {
             const raw = data.results[0].urls.raw;
             const finalUrl = raw.includes('?') ? raw.split('?')[0] + '?w=800' : raw + '?w=800';
-            console.log(`  [image] <- Unsplash (keyword: "${kw}")`);
+            console.log(`  [image] <- Unsplash (keyword: "${enriched}")`);
             return finalUrl;
           }
         }
@@ -175,14 +211,16 @@ async function fetchFeaturedImage(title, categories) {
 
   if (kws.length > 0) {
     console.log(`  [image] Unsplash failed, trying Pexels with ${kws.length} keyword sets`);
+    const pexelsHeaders = { 'Authorization': PEXELS_KEY ? `Bearer ${PEXELS_KEY}` : '' };
     for (const kw of kws) {
+      const enriched = searchCat ? `${kw} ${searchCat}` : kw;
       try {
-        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(kw)}&per_page=3&orientation=landscape`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+        const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(enriched)}&per_page=3&orientation=landscape`;
+        const res = await fetch(url, { headers: pexelsHeaders, signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
           if (data.photos && data.photos.length > 0) {
-            console.log(`  [image] <- Pexels (keyword: "${kw}")`);
+            console.log(`  [image] <- Pexels (keyword: "${enriched}")`);
             return data.photos[0].src.medium;
           }
         }
@@ -194,12 +232,13 @@ async function fetchFeaturedImage(title, categories) {
     console.log(`  [image] Pexels failed, trying Pixabay with ${kws.length} keyword sets`);
     for (const kw of kws) {
       try {
-        const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(kw)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
+        let url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(kw)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=3`;
+        if (pixCat) url += `&category=${pixCat}`;
         const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
         if (res.ok) {
           const data = await res.json();
           if (data.hits && data.hits.length > 0) {
-            console.log(`  [image] <- Pixabay (keyword: "${kw}")`);
+            console.log(`  [image] <- Pixabay (keyword: "${kw}"${pixCat ? `, cat: ${pixCat}` : ''})`);
             return data.hits[0].webformatURL;
           }
         }
@@ -559,11 +598,11 @@ router.post('/regenerate/gemini', async (req, res) => {
 
 router.post('/images/generate', async (req, res) => {
   try {
-    const { title } = req.body;
+    const { title, category } = req.body;
     if (!title) {
       return res.status(400).json({ error: 'title is required' });
     }
-    const url = await fetchFeaturedImage(title, '');
+    const url = await fetchFeaturedImage(title, category || '');
     const source = url.startsWith('data:') ? 'flux' :
       url.includes('unsplash.com') ? 'unsplash' :
       url.includes('pexels.com') ? 'pexels' :
@@ -589,19 +628,23 @@ router.post('/images/normalize', async (req, res) => {
 
 router.post('/images/search', async (req, res) => {
   try {
-    const { query } = req.body;
+    const { query, category } = req.body;
     if (!query) {
       return res.status(400).json({ error: 'query is required' });
     }
     const keywords = extractKeywords(query);
+    const searchCat = getSearchCategory(category || '');
+    const pixCat = getPixabayCategory(category || '');
+    const enriched = searchCat ? `${keywords} ${searchCat}` : keywords;
+    const pexelsHeaders = { 'Authorization': PEXELS_KEY ? `Bearer ${PEXELS_KEY}` : '' };
 
     const [unsplashRes, pexelsRes, pixabayRes] = await Promise.allSettled([
       UNSPLASH_KEY
-        ? fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(keywords)}&per_page=6&orientation=landscape&client_id=${UNSPLASH_KEY}`, { signal: AbortSignal.timeout(6000) })
+        ? fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(enriched)}&per_page=6&orientation=landscape&client_id=${UNSPLASH_KEY}`, { signal: AbortSignal.timeout(6000) })
         : Promise.reject(new Error('no key')),
-      fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(keywords)}&per_page=6&orientation=landscape`, { signal: AbortSignal.timeout(6000) }),
+      fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(enriched)}&per_page=6&orientation=landscape`, { headers: pexelsHeaders, signal: AbortSignal.timeout(6000) }),
       PIXABAY_KEY
-        ? fetch(`https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=6`, { signal: AbortSignal.timeout(6000) })
+        ? fetch(`https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=6${pixCat ? `&category=${pixCat}` : ''}`, { signal: AbortSignal.timeout(6000) })
         : Promise.reject(new Error('no key')),
     ]);
 
