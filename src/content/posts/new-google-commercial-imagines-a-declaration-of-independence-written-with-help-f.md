@@ -4,8 +4,9 @@ excerpt: "As I watched the new Google commercial imagining a Declaration of Inde
 publishDate: "2026-07-05"
 featuredImage: "https://pixabay.com/get/g3f1a370e02846a836c61eb58b19cd6e0679796ac339ffc25d60604165b59f11d521489dde5bcea4f4d4b81ee39a6bb3cdb1ae1ae4f8e1bcf5ede4ed01ee804c4_1280.jpg"
 featured: false
+draft: false
 categories:
-  - "AI News"
+  - "Tech News"
 tags:
   - "trending"
   - "AI writing"
