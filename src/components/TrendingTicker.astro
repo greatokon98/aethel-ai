@@ -1,0 +1,142 @@
+---
+export interface Props {
+  trendingPosts: Array<{
+    title: string;
+    slug: string;
+    publishDate: Date;
+  }>;
+  isHomePage?: boolean;
+}
+
+const { trendingPosts, isHomePage = false } = Astro.props;
+const paceClass = isHomePage ? 'ticker-track--slow' : 'ticker-track--normal';
+---
+
+<div class="ticker-viewport" id="sidebar-trending-viewport" data-state="running">
+  <div class={`ticker-track ${paceClass}`}>
+    <div class="ticker-group">
+      {trendingPosts.map((post) => (
+        <a href={`/posts/${post.slug}`} class="ticker-card">
+          <span class="ticker-card__title">{post.title}</span>
+          <time class="ticker-card__date" datetime={post.publishDate.toISOString()}>
+            {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </time>
+        </a>
+      ))}
+    </div>
+    <div class="ticker-group" aria-hidden="true">
+      {trendingPosts.map((post) => (
+        <a href={`/posts/${post.slug}`} class="ticker-card">
+          <span class="ticker-card__title">{post.title}</span>
+          <time class="ticker-card__date" datetime={post.publishDate.toISOString()}>
+            {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </time>
+        </a>
+      ))}
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var viewport = document.getElementById('sidebar-trending-viewport');
+  if (!viewport) return;
+  document.addEventListener('visibilitychange', function() {
+    viewport.setAttribute('data-state', document.hidden ? 'paused' : 'running');
+  });
+})();
+</script>
+
+<style>
+  .ticker-viewport {
+    overflow: hidden;
+    position: relative;
+    height: 320px;
+  }
+  .ticker-viewport:hover .ticker-track {
+    animation-play-state: paused;
+  }
+  .ticker-viewport[data-state="paused"] .ticker-track {
+    animation-play-state: paused;
+  }
+
+  .ticker-track {
+    display: flex;
+    flex-direction: column;
+    will-change: transform;
+  }
+  .ticker-track--normal {
+    animation: scrollVertical 30s linear infinite;
+  }
+  .ticker-track--slow {
+    animation: scrollVertical 90s linear infinite;
+  }
+
+  @keyframes scrollVertical {
+    0%   { transform: translateY(0); }
+    100% { transform: translateY(-50%); }
+  }
+
+  .ticker-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .ticker-card {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-4);
+  }
+  .ticker-card:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .ticker-card__title {
+    font-family: var(--font-heading);
+    font-size: var(--text-base);
+    color: var(--color-text);
+    display: block;
+    margin-bottom: var(--space-1);
+    line-height: var(--leading-snug);
+    transition: color var(--transition);
+    position: relative;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+  }
+  .ticker-card__title::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: #2563EB;
+    transition: width 300ms ease;
+  }
+  [data-theme="dark"] .ticker-card__title::after {
+    background: var(--color-accent-hover);
+  }
+  .ticker-card:hover .ticker-card__title::after {
+    width: 100%;
+  }
+  .ticker-card:hover .ticker-card__title {
+    color: #2563EB;
+  }
+  [data-theme="dark"] .ticker-card:hover .ticker-card__title {
+    color: var(--color-accent-hover);
+  }
+
+  .ticker-card__date {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-top: auto;
+  }
+</style>

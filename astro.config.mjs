@@ -11,6 +11,10 @@ export default defineConfig({
   integrations: [mdx(), react()],
   site: 'https://aethel-blog.vercel.app',
   compressHTML: true,
+  prefetch: {
+    prefetchAll: true,
+    defaultStrategy: 'hover',
+  },
   devToolbar: {
     enabled: false,
   },

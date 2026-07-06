@@ -104,6 +104,7 @@ const popularPosts = posts.filter((p) => p.tags && p.tags.includes('popular'));
         </div>
         <div class="blog-grid__sidebar">
           <Sidebar
+            isHomePage={true}
             categories={allCategories}
             recentPosts={posts.map((p) => ({
               title: p.title,

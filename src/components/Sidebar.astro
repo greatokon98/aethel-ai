@@ -1,4 +1,6 @@
 ---
+import TrendingTicker from './TrendingTicker.astro';
+
 export interface Props {
   categories?: string[];
   recentPosts?: Array<{
@@ -24,9 +26,10 @@ export interface Props {
     slug: string;
     publishDate: Date;
   }>;
+  isHomePage?: boolean;
 }
 
-const { categories = [], recentPosts = [], trendingPosts = [], trending = [], popularPosts = [] } = Astro.props;
+const { categories = [], recentPosts = [], trendingPosts = [], trending = [], popularPosts = [], isHomePage = false } = Astro.props;
 
 const displayPopular = (() => {
   if (popularPosts.length > 0) {
@@ -71,30 +74,10 @@ const displayPopular = (() => {
 
   <div class="sidebar__widget">
     <h3 class="sidebar__widget-title">Trending Now</h3>
-    <div class="sidebar__trending-viewport" id="sidebar-trending-viewport" data-state="running">
-      <div class="sidebar__trending-track">
-        <div class="sidebar__trending-group">
-          {(trendingPosts.length > 0 ? trendingPosts : recentPosts).map((post) => (
-            <a href={`/posts/${post.slug}`} class="sidebar__trending-item">
-              <span class="sidebar__trending-title">{post.title}</span>
-              <time class="sidebar__trending-date" datetime={post.publishDate.toISOString()}>
-                {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </time>
-            </a>
-          ))}
-        </div>
-        <div class="sidebar__trending-group" aria-hidden="true">
-          {(trendingPosts.length > 0 ? trendingPosts : recentPosts).map((post) => (
-            <a href={`/posts/${post.slug}`} class="sidebar__trending-item">
-              <span class="sidebar__trending-title">{post.title}</span>
-              <time class="sidebar__trending-date" datetime={post.publishDate.toISOString()}>
-                {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </time>
-            </a>
-          ))}
-        </div>
-      </div>
-    </div>
+    <TrendingTicker
+      trendingPosts={trendingPosts.length > 0 ? trendingPosts : recentPosts}
+      isHomePage={isHomePage}
+    />
   </div>
 
   <div class="sidebar__widget sidebar__categories">
@@ -172,40 +155,7 @@ const displayPopular = (() => {
     }, 300);
   }
 
-  function initTrendingCycle() {
-    var viewport = document.getElementById('sidebar-trending-viewport');
-    if (!viewport) return;
-    var items = viewport.querySelectorAll('.sidebar__trending-item');
-    if (items.length < 2) return;
-
-    var cycleTimer, pauseTimer;
-
-    function startScroll() {
-      viewport.setAttribute('data-state', 'running');
-      clearTimeout(pauseTimer);
-      pauseTimer = setTimeout(function() {
-        viewport.setAttribute('data-state', 'paused');
-        pauseTimer = setTimeout(startScroll, 6000);
-      }, 30000);
-    }
-
-    document.addEventListener('visibilitychange', function() {
-      if (document.hidden) {
-        clearTimeout(cycleTimer);
-        clearTimeout(pauseTimer);
-        viewport.setAttribute('data-state', 'paused');
-      } else {
-        viewport.setAttribute('data-state', 'running');
-        startScroll();
-      }
-    });
-
-    startScroll();
-  }
-
   document.addEventListener('DOMContentLoaded', function() {
-    initTrendingCycle();
-
     // --- Popular Posts: batch cycle with fade ---
     var popularContainer = document.getElementById('sidebar-popular-posts');
     var popularPool = [];
@@ -300,66 +250,7 @@ const displayPopular = (() => {
     color: var(--color-text-muted);
   }
 
-  .sidebar__trending {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
 
-  .sidebar__trending-item {
-    display: flex;
-    flex-direction: column;
-    text-decoration: none;
-    padding-bottom: var(--space-4);
-    border-bottom: 1px solid var(--color-border);
-    margin-bottom: var(--space-4);
-  }
-  .sidebar__trending-item:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-  }
-  .sidebar__trending-title {
-    font-family: var(--font-heading);
-    font-size: var(--text-base);
-    color: var(--color-text);
-    display: block;
-    margin-bottom: var(--space-1);
-    line-height: var(--leading-snug);
-    transition: color var(--transition);
-    position: relative;
-    overflow-wrap: break-word;
-    word-break: break-word;
-    hyphens: auto;
-  }
-  .sidebar__trending-title::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: #2563EB;
-    transition: width 300ms ease;
-  }
-  [data-theme="dark"] .sidebar__trending-title::after {
-    background: var(--color-accent-hover);
-  }
-  .sidebar__trending-item:hover .sidebar__trending-title::after {
-    width: 100%;
-  }
-  .sidebar__trending-item:hover .sidebar__trending-title {
-    color: #2563EB;
-  }
-  [data-theme="dark"] .sidebar__trending-item:hover .sidebar__trending-title {
-    color: var(--color-accent-hover);
-  }
-  .sidebar__trending-date {
-    font-family: var(--font-body);
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
-    margin-top: auto;
-  }
   .sidebar__popular-fade {
     transition: opacity 300ms ease;
     opacity: 1;
@@ -431,32 +322,7 @@ const displayPopular = (() => {
     transform: translateX(2px);
   }
 
-  .sidebar__trending-viewport {
-    overflow: hidden;
-    position: relative;
-    height: 320px;
-  }
-  .sidebar__trending-viewport:hover .sidebar__trending-track {
-    animation-play-state: paused;
-  }
-  .sidebar__trending-viewport[data-state="paused"] .sidebar__trending-track {
-    animation-play-state: paused;
-  }
-  .sidebar__trending-track {
-    display: flex;
-    flex-direction: column;
-    animation: scrollVertical 60s linear infinite;
-    will-change: transform;
-  }
-  @keyframes scrollVertical {
-    0%   { transform: translateY(0); }
-    100% { transform: translateY(-50%); }
-  }
-  .sidebar__trending-group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
+
 
   .sidebar__posts {
     list-style: none;
@@ -601,9 +467,7 @@ const displayPopular = (() => {
       grid-column: 1 / -1;
     }
 
-    .sidebar__trending-item {
-      padding-left: 0;
-    }
+
 
     .sidebar__search,
     .sidebar__categories {
