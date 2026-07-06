@@ -678,6 +678,9 @@ window.AdminAPI = (function() {
         if (f.status === 'draft' && !p.draft) return false;
         if (f.status === 'live' && p.draft) return false;
         if (f.category !== 'all' && (!p.categories || p.categories.indexOf(f.category) === -1)) return false;
+        if (f.status === 'recent' && (!p.publishDate || new Date(p.publishDate) < new Date(Date.now() - 7 * 86400000))) return false;
+        if (f.status === 'new' && (!p.publishDate || new Date(p.publishDate) < new Date(Date.now() - 3 * 86400000))) return false;
+        if (f.status === 'newest' && (!p.publishDate || new Date(p.publishDate) < new Date(Date.now() - 86400000))) return false;
         if (f.search) {
           var q = f.search.toLowerCase();
           var title = (p.title || '').toLowerCase();
@@ -701,6 +704,9 @@ window.AdminAPI = (function() {
           '<option value="all"' + (f.status === 'all' ? ' selected' : '') + '>All Status</option>' +
           '<option value="live"' + (f.status === 'live' ? ' selected' : '') + '>Live</option>' +
           '<option value="draft"' + (f.status === 'draft' ? ' selected' : '') + '>Draft</option>' +
+          '<option value="recent"' + (f.status === 'recent' ? ' selected' : '') + '>Recent (7 days)</option>' +
+          '<option value="new"' + (f.status === 'new' ? ' selected' : '') + '>New (3 days)</option>' +
+          '<option value="newest"' + (f.status === 'newest' ? ' selected' : '') + '>Newest (24h)</option>' +
         '</select>' +
         '<select class="post-filter-select" id="pf-category">' + catOpts + '</select>' +
       '</div>';
@@ -2094,7 +2100,7 @@ window.AdminAPI = (function() {
       var rowsHtml = filtered.map(function(item) {
         var date = item.publishDate ? formatDate(item.publishDate) : '';
         var cats = (item.categories || []).map(function(c) { return '<span class="post-cat">' + escapeHtml(c) + '</span>'; }).join('');
-        var tags = (item.tags || []).slice(0, 3).map(function(t) { return '<span class="post-cat" style="background:#E0E7FF;color:#4F46E5">' + escapeHtml(t) + '</span>'; }).join('');
+        var tags = (item.tags || []).slice(0, 3).map(function(t) { return '<span style="font-size:11px;color:#64748B">' + escapeHtml(t) + '</span>'; }).join('');
         var draftBadge = item.draft ? '<span class="post-draft-badge">Draft</span>' : '';
         return '<tr>' +
           '<td><div class="post-title">' + escapeHtml(item.title) + draftBadge + '</div></td>' +
