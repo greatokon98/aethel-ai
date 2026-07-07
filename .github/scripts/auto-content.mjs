@@ -51,6 +51,10 @@ function slugify(text) {
     .slice(0, 80);
 }
 
+function yamlEscape(str) {
+  return str.replace(/\\/g, "\\\\").replace(/"/g, "\\"");
+}
+
 function extractRSSItems(xml, source) {
   const items = [];
   const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
@@ -564,23 +568,26 @@ Reply with just the category name.`;
 
   const isFeatured = postType === 'featured';
   const excerpt = topic.reason || `A clear, practical guide to understanding ${topic.title.toLowerCase()} and how it affects your everyday life.`;
+  const featuredImage = await fetchFeaturedImage(topic.title, category);
+  const escapedTitle = yamlEscape(topic.title);
+  const escapedExcerpt = yamlEscape(excerpt);
+  const escapedImage = yamlEscape(featuredImage);
 
   const markdown = `---
-title: "${topic.title}"
-excerpt: "${excerpt}"
+title: "${escapedTitle}"
+excerpt: "${escapedExcerpt}"
 publishDate: "${date}"
-featuredImage: "${await fetchFeaturedImage(topic.title, category)}"
+featuredImage: "${escapedImage}"
 featured: ${isFeatured}
 categories:
   - ${category}
 tags:
-${tags.map(t => `  - ${t}`).join('\n')}
+${tags.map(t => `  - ${t}`).join("\n")}
 author: "Aethel"
 ---
 
 ${content}
 `;
-
   return { slug, markdown, type: postType };
 }
 
