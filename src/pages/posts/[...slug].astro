@@ -63,6 +63,7 @@ const recentPosts = allPosts
   .sort((a: any, b: any) => b.publishDate.getTime() - a.publishDate.getTime())
   .slice(0, 5);
 const trendingPosts = allPosts.filter((p: any) => p.tags && p.tags.includes('trending'));
+const popularPosts = allPosts.filter((p: any) => p.tags && p.tags.includes('popular'));
 const trending = await fetchTrendingNews();
 ---
 
@@ -79,6 +80,7 @@ const trending = await fetchTrendingNews();
   allCategories={allCategories}
   trendingPosts={trendingPosts}
   trending={trending}
+  popularPosts={popularPosts}
 >
   <div class="post-content" set:html={htmlContent} />
 </PostLayout>

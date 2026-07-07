@@ -63,6 +63,7 @@ const filtered = allPosts.filter((p) =>
 
 const allCategories = [...new Set(allPosts.flatMap((p) => p.categories))];
 const trendingPosts = allPosts.filter((p) => p.tags && p.tags.includes('trending'));
+const popularPosts = allPosts.filter((p) => p.tags && p.tags.includes('popular'));
 ---
 
 <BaseLayout title={categoryName} description={`Articles about ${categoryName}`}>
@@ -103,6 +104,11 @@ const trendingPosts = allPosts.filter((p) => p.tags && p.tags.includes('trending
               publishDate: p.publishDate,
             }))}
             trendingPosts={trendingPosts}
+            popularPosts={popularPosts.map((p) => ({
+              title: p.title,
+              slug: p.slug,
+              publishDate: p.publishDate,
+            }))}
           />
         </div>
       </div>

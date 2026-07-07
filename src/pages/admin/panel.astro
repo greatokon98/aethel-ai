@@ -2031,12 +2031,10 @@ window.AdminAPI = (function() {
           return;
         }
         grid.innerHTML = '<div class="fallback-status-msg">Searching ' + selectedProvider + '...</div>';
-        fetch('/api/generate/images/search', {
+        apiFetch(BASE + '/api/generate/images/search', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ provider: selectedProvider, query: queryStr })
+          body: { provider: selectedProvider, query: queryStr }
         })
-        .then(function(res) { return res.json(); })
         .then(function(imageCollection) {
           if (!Array.isArray(imageCollection) || imageCollection.length === 0) {
             grid.innerHTML = '<div class="fallback-status-msg">No results found for "' + queryStr + '" on ' + selectedProvider + '.</div>';
@@ -2057,8 +2055,9 @@ window.AdminAPI = (function() {
             });
           });
         })
-        .catch(function() {
-          grid.innerHTML = '<div class="fallback-status-msg">No results found for "' + queryStr + '" on ' + selectedProvider + '.</div>';
+        .catch(function(err) {
+          console.error('Image search error:', err);
+          grid.innerHTML = '<div class="fallback-status-msg">Search failed: ' + (err.message || 'unknown error') + '</div>';
         });
       }
 

@@ -29,6 +29,11 @@ export interface Props {
     pubDate: string;
     description: string;
   }>;
+  popularPosts?: Array<{
+    title: string;
+    slug: string;
+    publishDate: Date;
+  }>;
 }
 
 const {
@@ -44,6 +49,7 @@ const {
   trendingPosts = [],
   allCategories = [],
   trending = [],
+  popularPosts = [],
 } = Astro.props;
 
 const formattedDate = publishDate.toLocaleDateString('en-US', {
@@ -96,7 +102,7 @@ const formattedDate = publishDate.toLocaleDateString('en-US', {
           )}
         </div>
         <div class="post-page__sidebar">
-          <Sidebar categories={allCategories} recentPosts={recentPosts} trendingPosts={trendingPosts} trending={trending} />
+          <Sidebar categories={allCategories} recentPosts={recentPosts} trendingPosts={trendingPosts} trending={trending} popularPosts={popularPosts} />
         </div>
       </div>
     </div>

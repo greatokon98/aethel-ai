@@ -41,7 +41,8 @@ const popularPool = (() => {
   }
   return recentPosts.slice(0, 10);
 })();
-const displayPopular = popularPool.slice(0, 5);
+const BATCH_SIZE = 2;
+const displayPopular = popularPool.slice(0, BATCH_SIZE);
 ---
 
 <aside class="sidebar">
@@ -167,6 +168,7 @@ const displayPopular = popularPool.slice(0, 5);
       batches.push(pool.slice(j, j + BATCH));
     }
     var idx = 0;
+    renderPopularBatch(batches[0]);
     if (batches.length > 1) {
       popularCycleInterval = setInterval(function() {
         idx = (idx + 1) % batches.length;
@@ -191,6 +193,60 @@ const displayPopular = popularPool.slice(0, 5);
   document.addEventListener('astro:page-load', initPopularCycle);
 })();
 </script>
+
+<style is:global>
+  .sidebar__posts {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .sidebar__post-item {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .sidebar__post-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .sidebar__post-body { flex: 1; }
+  .sidebar__post-link {
+    font-family: var(--font-heading);
+    font-size: var(--text-base);
+    color: var(--color-text);
+    display: block;
+    margin-bottom: var(--space-1);
+    line-height: var(--leading-snug);
+    font-weight: 400;
+    transition: color var(--transition);
+    position: relative;
+  }
+  .sidebar__post-link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: #2563EB;
+    transition: width 300ms ease;
+  }
+  [data-theme="dark"] .sidebar__post-link::after {
+    background: var(--color-accent-hover);
+  }
+  .sidebar__post-link:hover::after { width: 100%; }
+  .sidebar__post-link:hover { color: #2563EB; }
+  [data-theme="dark"] .sidebar__post-link:hover { color: var(--color-accent-hover); }
+  .sidebar__post-date {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-top: auto;
+  }
+</style>
 
 <style>
   .sidebar {

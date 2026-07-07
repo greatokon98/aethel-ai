@@ -324,6 +324,7 @@ const featuredData = featured.map(p => ({
     position: relative;
     overflow: hidden;
     min-height: 520px;
+    aspect-ratio: 21 / 9;
     margin: 0 var(--space-6);
     border-radius: var(--radius-xl);
     z-index: 1;
@@ -355,7 +356,8 @@ const featuredData = featured.map(p => ({
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0.85;
+    object-position: center 30%;
+    opacity: 1;
   }
 
   .hero__slide-placeholder {
@@ -367,7 +369,7 @@ const featuredData = featured.map(p => ({
   .hero__slide-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, rgba(15, 30, 54, 0.9) 0%, rgba(15, 30, 54, 0.4) 50%, transparent 100%);
+    background: linear-gradient(to top, rgba(15, 30, 54, 0.6) 0%, rgba(15, 30, 54, 0.15) 50%, transparent 100%);
   }
 
   .hero__slide-content {
@@ -559,10 +561,11 @@ const featuredData = featured.map(p => ({
   @media (max-width: 1024px) {
     .hero__tab-title { display: none; }
     .hero__tab { padding: 14px 16px; }
-    .hero__slider { min-height: 440px; }
+    .hero__slider { min-height: 440px; aspect-ratio: 16 / 9; }
     .hero__slide-title { font-size: var(--text-4xl); }
     .hero__slide-content { padding: 0 var(--space-8) var(--space-8); }
     .hero__overlay { display: none !important; }
+    .hero__tabs { display: none; }
     .hero__cta,
     .hero__tag,
     .hero__title,
@@ -575,6 +578,7 @@ const featuredData = featured.map(p => ({
   @media (max-width: 768px) {
     .hero__slider {
       min-height: 320px;
+      aspect-ratio: 4 / 3;
       margin: 0 var(--space-4);
       border-radius: var(--radius-lg);
     }
@@ -598,7 +602,7 @@ const featuredData = featured.map(p => ({
       position: absolute;
       inset: 0;
       z-index: 20;
-      padding: var(--space-12);
+      padding: var(--space-6);
       pointer-events: none;
     }
 
@@ -631,21 +635,29 @@ const featuredData = featured.map(p => ({
 
     .hero__title {
       font-family: var(--font-heading);
-      font-size: var(--text-5xl);
+      font-size: var(--text-4xl);
       color: white;
       font-weight: 500;
       line-height: var(--leading-tight);
       letter-spacing: -0.02em;
-      margin-bottom: var(--space-3);
+      margin-bottom: var(--space-2);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .hero__desc {
       font-family: var(--font-body);
       font-size: var(--text-lg);
       color: rgba(255, 255, 255, 0.8);
-      margin-bottom: var(--space-5);
+      margin-bottom: var(--space-3);
       font-weight: 300;
       line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .hero__meta {
@@ -655,7 +667,7 @@ const featuredData = featured.map(p => ({
       font-family: var(--font-body);
       font-size: var(--text-sm);
       color: rgba(255, 255, 255, 0.6);
-      margin-bottom: var(--space-5);
+      margin-bottom: var(--space-3);
     }
 
     .hero__meta-dot {
