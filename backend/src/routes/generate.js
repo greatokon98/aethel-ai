@@ -55,12 +55,7 @@ function getSearchCategory(title, cat) {
 }
 
 function extractKeywords(title, categories) {
-  const stopWords = new Set(['how','to','the','a','an','is','are','was','were','for','with','in','on','at','and','or','of','its','this','that','what','why','when','where','which','who','does','do','can','will','has','have','had','but','not','all','be','by','from','it','no','so','up','if','as','about','into','than','then','them','they','your','you']);
-  const words = title.replace(/[^a-zA-Z0-9 ]/g, '').split(' ').filter(w => w.length >= 2 && !stopWords.has(w.toLowerCase()));
-  if (categories) {
-    categories.split(',').forEach(c => { const t = c.trim(); if (t) words.push(t); });
-  }
-  return [...new Set(words)].slice(0, 4).join(' ') || title.split(' ').slice(0, 3).join(' ');
+  return title.replace(/[<>]/g, '').slice(0, 200).trim();
 }
 
 async function enrichImagePrompt(title, categories) {
@@ -650,110 +645,74 @@ router.post('/images/normalize', async (req, res) => {
 });
 
 router.post('/images/search', async (req, res) => {
-  try {
-    const { query, category, source } = req.body;
-    if (!query) {
-      return res.status(400).json({ error: 'query is required' });
-    }
-    const keywords = extractKeywords(query);
-    const searchCat = getSearchCategory(query, category || '');
-    const pixCat = getPixabayCategory(category || '');
-    const enriched = searchCat ? `${keywords} ${searchCat}` : keywords;
-    const pexelsHeaders = { 'Authorization': PEXELS_KEY ? `Bearer ${PEXELS_KEY}` : '' };
-    const PER_PAGE = 30;
-    const genericKw = category ? getSearchCategory('', category) || 'trending' : 'trending';
+  const { provider, query: rawQuery } = req.body;
 
-    const images = [];
+  let searchQuery = extractKeywords(rawQuery || 'ai', '');
 
-    async function searchUnsplash(q) {
-      if (!UNSPLASH_KEY || (source && source !== 'unsplash')) return;
-      const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=${PER_PAGE}&orientation=landscape&client_id=${UNSPLASH_KEY}`;
-      try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.results) {
-          for (const r of data.results) {
-            const raw = r.urls.raw;
-            const direct = (raw.includes('?') ? raw.split('?')[0] : raw) + '?w=800';
-            images.push({
-              url: direct,
-              preview: r.urls.small,
-              tags: r.alternative_slugs?.en || '',
-              author: r.user?.name || '',
-              source: 'unsplash',
-            });
-          }
-        }
-      } catch {}
-    }
+  const fallbackTerms = {
+    "ai assistant": "technology artificial intelligence",
+    "autonomous ai": "robot future tech",
+    "cybersecurity drone": "server network security",
+    "decap server metadata": "computer coding code"
+  };
 
-    async function searchPexels(q) {
-      if (source && source !== 'pexels') return;
-      const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=${PER_PAGE}&orientation=landscape`;
-      try {
-        const res = await fetch(url, { headers: pexelsHeaders, signal: AbortSignal.timeout(6000) });
-        if (!res.ok) return;
-        const data = await res.json();
-        const photos = data.photos || [];
-        for (const p of photos) {
-          images.push({
-            url: p.src.large,
-            preview: p.src.medium,
-            tags: p.alt || '',
-            author: p.photographer || '',
-            source: 'pexels',
-          });
-        }
-      } catch {}
-    }
+  async function fetchImages(term) {
+    try {
+      if (provider === 'unsplash') {
+        if (!process.env.UNSPLASH_ACCESS_KEY) return [];
+        const response = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(term)}&per_page=12`, {
+          headers: { 'Authorization': `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}` }
+        });
+        const json = await response.json();
+        return (json.results || []).map(img => ({
+          src: img.urls.regular,
+          preview: img.urls.regular,
+          author: img.user?.name || '',
+          provider: 'unsplash'
+        }));
+      }
 
-    async function searchPixabay(q) {
-      if (!PIXABAY_KEY || (source && source !== 'pixabay')) return;
-      const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(q)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=${PER_PAGE}${pixCat ? `&category=${pixCat}` : ''}`;
-      try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.hits) {
-          for (const h of data.hits) {
-            images.push({
-              url: h.largeImageURL,
-              preview: h.webformatURL,
-              tags: h.tags,
-              author: h.user,
-              source: 'pixabay',
-            });
-          }
-        }
-      } catch {}
-    }
+      if (provider === 'pexels') {
+        if (!process.env.PEXELS_API_KEY) return [];
+        const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(term)}&per_page=12`, {
+          headers: { 'Authorization': process.env.PEXELS_API_KEY }
+        });
+        const json = await response.json();
+        return (json.photos || []).map(img => ({
+          src: img.src.large,
+          preview: img.src.medium,
+          author: img.photographer || '',
+          provider: 'pexels'
+        }));
+      }
 
-    // Search with keywords first
-    await Promise.allSettled([
-      searchUnsplash(enriched),
-      searchPexels(enriched),
-      searchPixabay(keywords),
-    ]);
-
-    // Zero-result fallback: if no images from a source, retry with generic term
-    if (!source || source === 'unsplash') {
-      const unsplashCount = images.filter(i => i.source === 'unsplash').length;
-      if (unsplashCount === 0) await searchUnsplash(genericKw);
+      if (provider === 'pixabay') {
+        if (!process.env.PIXABAY_API_KEY) return [];
+        const response = await fetch(`https://pixabay.com/api/?key=${process.env.PIXABAY_API_KEY}&q=${encodeURIComponent(term)}&per_page=12`);
+        const json = await response.json();
+        return (json.hits || []).map(img => ({
+          src: img.webformatURL,
+          preview: img.webformatURL,
+          author: img.user || '',
+          provider: 'pixabay'
+        }));
+      }
+    } catch (e) {
+      console.error(`Error fetching from ${provider}:`, e);
+      return [];
     }
-    if (!source || source === 'pexels') {
-      const pexelsCount = images.filter(i => i.source === 'pexels').length;
-      if (pexelsCount === 0) await searchPexels(genericKw);
-    }
-    if (!source || source === 'pixabay') {
-      const pixabayCount = images.filter(i => i.source === 'pixabay').length;
-      if (pixabayCount === 0) await searchPixabay(genericKw);
-    }
-
-    return res.json({ images });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return [];
   }
+
+  let results = await fetchImages(searchQuery);
+
+  if (!results || results.length === 0) {
+    const lowerQuery = searchQuery.toLowerCase().trim();
+    const fallbackTerm = fallbackTerms[lowerQuery] || "artificial intelligence technology";
+    results = await fetchImages(fallbackTerm);
+  }
+
+  return res.json({ images: results });
 });
 
 router.post('/content/complete', async (req, res) => {
