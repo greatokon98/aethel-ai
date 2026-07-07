@@ -93,22 +93,24 @@ const featuredData = featured.map(p => ({
           </a>
         </div>
         <div class="hero__overlay-right" id="hero-cards">
-          {featured.map((post, index) => (
-            <button class="hero__card"
-              class:list={{ 'hero__card--active': index === 0 }}
-              data-card={index}
-              aria-label={post.title}
-            >
-              <span class="hero__card-number">{String(index + 1).padStart(2, '0')}</span>
-              <div class="hero__card-body">
-                <h4 class="hero__card-title">{post.title}</h4>
-                <p class="hero__card-excerpt">{post.excerpt}</p>
-                <div class="hero__card-progress">
-                  <div class="hero__card-progress-bar" data-card-bar={index}></div>
+          <div class="hero__cards-track" id="hero-cards-track">
+            {featured.map((post, index) => (
+              <button class="hero__card"
+                class:list={{ 'hero__card--active': index === 0 }}
+                data-card={index}
+                aria-label={post.title}
+              >
+                <span class="hero__card-number">{String(index + 1).padStart(2, '0')}</span>
+                <div class="hero__card-body">
+                  <h4 class="hero__card-title">{post.title}</h4>
+                  <p class="hero__card-excerpt">{post.excerpt}</p>
+                  <div class="hero__card-progress">
+                    <div class="hero__card-progress-bar" data-card-bar={index}></div>
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -185,6 +187,14 @@ const featuredData = featured.map(p => ({
         const bar = c.querySelector('.hero__card-progress-bar');
         if (bar) bar.style.width = '0%';
       });
+
+      // auto-scroll cards track to keep active card visible
+      var track = document.getElementById('hero-cards-track');
+      if (track && cards.length > 0) {
+        var cardHeight = cards[0].offsetHeight + 10;
+        var offset = index >= 3 ? -(index - 2) * cardHeight : 0;
+        track.style.transform = 'translateY(' + offset + 'px)';
+      }
     }
 
     // ---- go to slide ----
@@ -681,6 +691,16 @@ const featuredData = featured.map(p => ({
       display: flex;
       flex-direction: column;
       gap: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero__cards-track {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform 400ms ease;
+      will-change: transform;
     }
 
     .hero__card {
