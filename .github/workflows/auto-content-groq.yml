@@ -24,6 +24,9 @@ jobs:
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Sanitize frontmatter
+        run: node scripts/sanitize-frontmatter.mjs
+
       - name: Commit and push
         run: |
           git config user.name "Aethel Bot"
