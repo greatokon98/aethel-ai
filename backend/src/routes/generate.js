@@ -712,7 +712,7 @@ router.post('/images/search', async (req, res) => {
     results = await fetchImages(fallbackTerm);
   }
 
-  return res.json({ images: results });
+  return res.json(results);
 });
 
 router.post('/content/complete', async (req, res) => {

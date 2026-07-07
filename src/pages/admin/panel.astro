@@ -790,18 +790,22 @@ window.AdminAPI = (function() {
           (!isNew ? '<button class="btn-regenerate btn-complete-ai" id="btn-complete-ai">Complete with AI</button>' : '') +
         '</div>' +
       '</div>' +
-      '<div class="media-picker-modal" id="image-modal-overlay" style="display:none">' +
-        '<div class="search-row">' +
-          '<input type="text" id="modalSearchInput" value="ai" placeholder="Search across providers..." />' +
+      '<div class="search-image-modal" id="image-modal-overlay" style="display:none">' +
+        '<div class="modal-header-row">' +
+          '<h2 class="modal-main-title">Search Image</h2>' +
+          '<button class="modal-close-btn" id="closeModalCross">&times;</button>' +
+        '</div>' +
+        '<div class="search-bar-wrapper">' +
+          '<input type="text" id="modalSearchInput" value="ai" placeholder="Type an image keyword..." class="modal-input-field" />' +
         '</div>' +
         '<div class="provider-tabs-row">' +
-          '<button class="tab-btn active" data-provider-target="unsplash">Unsplash</button>' +
-          '<button class="tab-btn" data-provider-target="pexels">Pexels</button>' +
-          '<button class="tab-btn" data-provider-target="pixabay">Pixabay</button>' +
+          '<button class="tab-selector-btn active" data-provider-id="unsplash">Unsplash</button>' +
+          '<button class="tab-selector-btn" data-provider-id="pexels">Pexels</button>' +
+          '<button class="tab-selector-btn" data-provider-id="pixabay">Pixabay</button>' +
         '</div>' +
-        '<div class="grid-display-viewport">' +
-          '<div class="clean-image-grid" id="modalGridOutput">' +
-            '<div class="loading-state-placeholder">Type an item to browse catalog...</div>' +
+        '<div class="results-display-area">' +
+          '<div class="clean-uniform-grid" id="modalGridOutput">' +
+            '<div class="fallback-status-msg">Type a keyword and press enter to search...</div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1370,7 +1374,8 @@ window.AdminAPI = (function() {
       }
 
       // Image search modal
-      initIsolatedMediaPicker();
+      setupAstroImageModal();
+      document.addEventListener('astro:page-load', setupAstroImageModal);
 
       // Tab navigation
       qsa('.admin-tab').forEach(function(tab) {
@@ -1602,7 +1607,7 @@ window.AdminAPI = (function() {
       if (state.view !== 'dashboard') return;
       render();
       var results = await Promise.all([
-        AdminAPI.listPosts().catch(function() { return state.posts || []; }),
+        AdminAPI.listPosts(true).catch(function() { return state.posts || []; }),
         AdminAPI.loadMessages().catch(function() { return state.messages || { messages: [] }; }),
         AdminAPI.loadSearchQueries().catch(function() { return state.searchData || { queries: [] }; }),
         AdminAPI.loadAutomationRuns().catch(function() { return state.automationRuns || { runs: [] }; }),
@@ -2001,71 +2006,80 @@ window.AdminAPI = (function() {
     }
 
     // --- Image Search Modal ---
-    function initIsolatedMediaPicker() {
+    function setupAstroImageModal() {
       var overlay = document.getElementById('image-modal-overlay');
       var searchInput = document.getElementById('modalSearchInput');
       var grid = document.getElementById('modalGridOutput');
-      var tabButtons = document.querySelectorAll('[data-provider-target]');
-      if (!overlay) return;
+      var tabButtons = document.querySelectorAll('[data-provider-id]');
+      var closeBtn = document.getElementById('closeModalCross');
+      if (!overlay || !searchInput || !grid || tabButtons.length === 0) return;
 
-      var activeProvider = 'unsplash';
+      var selectedProvider = 'unsplash';
 
       function closeModal() { overlay.style.display = 'none'; }
+      if (closeBtn) closeBtn.addEventListener('click', closeModal);
       overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(); });
 
-      function triggerAssetSearch() {
-        var term = searchInput.value.trim();
-        if (!term) { term = 'ai'; searchInput.value = term; }
-        grid.innerHTML = '<div class="loading-state-placeholder">Searching ' + activeProvider + '...</div>';
-        AdminAPI.apiPost('/api/generate/images/search', { provider: activeProvider, query: term })
-          .then(function(data) {
-            if (!data.images || data.images.length === 0) {
-              grid.innerHTML = '<div class="loading-state-placeholder">No results for "' + term + '" on ' + activeProvider + '.</div>';
-              return;
-            }
-            var html = '';
-            data.images.forEach(function(img) {
-              var badgeClass = 'badge-' + (img.provider || activeProvider);
-              html += '<div class="image-asset-card" data-url="' + img.src + '">' +
-                '<span class="provider-badge ' + badgeClass + '">' + (img.provider || activeProvider) + '</span>' +
-                '<img class="card-img-element" src="' + img.preview + '" alt="" loading="lazy" />' +
-              '</div>';
+      function executeImageFetch() {
+        var queryStr = searchInput.value.trim();
+        if (!queryStr) {
+          grid.innerHTML = '<div class="fallback-status-msg">Please enter a search keyword.</div>';
+          return;
+        }
+        grid.innerHTML = '<div class="fallback-status-msg">Searching ' + selectedProvider + '...</div>';
+        fetch('/api/generate/images/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: selectedProvider, query: queryStr })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(imageCollection) {
+          if (!Array.isArray(imageCollection) || imageCollection.length === 0) {
+            grid.innerHTML = '<div class="fallback-status-msg">No results found for "' + queryStr + '" on ' + selectedProvider + '.</div>';
+            return;
+          }
+          grid.innerHTML = imageCollection.map(function(img) {
+            var prov = img.provider || selectedProvider;
+            return '<div class="image-asset-card" data-url="' + img.src + '">' +
+              '<span class="provider-badge badge-' + prov + '">' + prov + '</span>' +
+              '<img class="card-img-element" src="' + img.src + '" alt="Media asset" loading="lazy" />' +
+            '</div>';
+          }).join('');
+          grid.querySelectorAll('.image-asset-card').forEach(function(card) {
+            card.addEventListener('click', function() {
+              var imgEl = document.getElementById('ed-image');
+              if (imgEl) imgEl.value = this.dataset.url;
+              closeModal();
             });
-            grid.innerHTML = html;
-            grid.querySelectorAll('.image-asset-card').forEach(function(card) {
-              card.addEventListener('click', function() {
-                var imgEl = document.getElementById('ed-image');
-                if (imgEl) imgEl.value = this.dataset.url;
-                closeModal();
-              });
-            });
-          })
-          .catch(function() {
-            grid.innerHTML = '<div class="loading-state-placeholder">Search failed. Try again.</div>';
           });
+        })
+        .catch(function() {
+          grid.innerHTML = '<div class="fallback-status-msg">No results found for "' + queryStr + '" on ' + selectedProvider + '.</div>';
+        });
       }
 
-      tabButtons.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          tabButtons.forEach(function(b) { b.classList.remove('active'); });
-          this.classList.add('active');
-          activeProvider = this.dataset.providerTarget;
-          triggerAssetSearch();
+      tabButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+          tabButtons.forEach(function(btn) { btn.classList.remove('active'); });
+          button.classList.add('active');
+          selectedProvider = button.getAttribute('data-provider-id') || 'unsplash';
+          executeImageFetch();
         });
       });
 
-      searchInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') triggerAssetSearch();
+      searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') executeImageFetch();
       });
 
       document.getElementById('btn-search-images').addEventListener('click', function() {
         searchInput.value = document.getElementById('ed-image').value || document.getElementById('ed-title').value || 'ai';
-        activeProvider = 'unsplash';
+        selectedProvider = 'unsplash';
         tabButtons.forEach(function(b) { b.classList.remove('active'); });
-        document.querySelector('[data-provider-target="unsplash"]').classList.add('active');
+        var firstTab = document.querySelector('[data-provider-id="unsplash"]');
+        if (firstTab) firstTab.classList.add('active');
         overlay.style.display = 'flex';
         searchInput.focus();
-        triggerAssetSearch();
+        executeImageFetch();
       });
     }
 
@@ -2389,52 +2403,138 @@ window.AdminAPI = (function() {
   })();
 </script>
 <style is:global>
-.media-picker-modal {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.85); z-index: 99999;
-  display: flex; flex-direction: column; padding: 20px;
-  box-sizing: border-box;
-}
-.search-row { width: 100%; max-width: 600px; margin: 0 auto 16px; }
-.search-row input {
-  width: 100%; padding: 12px 16px; font-size: 16px;
-  border: 1px solid #555; border-radius: 8px;
-  background: #1a1a1a; color: #eee; outline: none;
-}
-.provider-tabs-row {
-  display: flex; gap: 8px; max-width: 600px; margin: 0 auto 16px;
-  justify-content: center;
-}
-.tab-btn {
-  padding: 8px 20px; border-radius: 6px; background: #2a2a2a;
-  color: #aaa; cursor: pointer; border: 1px solid transparent;
-  transition: all 0.2s;
-}
-.tab-btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
-.grid-display-viewport {
-  flex: 1; overflow-y: auto; max-width: 1200px;
-  margin: 0 auto; width: 100%;
-}
-.clean-image-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px; padding: 0 0 40px;
-}
-.image-asset-card {
-  position: relative; aspect-ratio: 16/10; overflow: hidden;
-  border-radius: 8px; cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
-}
-.image-asset-card:hover { transform: scale(1.02); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-.card-img-element { width: 100%; height: 100%; object-fit: cover; display: block; }
-.provider-badge {
-  position: absolute; top: 6px; right: 6px;
-  padding: 2px 8px; border-radius: 4px; font-size: 11px;
-  font-weight: 600; text-transform: uppercase;
-}
-.badge-unsplash { background: #111; color: #eee; }
-.badge-pexels { background: #05a081; color: #fff; }
-.badge-pixabay { background: #4caf50; color: #fff; }
-.loading-state-placeholder { color: #666; text-align: center; padding: 60px 20px; }
+  /* MASTER CONTAINER FRAME: Locks layout structure */
+  .search-image-modal {
+    background-color: #0b131f; /* Deep dark palette matching your theme */
+    border: 1px solid #1e2d3d;
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 640px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .modal-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .modal-main-title {
+    color: #ffffff;
+    font-size: 1.2rem;
+    margin: 0;
+  }
+
+  .modal-close-btn {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 1.5rem;
+    cursor: pointer;
+  }
+
+  /* Structural Wrap: Guarantees your search bar is always visible */
+  .search-bar-wrapper {
+    width: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  .modal-input-field {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: #111b27;
+    border: 1px solid #1e2d3d;
+    color: #ffffff;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+  }
+
+  /* Grid Layout for tabs prevents overlay distortions */
+  .provider-tabs-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    width: 100%;
+    z-index: 5;
+  }
+
+  .tab-selector-btn {
+    background: #111b27;
+    border: 1px solid #1e2d3d;
+    color: #94a3b8;
+    padding: 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .tab-selector-btn.active {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: #3b82f6;
+    color: #ffffff;
+  }
+
+  /* THE CRITICAL FIX: Overflow handling isolates content from smashing headers */
+  .results-display-area {
+    width: 100%;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  /* Uniform columns prevent image compression overlaps */
+  .clean-uniform-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .fallback-status-msg {
+    grid-column: 1 / -1;
+    color: #64748b;
+    text-align: center;
+    padding: 2rem 0;
+    font-size: 0.9rem;
+  }
+
+  /* Card layouts styles */
+  :global(.image-asset-card) {
+    position: relative;
+    background: #111b27;
+    border: 1px solid #1e2d3d;
+    border-radius: 6px;
+    overflow: hidden;
+    height: 140px;
+  }
+
+  :global(.card-img-element) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  :global(.provider-badge) {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    color: #ffffff;
+  }
+  :global(.badge-unsplash) { background-color: #2563eb; }
+  :global(.badge-pexels) { background-color: #059669; }
+  :global(.badge-pixabay) { background-color: #7c3aed; }
 </style>
 </AdminLayout>
