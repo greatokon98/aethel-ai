@@ -619,10 +619,9 @@ async function main() {
   let committed = 0;
   for (let i = 0; i < newTopics.length; i++) {
     const topic = newTopics[i];
-    const postType = i < 2 ? 'trending' : 'standard';
     console.log(`Writing: "${topic.title}"...`);
     try {
-      let { slug, markdown, type } = await writePost(topic, existingPosts, postType);
+      let { slug, markdown, type } = await writePost(topic, existingPosts);
 
       if (existingSlugs.has(slug)) {
         let n = 1;

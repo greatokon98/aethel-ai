@@ -8,7 +8,7 @@ const BRANCH = process.env.GITHUB_BRANCH || 'main';
 
 router.get('/', async (req, res) => {
   try {
-    const { sort, date, search, category, status, limit } = req.query;
+    const { sort, date, search, category, status, limit, tag } = req.query;
     const pat = req.pat;
     const headers = { Authorization: `Bearer ${pat}`, Accept: 'application/vnd.github.v3+json' };
 
@@ -51,6 +51,7 @@ router.get('/', async (req, res) => {
     if (category && category !== 'all') results = results.filter(p => (p.categories || []).includes(category));
     if (status === 'draft') results = results.filter(p => p.draft);
     else if (status === 'published') results = results.filter(p => !p.draft);
+    if (tag) results = results.filter(p => p.tags && p.tags.includes(tag));
 
     results.sort((a, b) => new Date(b.publishDate || 0) - new Date(a.publishDate || 0));
 

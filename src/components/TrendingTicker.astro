@@ -5,32 +5,47 @@ export interface Props {
     slug: string;
     publishDate: Date;
   }>;
+  trending?: Array<{
+    title: string;
+    link: string;
+    source: string;
+    pubDate: string;
+    description: string;
+  }>;
   isHomePage?: boolean;
 }
 
-const { trendingPosts, isHomePage = false } = Astro.props;
+const { trendingPosts, trending = [], isHomePage = false } = Astro.props;
+const items = trending.length > 0 ? trending.map(t => ({
+  title: t.title,
+  url: t.link,
+  date: t.pubDate,
+  source: t.source,
+})) : trendingPosts.slice(0, 8).map(p => ({
+  title: p.title,
+  url: `/posts/${p.slug}`,
+  date: p.publishDate.toISOString(),
+  source: '',
+}));
 const paceClass = isHomePage ? 'ticker-track--slow' : 'ticker-track--normal';
+const dataAttr = JSON.stringify(items);
 ---
 
-<div class="ticker-viewport" id="sidebar-trending-viewport" data-state="running">
+<div class="ticker-viewport" id="sidebar-trending-viewport" data-state="running" data-items={dataAttr}>
   <div class={`ticker-track ${paceClass}`}>
     <div class="ticker-group">
-      {trendingPosts.map((post) => (
-        <a href={`/posts/${post.slug}`} class="ticker-card">
-          <span class="ticker-card__title">{post.title}</span>
-          <time class="ticker-card__date" datetime={post.publishDate.toISOString()}>
-            {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </time>
+      {items.map((item) => (
+        <a href={item.url} class="ticker-card" target={item.url.startsWith('http') ? '_blank' : ''} rel={item.url.startsWith('http') ? 'noopener' : ''}>
+          <span class="ticker-card__title">{item.title}</span>
+          <span class="ticker-card__date">{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
         </a>
       ))}
     </div>
     <div class="ticker-group" aria-hidden="true">
-      {trendingPosts.map((post) => (
-        <a href={`/posts/${post.slug}`} class="ticker-card">
-          <span class="ticker-card__title">{post.title}</span>
-          <time class="ticker-card__date" datetime={post.publishDate.toISOString()}>
-            {post.publishDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </time>
+      {items.map((item) => (
+        <a href={item.url} class="ticker-card" target={item.url.startsWith('http') ? '_blank' : ''} rel={item.url.startsWith('http') ? 'noopener' : ''}>
+          <span class="ticker-card__title">{item.title}</span>
+          <span class="ticker-card__date">{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
         </a>
       ))}
     </div>
@@ -39,11 +54,25 @@ const paceClass = isHomePage ? 'ticker-track--slow' : 'ticker-track--normal';
 
 <script>
 (function() {
-  var viewport = document.getElementById('sidebar-trending-viewport');
-  if (!viewport) return;
+  function initTicker() {
+    var viewport = document.getElementById('sidebar-trending-viewport');
+    if (!viewport) return;
+    var items = [];
+    try { items = JSON.parse(viewport.dataset.items || '[]'); } catch(e) {}
+    if (items.length === 0) return;
+    viewport.setAttribute('data-state', 'running');
+  }
+  function destroyTicker() {
+    var viewport = document.getElementById('sidebar-trending-viewport');
+    if (viewport) viewport.setAttribute('data-state', 'paused');
+  }
+  document.addEventListener('DOMContentLoaded', initTicker);
   document.addEventListener('visibilitychange', function() {
-    viewport.setAttribute('data-state', document.hidden ? 'paused' : 'running');
+    var viewport = document.getElementById('sidebar-trending-viewport');
+    if (viewport) viewport.setAttribute('data-state', document.hidden ? 'paused' : 'running');
   });
+  document.addEventListener('astro:after-swap', destroyTicker);
+  document.addEventListener('astro:page-load', initTicker);
 })();
 </script>
 

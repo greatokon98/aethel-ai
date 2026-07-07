@@ -490,7 +490,7 @@ window.AdminAPI = (function() {
 
     function formatDate(d) {
       if (!d) return '';
-      return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
     function slugify(text) {
@@ -798,7 +798,11 @@ window.AdminAPI = (function() {
           '</div>' +
           '<div class="image-modal-search">' +
             '<input type="text" id="image-modal-query" placeholder="Search images..." />' +
-            '<button type="button" id="image-modal-go">Search</button>' +
+          '</div>' +
+          '<div class="image-modal-sources" style="display:flex;gap:8px;padding:8px 16px;flex-wrap:wrap">' +
+            '<button type="button" class="btn-search-images" data-source="unsplash" style="flex:1;min-width:80px">Unsplash</button>' +
+            '<button type="button" class="btn-search-images" data-source="pexels" style="flex:1;min-width:80px">Pexels</button>' +
+            '<button type="button" class="btn-search-images" data-source="pixabay" style="flex:1;min-width:80px">Pixabay</button>' +
           '</div>' +
           '<div class="image-modal-grid" id="image-modal-grid"></div>' +
           '<div class="image-modal-status" id="image-modal-status"></div>' +
@@ -1616,7 +1620,7 @@ window.AdminAPI = (function() {
       clearInterval(_dashboardTimer);
       _dashboardTimer = setInterval(function() {
         loadDashboard();
-      }, 60000);
+      }, 30000);
     }
 
     async function loadPosts(force) {
@@ -2003,7 +2007,6 @@ window.AdminAPI = (function() {
     function initImageSearch() {
       var overlay = document.getElementById('image-modal-overlay');
       var closeBtn = document.getElementById('image-modal-close');
-      var goBtn = document.getElementById('image-modal-go');
       var queryInput = document.getElementById('image-modal-query');
       var grid = document.getElementById('image-modal-grid');
       var status = document.getElementById('image-modal-status');
@@ -2014,70 +2017,76 @@ window.AdminAPI = (function() {
       closeBtn.addEventListener('click', close);
       overlay.addEventListener('click', function(e) { if (e.target === overlay) close(); });
 
-      function doSearch() {
+      function renderResults(data) {
+        if (!data.images || data.images.length === 0) {
+          grid.innerHTML = '<div class="empty-state"><p>No images found. Try a different search.</p></div>';
+          return;
+        }
+        var sources = { unsplash: [], pexels: [], pixabay: [] };
+        data.images.forEach(function(img) {
+          if (sources[img.source]) sources[img.source].push(img);
+        });
+        var html = '';
+        Object.keys(sources).forEach(function(src) {
+          var items = sources[src];
+          if (items.length === 0) return;
+          html += '<div class="image-modal-source-label">' + src + ' (' + items.length + ')</div>';
+          items.forEach(function(img) {
+            html += '<div class="image-modal-item" data-url="' + img.url + '">' +
+              '<span class="image-modal-item-source ' + img.source + '">' + img.source + '</span>' +
+              '<img src="' + img.preview + '" alt="' + escapeHtml(img.tags) + '" loading="lazy" />' +
+              '<div class="image-modal-item-tags">' + escapeHtml(img.tags) + '</div>' +
+            '</div>';
+          });
+        });
+        if (!html) {
+          grid.innerHTML = '<div class="empty-state"><p>No images found. Try a different search.</p></div>';
+          return;
+        }
+        grid.innerHTML = html;
+        grid.querySelectorAll('.image-modal-item').forEach(function(item) {
+          item.addEventListener('click', function() {
+            var imgEl = document.getElementById('ed-image');
+            imgEl.value = this.dataset.url;
+            close();
+            var val = imgEl.value.trim();
+            if (val.match(/(unsplash\.com\/photos|pexels\.com\/photo)/)) {
+              AdminAPI.apiPost('/api/generate/images/normalize', { url: val })
+                .then(function(d) { if (d.normalizedUrl) imgEl.value = d.normalizedUrl; })
+                .catch(function() {});
+            }
+          });
+        });
+      }
+
+      function doSearch(source) {
         var q = queryInput.value.trim();
         if (!q) return;
         grid.innerHTML = '<div class="admin-loading"><div class="admin-spinner"></div></div>';
         status.textContent = '';
-        goBtn.disabled = true;
-        goBtn.textContent = 'Searching...';
-
         var cat = state.editingPost && state.editingPost.categories ? state.editingPost.categories[0] : '';
-        AdminAPI.apiPost('/api/generate/images/search', { query: q, category: cat })
-          .then(function(data) {
-            goBtn.disabled = false;
-            goBtn.textContent = 'Search';
-            if (!data.images || data.images.length === 0) {
-              grid.innerHTML = '<div class="empty-state"><p>No images found. Try a different search.</p></div>';
-              return;
-            }
-            var sources = { unsplash: [], pexels: [], pixabay: [] };
-            data.images.forEach(function(img) {
-              if (sources[img.source]) sources[img.source].push(img);
-            });
-            var html = '';
-            Object.keys(sources).forEach(function(src) {
-              var items = sources[src];
-              if (items.length === 0) return;
-              html += '<div style="grid-column:1/-1;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:4px 0 2px;color:#64748B">' + src + '</div>';
-              items.forEach(function(img) {
-                html += '<div class="image-modal-item" data-url="' + img.url + '">' +
-                  '<span class="image-modal-item-source ' + img.source + '">' + img.source + '</span>' +
-                  '<img src="' + img.preview + '" alt="' + escapeHtml(img.tags) + '" loading="lazy" />' +
-                  '<div class="image-modal-item-tags">' + escapeHtml(img.tags) + '</div>' +
-                '</div>';
-              });
-            });
-            if (!html) {
-              grid.innerHTML = '<div class="empty-state"><p>No images found. Try a different search.</p></div>';
-              return;
-            }
-            grid.innerHTML = html;
-            grid.querySelectorAll('.image-modal-item').forEach(function(item) {
-              item.addEventListener('click', function() {
-                var imgEl = document.getElementById('ed-image');
-                imgEl.value = this.dataset.url;
-                close();
-                // Normalize if needed
-                var val = imgEl.value.trim();
-                if (val.match(/(unsplash\.com\/photos|pexels\.com\/photo)/)) {
-                  AdminAPI.apiPost('/api/generate/images/normalize', { url: val })
-                    .then(function(d) { if (d.normalizedUrl) imgEl.value = d.normalizedUrl; })
-                    .catch(function() {});
-                }
-              });
-            });
-          })
+        var body = { query: q, category: cat };
+        if (source) body.source = source;
+        AdminAPI.apiPost('/api/generate/images/search', body)
+          .then(function(data) { renderResults(data); })
           .catch(function(err) {
-            goBtn.disabled = false;
-            goBtn.textContent = 'Search';
             grid.innerHTML = '';
             status.textContent = 'Search failed: ' + err.message;
           });
       }
 
-      goBtn.addEventListener('click', doSearch);
-      queryInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') doSearch(); });
+      // Source buttons
+      overlay.querySelectorAll('.image-modal-sources .btn-search-images').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var source = this.dataset.source;
+          doSearch(source);
+        });
+      });
+
+      // Enter key triggers search with first source (unsplash)
+      queryInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') doSearch('unsplash');
+      });
 
       document.getElementById('btn-search-images').addEventListener('click', function() {
         queryInput.value = document.getElementById('ed-image').value || document.getElementById('ed-title').value || '';

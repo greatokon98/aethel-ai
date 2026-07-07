@@ -31,20 +31,17 @@ export interface Props {
 
 const { categories = [], recentPosts = [], trendingPosts = [], trending = [], popularPosts = [], isHomePage = false } = Astro.props;
 
-const displayPopular = (() => {
+const popularPool = (() => {
   if (popularPosts.length > 0) {
     const sorted = [...popularPosts].sort((a, b) => b.publishDate.getTime() - a.publishDate.getTime());
-    const result = sorted.slice(0, 5);
-    if (result.length < 5) {
-      const fillCount = 5 - result.length;
-      const pool = recentPosts.filter(p => !popularPosts.find(pp => pp.slug === p.slug));
-      const shuffled = [...pool].sort(() => Math.random() - 0.5);
-      result.push(...shuffled.slice(0, fillCount));
-    }
-    return result;
+    if (sorted.length >= 5) return sorted;
+    const pool = recentPosts.filter(p => !popularPosts.find(pp => pp.slug === p.slug));
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    return [...sorted, ...shuffled.slice(0, 5 - sorted.length)];
   }
   return recentPosts.slice(0, 5);
 })();
+const displayPopular = popularPool.slice(0, 5);
 ---
 
 <aside class="sidebar">
@@ -76,6 +73,7 @@ const displayPopular = (() => {
     <h3 class="sidebar__widget-title">Trending Now</h3>
     <TrendingTicker
       trendingPosts={trendingPosts.length > 0 ? trendingPosts : recentPosts}
+      trending={trending}
       isHomePage={isHomePage}
     />
   </div>
@@ -102,7 +100,7 @@ const displayPopular = (() => {
 
   <div class="sidebar__widget">
     <h3 class="sidebar__widget-title">Popular Posts</h3>
-    <div class="sidebar__popular-fade" id="sidebar-popular-posts" data-popular={JSON.stringify(displayPopular)}>
+    <div class="sidebar__popular-fade" id="sidebar-popular-posts" data-popular={JSON.stringify(popularPool)}>
       <ul class="sidebar__posts">
         {displayPopular.length > 0 ? (
           displayPopular.map((post) => (
@@ -140,6 +138,8 @@ const displayPopular = (() => {
 
 <script>
 (function() {
+  var popularCycleInterval;
+
   function renderPopularBatch(batch) {
     var container = document.getElementById('sidebar-popular-posts');
     if (!container) return;
@@ -152,29 +152,43 @@ const displayPopular = (() => {
         '</li>';
       }).join('') + '</ul>';
       container.classList.remove('fading');
-    }, 300);
+    }, 400);
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
-    // --- Popular Posts: batch cycle with fade ---
-    var popularContainer = document.getElementById('sidebar-popular-posts');
-    var popularPool = [];
-    if (popularContainer) {
-      try { popularPool = JSON.parse(popularContainer.dataset.popular || '[]'); } catch(e) {}
-    }
+  function initPopularCycle() {
+    var container = document.getElementById('sidebar-popular-posts');
+    if (!container) return;
+    clearInterval(popularCycleInterval);
+    var pool = [];
+    try { pool = JSON.parse(container.dataset.popular || '[]'); } catch(e) {}
     var BATCH = 5;
-    var popularBatches = [];
-    for (var j = 0; j < popularPool.length; j += BATCH) {
-      popularBatches.push(popularPool.slice(j, j + BATCH));
+    var batches = [];
+    for (var j = 0; j < pool.length; j += BATCH) {
+      batches.push(pool.slice(j, j + BATCH));
     }
-    var popularIdx = 0;
-    if (popularBatches.length > 1) {
-      setInterval(function() {
-        popularIdx = (popularIdx + 1) % popularBatches.length;
-        renderPopularBatch(popularBatches[popularIdx]);
+    var idx = 0;
+    if (batches.length > 1) {
+      popularCycleInterval = setInterval(function() {
+        idx = (idx + 1) % batches.length;
+        renderPopularBatch(batches[idx]);
       }, 60000);
     }
+  }
+
+  function destroyPopularCycle() {
+    clearInterval(popularCycleInterval);
+  }
+
+  document.addEventListener('DOMContentLoaded', initPopularCycle);
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      initPopularCycle();
+    } else {
+      destroyPopularCycle();
+    }
   });
+  document.addEventListener('astro:after-swap', destroyPopularCycle);
+  document.addEventListener('astro:page-load', initPopularCycle);
 })();
 </script>
 
@@ -252,7 +266,7 @@ const displayPopular = (() => {
 
 
   .sidebar__popular-fade {
-    transition: opacity 300ms ease;
+    transition: opacity 400ms ease;
     opacity: 1;
   }
   .sidebar__popular-fade.fading {

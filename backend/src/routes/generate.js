@@ -651,7 +651,7 @@ router.post('/images/normalize', async (req, res) => {
 
 router.post('/images/search', async (req, res) => {
   try {
-    const { query, category } = req.body;
+    const { query, category, source } = req.body;
     if (!query) {
       return res.status(400).json({ error: 'query is required' });
     }
@@ -660,21 +660,18 @@ router.post('/images/search', async (req, res) => {
     const pixCat = getPixabayCategory(category || '');
     const enriched = searchCat ? `${keywords} ${searchCat}` : keywords;
     const pexelsHeaders = { 'Authorization': PEXELS_KEY ? `Bearer ${PEXELS_KEY}` : '' };
-
-    const [unsplashRes, pixabayRes] = await Promise.allSettled([
-      UNSPLASH_KEY
-        ? fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(enriched)}&per_page=10&orientation=landscape&client_id=${UNSPLASH_KEY}`, { signal: AbortSignal.timeout(6000) })
-        : Promise.reject(new Error('no key')),
-      PIXABAY_KEY
-        ? fetch(`https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(keywords)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=10${pixCat ? `&category=${pixCat}` : ''}`, { signal: AbortSignal.timeout(6000) })
-        : Promise.reject(new Error('no key')),
-    ]);
+    const PER_PAGE = 30;
+    const genericKw = category ? getSearchCategory('', category) || 'trending' : 'trending';
 
     const images = [];
 
-    if (unsplashRes.status === 'fulfilled' && unsplashRes.value.ok) {
+    async function searchUnsplash(q) {
+      if (!UNSPLASH_KEY || (source && source !== 'unsplash')) return;
+      const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(q)}&per_page=${PER_PAGE}&orientation=landscape&client_id=${UNSPLASH_KEY}`;
       try {
-        const data = await unsplashRes.value.json();
+        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        if (!res.ok) return;
+        const data = await res.json();
         if (data.results) {
           for (const r of data.results) {
             const raw = r.urls.raw;
@@ -691,22 +688,15 @@ router.post('/images/search', async (req, res) => {
       } catch {}
     }
 
-    try {
-      let pexelsUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(enriched)}&per_page=10&orientation=landscape`;
-      const pexelsRes = await fetch(pexelsUrl, { headers: pexelsHeaders, signal: AbortSignal.timeout(6000) });
-      if (pexelsRes.ok) {
-        const data = await pexelsRes.json();
-        let pexelsPhotos = data.photos || [];
-        if (pexelsPhotos.length === 0 && enriched !== keywords) {
-          const fallbackUrl = `https://api.pexels.com/v1/search?query=${encodeURIComponent(keywords)}&per_page=10&orientation=landscape`;
-          const fallbackRes = await fetch(fallbackUrl, { headers: pexelsHeaders, signal: AbortSignal.timeout(6000) });
-          if (fallbackRes.ok) {
-            const fallbackData = await fallbackRes.json();
-            pexelsPhotos = fallbackData.photos || [];
-            if (pexelsPhotos.length > 0) console.log(`  [search] Pexels fallback kw: "${keywords}"`);
-          }
-        }
-        for (const p of pexelsPhotos) {
+    async function searchPexels(q) {
+      if (source && source !== 'pexels') return;
+      const url = `https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&per_page=${PER_PAGE}&orientation=landscape`;
+      try {
+        const res = await fetch(url, { headers: pexelsHeaders, signal: AbortSignal.timeout(6000) });
+        if (!res.ok) return;
+        const data = await res.json();
+        const photos = data.photos || [];
+        for (const p of photos) {
           images.push({
             url: p.src.large,
             preview: p.src.medium,
@@ -715,12 +705,16 @@ router.post('/images/search', async (req, res) => {
             source: 'pexels',
           });
         }
-      }
-    } catch {}
+      } catch {}
+    }
 
-    if (pixabayRes.status === 'fulfilled' && pixabayRes.value.ok) {
+    async function searchPixabay(q) {
+      if (!PIXABAY_KEY || (source && source !== 'pixabay')) return;
+      const url = `https://pixabay.com/api/?key=${PIXABAY_KEY}&q=${encodeURIComponent(q)}&image_type=photo&orientation=horizontal&safesearch=true&per_page=${PER_PAGE}${pixCat ? `&category=${pixCat}` : ''}`;
       try {
-        const data = await pixabayRes.value.json();
+        const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        if (!res.ok) return;
+        const data = await res.json();
         if (data.hits) {
           for (const h of data.hits) {
             images.push({
@@ -733,6 +727,27 @@ router.post('/images/search', async (req, res) => {
           }
         }
       } catch {}
+    }
+
+    // Search with keywords first
+    await Promise.allSettled([
+      searchUnsplash(enriched),
+      searchPexels(enriched),
+      searchPixabay(keywords),
+    ]);
+
+    // Zero-result fallback: if no images from a source, retry with generic term
+    if (!source || source === 'unsplash') {
+      const unsplashCount = images.filter(i => i.source === 'unsplash').length;
+      if (unsplashCount === 0) await searchUnsplash(genericKw);
+    }
+    if (!source || source === 'pexels') {
+      const pexelsCount = images.filter(i => i.source === 'pexels').length;
+      if (pexelsCount === 0) await searchPexels(genericKw);
+    }
+    if (!source || source === 'pixabay') {
+      const pixabayCount = images.filter(i => i.source === 'pixabay').length;
+      if (pixabayCount === 0) await searchPixabay(genericKw);
     }
 
     return res.json({ images });
