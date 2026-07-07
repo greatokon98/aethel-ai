@@ -649,13 +649,6 @@ router.post('/images/search', async (req, res) => {
 
   let searchQuery = extractKeywords(rawQuery || 'ai', '');
 
-  const fallbackTerms = {
-    "ai assistant": "technology artificial intelligence",
-    "autonomous ai": "robot future tech",
-    "cybersecurity drone": "server network security",
-    "decap server metadata": "computer coding code"
-  };
-
   async function fetchImages(term) {
     try {
       if (provider === 'unsplash') {
@@ -707,9 +700,15 @@ router.post('/images/search', async (req, res) => {
   let results = await fetchImages(searchQuery);
 
   if (!results || results.length === 0) {
-    const lowerQuery = searchQuery.toLowerCase().trim();
-    const fallbackTerm = fallbackTerms[lowerQuery] || "artificial intelligence technology";
-    results = await fetchImages(fallbackTerm);
+    const words = searchQuery.split(/[,\s]+/).filter(w => w.length > 2);
+    for (const word of words) {
+      results = await fetchImages(word);
+      if (results && results.length > 0) break;
+    }
+  }
+
+  if (!results || results.length === 0) {
+    results = await fetchImages("artificial intelligence");
   }
 
   return res.json(results);

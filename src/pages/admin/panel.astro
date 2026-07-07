@@ -472,11 +472,11 @@ window.AdminAPI = (function() {
 
 (function() {
     // --- Theme ---
-    (function() {
-      var saved = localStorage.getItem('theme');
+    try {
+      var savedTheme = localStorage.getItem('theme');
       var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.setAttribute('data-theme', saved || (prefersDark ? 'dark' : 'light'));
-    })();
+      document.documentElement.setAttribute('data-theme', savedTheme || (prefersDark ? 'dark' : 'light'));
+    } catch(e) {}
 
     // --- Utilities ---
     function qs(s, ctx) { return (ctx || document).querySelector(s); }
@@ -728,11 +728,11 @@ window.AdminAPI = (function() {
         var featuredBadge = p.featured ? '<span class="post-featured-badge">Featured</span>' : '';
         var draftBadge = p.draft ? '<span class="post-draft-badge">Draft</span>' : '<span class="post-live-badge">Live</span>';
         return '<tr>' +
-          '<td><div class="post-title">' + escapeHtml(p.title) + draftBadge + '</div></td>' +
-          '<td class="post-date">' + date + '</td>' +
-          '<td><div class="post-cats">' + cats + '</div></td>' +
-          '<td>' + featuredBadge + '</td>' +
-          '<td><div class="post-actions">' +
+          '<td data-label="Title"><div class="post-title">' + escapeHtml(p.title) + draftBadge + '</div></td>' +
+          '<td data-label="Date" class="post-date">' + date + '</td>' +
+          '<td data-label="Categories"><div class="post-cats">' + cats + '</div></td>' +
+          '<td data-label="Status">' + featuredBadge + '</td>' +
+          '<td data-label="Actions"><div class="post-actions">' +
             '<button class="btn-edit" data-slug="' + p.slug + '">Edit</button>' +
             '<button class="btn-delete" data-slug="' + p.slug + '" data-title="' + escapeHtml(p.title) + '">Delete</button>' +
           '</div></td>' +
@@ -791,21 +791,23 @@ window.AdminAPI = (function() {
         '</div>' +
       '</div>' +
       '<div class="search-image-modal" id="image-modal-overlay" style="display:none">' +
-        '<div class="modal-header-row">' +
-          '<h2 class="modal-main-title">Search Image</h2>' +
-          '<button class="modal-close-btn" id="closeModalCross">&times;</button>' +
-        '</div>' +
-        '<div class="search-bar-wrapper">' +
-          '<input type="text" id="modalSearchInput" value="ai" placeholder="Type an image keyword..." class="modal-input-field" />' +
-        '</div>' +
-        '<div class="provider-tabs-row">' +
-          '<button class="tab-selector-btn active" data-provider-id="unsplash">Unsplash</button>' +
-          '<button class="tab-selector-btn" data-provider-id="pexels">Pexels</button>' +
-          '<button class="tab-selector-btn" data-provider-id="pixabay">Pixabay</button>' +
-        '</div>' +
-        '<div class="results-display-area">' +
-          '<div class="clean-uniform-grid" id="modalGridOutput">' +
-            '<div class="fallback-status-msg">Type a keyword and press enter to search...</div>' +
+        '<div class="modal-content-card">' +
+          '<div class="modal-header-row">' +
+            '<h2 class="modal-main-title">Search Image</h2>' +
+            '<button class="modal-close-btn" id="closeModalCross">&times;</button>' +
+          '</div>' +
+          '<div class="search-bar-wrapper">' +
+            '<input type="text" id="modalSearchInput" value="ai" placeholder="Type an image keyword..." class="modal-input-field" />' +
+          '</div>' +
+          '<div class="provider-tabs-row">' +
+            '<button class="tab-selector-btn active" data-provider-id="unsplash">Unsplash</button>' +
+            '<button class="tab-selector-btn" data-provider-id="pexels">Pexels</button>' +
+            '<button class="tab-selector-btn" data-provider-id="pixabay">Pixabay</button>' +
+          '</div>' +
+          '<div class="results-display-area">' +
+            '<div class="clean-uniform-grid" id="modalGridOutput">' +
+              '<div class="fallback-status-msg">Type a keyword and press enter to search...</div>' +
+            '</div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1200,17 +1202,19 @@ window.AdminAPI = (function() {
     // --- Event Binding ---
     function bindEvents() {
       // Theme toggle
-      var themeBtn = document.getElementById('theme-toggle');
-      if (themeBtn) {
-        var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-        themeBtn.textContent = currentTheme === 'dark' ? '🌙' : '☀️';
-        themeBtn.addEventListener('click', function() {
-          var newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-          document.documentElement.setAttribute('data-theme', newTheme);
-          localStorage.setItem('theme', newTheme);
-          themeBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
-        });
-      }
+      try {
+        var themeBtn = document.getElementById('theme-toggle');
+        if (themeBtn) {
+          var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+          themeBtn.textContent = currentTheme === 'dark' ? '🌙' : '☀️';
+          themeBtn.addEventListener('click', function() {
+            var newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            themeBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+          });
+        }
+      } catch(e) {}
 
       // Sign out
       var logoutBtn = document.getElementById('btn-logout');
@@ -2402,139 +2406,5 @@ window.AdminAPI = (function() {
     document.head.appendChild(script);
   })();
 </script>
-<style is:global>
-  /* MASTER CONTAINER FRAME: Locks layout structure */
-  .search-image-modal {
-    background-color: #0b131f; /* Deep dark palette matching your theme */
-    border: 1px solid #1e2d3d;
-    border-radius: 12px;
-    padding: 1.5rem;
-    width: 100%;
-    max-width: 640px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
 
-  .modal-header-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-
-  .modal-main-title {
-    color: #ffffff;
-    font-size: 1.2rem;
-    margin: 0;
-  }
-
-  .modal-close-btn {
-    background: none;
-    border: none;
-    color: #64748b;
-    font-size: 1.5rem;
-    cursor: pointer;
-  }
-
-  /* Structural Wrap: Guarantees your search bar is always visible */
-  .search-bar-wrapper {
-    width: 100%;
-    position: relative;
-    z-index: 10;
-  }
-
-  .modal-input-field {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    background: #111b27;
-    border: 1px solid #1e2d3d;
-    color: #ffffff;
-    border-radius: 6px;
-    font-size: 0.95rem;
-    box-sizing: border-box;
-  }
-
-  /* Grid Layout for tabs prevents overlay distortions */
-  .provider-tabs-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    width: 100%;
-    z-index: 5;
-  }
-
-  .tab-selector-btn {
-    background: #111b27;
-    border: 1px solid #1e2d3d;
-    color: #94a3b8;
-    padding: 0.6rem;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s ease-in-out;
-  }
-
-  .tab-selector-btn.active {
-    background: rgba(59, 130, 246, 0.1);
-    border-color: #3b82f6;
-    color: #ffffff;
-  }
-
-  /* THE CRITICAL FIX: Overflow handling isolates content from smashing headers */
-  .results-display-area {
-    width: 100%;
-    max-height: 400px;
-    overflow-y: auto;
-    padding-right: 4px;
-  }
-
-  /* Uniform columns prevent image compression overlaps */
-  .clean-uniform-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 1rem;
-    width: 100%;
-  }
-
-  .fallback-status-msg {
-    grid-column: 1 / -1;
-    color: #64748b;
-    text-align: center;
-    padding: 2rem 0;
-    font-size: 0.9rem;
-  }
-
-  /* Card layouts styles */
-  :global(.image-asset-card) {
-    position: relative;
-    background: #111b27;
-    border: 1px solid #1e2d3d;
-    border-radius: 6px;
-    overflow: hidden;
-    height: 140px;
-  }
-
-  :global(.card-img-element) {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  :global(.provider-badge) {
-    position: absolute;
-    top: 0.5rem;
-    left: 0.5rem;
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    padding: 0.15rem 0.4rem;
-    border-radius: 3px;
-    color: #ffffff;
-  }
-  :global(.badge-unsplash) { background-color: #2563eb; }
-  :global(.badge-pexels) { background-color: #059669; }
-  :global(.badge-pixabay) { background-color: #7c3aed; }
-</style>
 </AdminLayout>

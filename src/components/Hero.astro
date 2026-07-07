@@ -561,7 +561,7 @@ const featuredData = featured.map(p => ({
     .hero__tab { padding: 14px 16px; }
     .hero__slider { min-height: 440px; }
     .hero__slide-title { font-size: var(--text-4xl); }
-    .hero__slide-content { padding: var(--space-8); }
+    .hero__slide-content { padding: 0 var(--space-8) var(--space-8); }
     .hero__overlay { display: none !important; }
     .hero__cta,
     .hero__tag,
@@ -578,9 +578,9 @@ const featuredData = featured.map(p => ({
       margin: 0 var(--space-4);
       border-radius: var(--radius-lg);
     }
-    .hero__slide-content { padding: var(--space-5); }
-    .hero__slide-title { font-size: var(--text-2xl); }
-    .hero__slide-excerpt { font-size: var(--text-sm); margin-bottom: var(--space-2); }
+    .hero__slide-content { padding: 0 var(--space-5) var(--space-5); }
+    .hero__slide-title { font-size: var(--text-2xl); margin-bottom: var(--space-2); }
+    .hero__slide-excerpt { font-size: var(--text-sm); margin-bottom: var(--space-2); max-width: 90%; }
     .hero__slide-meta { gap: var(--space-2); font-size: var(--text-xs); }
     .hero__slide-reading::before { margin-right: var(--space-2); }
     .hero__slide-cta { font-size: var(--text-xs); }
