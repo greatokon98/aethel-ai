@@ -34,14 +34,14 @@ const { categories = [], recentPosts = [], trendingPosts = [], trending = [], po
 const popularPool = (() => {
   if (popularPosts.length > 0) {
     const sorted = [...popularPosts].sort((a, b) => b.publishDate.getTime() - a.publishDate.getTime());
-    if (sorted.length >= 10) return sorted;
+    if (sorted.length >= 5) return sorted;
     const pool = recentPosts.filter(p => !popularPosts.find(pp => pp.slug === p.slug));
     const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    return [...sorted, ...shuffled.slice(0, 10 - sorted.length)];
+    return [...sorted, ...shuffled.slice(0, 5 - sorted.length)];
   }
-  return recentPosts.slice(0, 10);
+  return recentPosts.slice(0, 5);
 })();
-const BATCH_SIZE = 2;
+const BATCH_SIZE = 5;
 const displayPopular = popularPool.slice(0, BATCH_SIZE);
 ---
 
@@ -162,7 +162,7 @@ const displayPopular = popularPool.slice(0, BATCH_SIZE);
     clearInterval(popularCycleInterval);
     var pool = [];
     try { pool = JSON.parse(container.dataset.popular || '[]'); } catch(e) {}
-    var BATCH = 2;
+    var BATCH = 5;
     var batches = [];
     for (var j = 0; j < pool.length; j += BATCH) {
       batches.push(pool.slice(j, j + BATCH));
@@ -171,8 +171,12 @@ const displayPopular = popularPool.slice(0, BATCH_SIZE);
     renderPopularBatch(batches[0]);
     if (batches.length > 1) {
       popularCycleInterval = setInterval(function() {
-        idx = (idx + 1) % batches.length;
-        renderPopularBatch(batches[idx]);
+        idx++;
+        if (idx < batches.length) {
+          renderPopularBatch(batches[idx]);
+        } else {
+          clearInterval(popularCycleInterval);
+        }
       }, 60000);
     }
   }
