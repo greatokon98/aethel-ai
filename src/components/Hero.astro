@@ -354,7 +354,7 @@ const featuredData = featured.map(p => ({
 
   .hero__slide-image {
     width: 100%;
-    height: 100%;
+    height: 100% !important;
     object-fit: cover;
     object-position: center 30%;
     opacity: 1;
@@ -834,6 +834,72 @@ const featuredData = featured.map(p => ({
     [data-theme="dark"] .hero__card:hover:not(.hero__card--active) .hero__card-number {
       color: var(--color-accent-hover);
       background: rgba(191, 219, 254, 0.1);
+    }
+  }
+</style>
+
+<style is:global>
+  .hero,
+  .hero__slider {
+    aspect-ratio: 21/9;
+    min-height: 600px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  @media (min-width: 1025px) {
+    .hero__overlay-inner {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 3rem;
+      align-items: center;
+      height: 100%;
+      padding: 3rem 2rem;
+    }
+  }
+
+  .hero__overlay-left,
+  .hero__slide-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    overflow: visible;
+  }
+
+  .hero__slide-title {
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+  }
+
+  .hero__slide-excerpt {
+    font-size: clamp(0.95rem, 1.2vw, 1.1rem);
+    line-height: 1.4;
+    margin-bottom: 1rem;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .hero__slide-meta {
+    margin-top: auto;
+  }
+
+  @media (max-width: 1024px) {
+    .hero,
+    .hero__slider {
+      aspect-ratio: auto;
+      height: auto;
+      min-height: 520px;
+    }
+
+    .hero__overlay-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      padding: 2.5rem 1.25rem;
     }
   }
 </style>

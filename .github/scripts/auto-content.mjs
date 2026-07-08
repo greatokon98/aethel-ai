@@ -52,7 +52,7 @@ function slugify(text) {
 }
 
 function yamlEscape(str) {
-  return str.replace(/\\/g, "\\\\").replace(/"/g, "\\"");
+  return str.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
 }
 
 function extractRSSItems(xml, source) {
