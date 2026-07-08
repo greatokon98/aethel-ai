@@ -321,12 +321,12 @@ const featuredData = featured.map(p => ({
   }
 
   .hero__slider {
-    position: relative;
-    overflow: hidden;
-    min-height: 520px;
+    min-height: 550px;
     margin: 0 var(--space-6);
     border-radius: var(--radius-xl);
     z-index: 1;
+    position: relative;
+    overflow: hidden;
   }
 
   .hero__slide {
@@ -352,10 +352,10 @@ const featuredData = featured.map(p => ({
   }
 
   .hero__slide-image {
+    object-fit: cover;
+    opacity: 0.2;
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    opacity: 0.85;
   }
 
   .hero__slide-placeholder {
@@ -616,11 +616,11 @@ const featuredData = featured.map(p => ({
 
     .hero__overlay-left {
       pointer-events: auto;
-      max-width: 580px;
-      align-self: stretch;
-      display: flex;
       flex-direction: column;
-      justify-content: center;
+      /* justify-content: center; */
+      align-self: stretch;
+      max-width: 580px;
+      display: flex;
     }
 
     .hero__tag {
