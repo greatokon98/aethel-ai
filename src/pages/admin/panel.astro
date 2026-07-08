@@ -18,6 +18,7 @@ window.AdminAPI = (function() {
   var GITHUB_API = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo;
   var BASE = CONFIG.type === 'render' ? CONFIG.renderUrl : '';
   var DEPLOY_HOOK_URL = 'https://api.render.com/deploy/srv-d94pcaeq1p3s73c3v2ag?key=2JzMugJCb0U';
+  var VERCEL_DEPLOY_HOOK_URL = 'https://api.vercel.com/v1/integrations/deploy/prj_HKORuWfaOP70B5OboiWKxg1i8Jv9/MYXt9NMnXS';
 
   function getPat() { return localStorage.getItem(GITHUB_PAT_KEY); }
   function storePat(token) { localStorage.setItem(GITHUB_PAT_KEY, token); }
@@ -2273,6 +2274,9 @@ window.AdminAPI = (function() {
         try {
           await fetch(DEPLOY_HOOK_URL, { method: 'POST' });
         } catch(e) { /* deploy hook optional */ }
+        try {
+          await fetch(VERCEL_DEPLOY_HOOK_URL, { method: 'POST' });
+        } catch(e) { /* vercel deploy hook optional */ }
         try { sessionStorage.removeItem('aa_posts_cache'); } catch(e) {}
         _cache.posts = 0;
         showToast('Post saved! Rebuilding site...', 'success');
