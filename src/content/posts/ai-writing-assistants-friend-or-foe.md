@@ -2,15 +2,18 @@
 title: "AI Writing Assistants: Friend or Foe"
 excerpt: "Many people are unsure how to effectively use AI for writing tasks without losing their personal touch or autonomy."
 publishDate: "2026-07-05"
-featuredImage: "https://pixabay.com/get/g7ad5f87fa02104d03e4c30438b79dc39d98577e68c180b8e274e3ce22040187a545f7bccfe41c30d20193be051f5dec4a4edc705e45322aaca883de65deaebc7_640.png"
+featuredImage: "https://images.unsplash.com/photo-1507146153580-69a1fe6d8aa1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w5OTIzMTV8MHwxfHNlYXJjaHwxOXx8YXJ0aWZpY2lhbCUyMGludGVsbGlnZW5jZXxlbnwwfHx8fDE3ODM1MTYzNzN8MA&ixlib=rb-4.1.0&q=80&w=1080"
 featured: false
+draft: false
 categories:
-  - AI Tools
+  - "AI Tools"
 tags:
-  - AI
-  - automation
-  - trending
+  - "AI"
+  - "automation"
+  - "trending"
 author: "Aethel"
+titleFontSize: "28"
+titleLineHeight: "1.15"
 ---
 
 **As I sit here writing, I'm accompanied by a constant companion: an AI writing assistant that's simultaneously helping and hindering my creative process**. You might be wondering, are these tools a blessing or a curse? I've had my fair share of experiences with AI writing assistants, and I've come to realize that the answer isn't a simple one. It's a complex dance between human intuition and machine learning, where the lines between collaboration and frustration are constantly blurred. You're probably curious about how these tools work and whether they're worth using, so let's dive into the nitty-gritty.
