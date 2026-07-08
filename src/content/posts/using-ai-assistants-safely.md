@@ -2,7 +2,7 @@
 title: "Using AI Assistants Safely"
 excerpt: "To protect personal data online."
 publishDate: "2026-07-06"
-featuredImage: "https://pixabay.com/get/g3c850ff112ac2220a4fd12cf94b312b4bf3f54b1d9ef8718d147d11a7cafaaa89c9812e0c5d614e042531646a64b6c4f5dc8511e5f1ef9373be885452cf74764_1280.jpg"
+featuredImage: "https://images.unsplash.com/photo-1716637644831-e046c73be197?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w5OTIzMTV8MHwxfHNlYXJjaHw5fHxhcnRpZmljaWFsJTIwaW50ZWxsaWdlbmNlfGVufDB8fHx8MTc4MzUxNjM3M3ww&ixlib=rb-4.1.0&q=80&w=1080"
 featured: true
 draft: false
 categories:
@@ -10,7 +10,10 @@ categories:
 tags:
   - "AI"
   - "automation"
+  - "popular"
 author: "Aethel"
+titleFontSize: "28"
+titleLineHeight: "1.15"
 ---
 
 **As we increasingly rely on AI assistants to manage our daily lives, it's surprising how little we think about the potential risks they pose to our personal data and security**. I've found myself wondering, when I ask my virtual assistant to remind me of an upcoming event, who else might be listening in on that conversation. You're probably using AI assistants in some form or another, whether it's a virtual assistant like Siri or Google Assistant, or a smart home device like Amazon Echo. These devices are designed to make our lives easier, but they also collect a vast amount of personal data, from our schedules and contacts to our search history and voice recordings.
