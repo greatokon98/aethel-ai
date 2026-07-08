@@ -151,6 +151,8 @@ window.AdminAPI = (function() {
         val.forEach(function(item) { lines.push('  - "' + item + '"'); });
       } else if (typeof val === 'boolean') {
         lines.push(key + ': ' + (val ? 'true' : 'false'));
+      } else if (typeof val === 'number') {
+        lines.push(key + ': ' + val);
       } else if (val !== undefined && val !== null) {
         lines.push(key + ': "' + String(val).replace(/"/g, '\\"') + '"');
       }
@@ -232,6 +234,8 @@ window.AdminAPI = (function() {
           title: parsed.attrs.title || slug,
           metaDescription: parsed.attrs.metaDescription || '',
           published: parsed.attrs.published !== false,
+          order: parsed.attrs.order || 0,
+          template: parsed.attrs.template || 'default',
           body: parsed.body,
         };
       } catch(e) { return null; }
@@ -1054,14 +1058,16 @@ window.AdminAPI = (function() {
         return renderPageEditor(state.editPage);
       }
       var pages = state.pages || [];
+      pages.sort(function(a, b) { return (a.order || 0) - (b.order || 0) || a.title.localeCompare(b.title); });
       var rows = pages.map(function(p) {
         var statusBadge = p.published
-          ? '<span class="status-badge status-badge--published">Published</span>'
-          : '<span class="status-badge status-badge--draft">Draft</span>';
+          ? '<span class="page-status-toggle status-badge status-badge--published" data-page-slug="' + p.slug + '" title="Click to toggle">Published</span>'
+          : '<span class="page-status-toggle status-badge status-badge--draft" data-page-slug="' + p.slug + '" title="Click to toggle">Draft</span>';
         return '<tr>' +
           '<td><a href="#" class="post-title-link" data-page-slug="' + p.slug + '">' + escapeHtml(p.title) + '</a></td>' +
           '<td><code>' + escapeHtml(p.slug) + '</code></td>' +
           '<td>' + statusBadge + '</td>' +
+          '<td style="text-align:center"><input type="number" class="page-order-input" value="' + (p.order || 0) + '" data-page-slug="' + p.slug + '" style="width:50px;text-align:center" /></td>' +
           '<td><button class="admin-btn-delete" data-page-slug="' + p.slug + '" data-page-sha="' + (p.sha || '') + '">Delete</button></td>' +
         '</tr>';
       }).join('');
@@ -1071,7 +1077,7 @@ window.AdminAPI = (function() {
       '</div>' +
       (pages.length === 0
         ? '<div class="empty-state"><h2>No pages yet</h2><p>Create your first page to get started.</p></div>'
-        : '<table class="post-table"><thead><tr><th>Title</th><th>Slug</th><th>Status</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>');
+        : '<table class="post-table"><thead><tr><th>Title</th><th>Slug</th><th>Status</th><th>Order</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>');
     }
 
     function renderPageEditor(page) {
@@ -1080,7 +1086,17 @@ window.AdminAPI = (function() {
       var slug = page.slug || '';
       var metaDesc = page.metaDescription || '';
       var published = page.published !== false;
+      var pageOrder = page.order || 0;
+      var template = page.template || 'default';
       var body = page.body || '';
+
+      var templates = [
+        { value: 'default', label: 'Default (with sidebar)' },
+        { value: 'wide', label: 'Wide (full width, no sidebar)' },
+      ];
+      var templateOptions = templates.map(function(t) {
+        return '<option value="' + t.value + '"' + (t.value === template ? ' selected' : '') + '>' + t.label + '</option>';
+      }).join('');
 
       return '<div class="post-list-header">' +
         '<h1>' + (isNew ? 'New Page' : 'Edit Page') + '</h1>' +
@@ -1091,6 +1107,8 @@ window.AdminAPI = (function() {
         '<div class="editor-field"><label>Title</label><input type="text" id="page-title" value="' + escapeHtml(title) + '" placeholder="Page title" /></div>' +
         '<div class="editor-field"><label>Slug</label><input type="text" id="page-slug" value="' + escapeHtml(slug) + '" placeholder="page-url-slug" ' + (isNew ? '' : 'readonly style="opacity:0.6"') + ' /></div>' +
         '<div class="editor-field"><label>Meta Description</label><input type="text" id="page-meta" value="' + escapeHtml(metaDesc) + '" placeholder="Brief description for SEO" /></div>' +
+        '<div class="editor-field"><label>Order</label><input type="number" id="page-order" value="' + pageOrder + '" min="0" step="1" style="width:80px" /></div>' +
+        '<div class="editor-field"><label>Template</label><select id="page-template">' + templateOptions + '</select></div>' +
         '<div class="editor-field editor-field--checkbox"><label><input type="checkbox" id="page-published" ' + (published ? 'checked' : '') + ' /> Published</label></div>' +
         '<div class="editor-field"><label>Content (Markdown)</label><textarea id="page-body" rows="20" placeholder="Page content in Markdown...">' + escapeHtml(body) + '</textarea></div>' +
       '</div>';
@@ -1664,6 +1682,21 @@ window.AdminAPI = (function() {
           var slug = this.dataset.pageSlug;
           var sha = this.dataset.pageSha;
           handlePageDelete(slug, sha);
+        });
+      });
+
+      qsa('.page-status-toggle').forEach(function(el) {
+        el.addEventListener('click', function() {
+          var slug = this.dataset.pageSlug;
+          handlePageTogglePublished(slug);
+        });
+      });
+
+      qsa('.page-order-input').forEach(function(el) {
+        el.addEventListener('change', function() {
+          var slug = this.dataset.pageSlug;
+          var order = parseInt(this.value, 10) || 0;
+          handlePageSetOrder(slug, order);
         });
       });
 
@@ -2508,6 +2541,8 @@ window.AdminAPI = (function() {
       var slugEl = document.getElementById('page-slug');
       var metaEl = document.getElementById('page-meta');
       var publishedEl = document.getElementById('page-published');
+      var orderEl = document.getElementById('page-order');
+      var templateEl = document.getElementById('page-template');
       var bodyEl = document.getElementById('page-body');
 
       if (!titleEl || !bodyEl) return;
@@ -2525,6 +2560,8 @@ window.AdminAPI = (function() {
           title: title,
           metaDescription: metaEl ? metaEl.value.trim() : '',
           published: publishedEl ? publishedEl.checked : true,
+          order: orderEl ? parseInt(orderEl.value, 10) || 0 : 0,
+          template: templateEl ? templateEl.value : 'default',
         };
         if (state.editPage && state.editPage.sha) {
           attrs._sha = state.editPage.sha;
@@ -2554,6 +2591,53 @@ window.AdminAPI = (function() {
         render();
       } catch(e) {
         showToast('Error deleting: ' + e.message, 'error');
+      }
+    }
+
+    async function handlePageTogglePublished(slug) {
+      var page = state.pages.find(function(p) { return p.slug === slug; });
+      if (!page) return;
+      var newPublished = !page.published;
+      try {
+        var attrs = {
+          title: page.title,
+          metaDescription: page.metaDescription || '',
+          published: newPublished,
+          order: page.order || 0,
+          template: page.template || 'default',
+          _sha: page.sha,
+        };
+        await AdminAPI.savePage(slug, attrs, page.body || '');
+        try { sessionStorage.removeItem('aa_pages_cache'); } catch(e) {}
+        page.published = newPublished;
+        page.sha = attrs._sha || page.sha;
+        showToast('Page status updated', 'success');
+        render();
+      } catch(e) {
+        showToast('Error updating status: ' + e.message, 'error');
+      }
+    }
+
+    async function handlePageSetOrder(slug, order) {
+      var page = state.pages.find(function(p) { return p.slug === slug; });
+      if (!page) return;
+      try {
+        var attrs = {
+          title: page.title,
+          metaDescription: page.metaDescription || '',
+          published: page.published,
+          order: order,
+          template: page.template || 'default',
+          _sha: page.sha,
+        };
+        await AdminAPI.savePage(slug, attrs, page.body || '');
+        try { sessionStorage.removeItem('aa_pages_cache'); } catch(e) {}
+        page.order = order;
+        page.sha = attrs._sha || page.sha;
+        showToast('Order updated', 'success');
+        render();
+      } catch(e) {
+        showToast('Error updating order: ' + e.message, 'error');
       }
     }
 
