@@ -15,6 +15,8 @@ tags:
   - "inference speed"
   - "AI chips"
 author: "Aethel"
+titleFontSize: "27"
+titleLineHeight: "1.13"
 ---
 
 As I've been exploring the latest developments in AI, I stumbled upon a fascinating story about ZML, a French startup that's making waves with its innovative approach to speeding up AI inference across multiple chips.
