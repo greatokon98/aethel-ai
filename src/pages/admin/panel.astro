@@ -207,6 +207,51 @@ window.AdminAPI = (function() {
     return ghDeleteFile('src/content/posts/' + slug + '.md', sha);
   }
 
+  async function listPages(force) {
+    if (!force) {
+      try {
+        var cached = sessionStorage.getItem('aa_pages_cache');
+        if (cached) { var parsed = JSON.parse(cached); if (Array.isArray(parsed)) return parsed; }
+      } catch(e) {}
+    }
+    try {
+      var data = await apiFetch(GITHUB_API + '/contents/src/content/pages?ref=' + CONFIG.branch);
+    } catch(e) {
+      if (e.message && e.message.indexOf('Not Found') !== -1) return [];
+      throw e;
+    }
+    var files = data.filter(function(f) { return f.name.endsWith('.md'); });
+    var results = await Promise.all(files.map(async function(f) {
+      try {
+        var content = await apiFetch(GITHUB_API + '/contents/src/content/pages/' + f.name);
+        var decoded = atob(content.content);
+        var parsed = parseFrontmatter(decoded);
+        var slug = f.name.replace(/\.md$/, '');
+        return {
+          slug: slug, name: f.name, sha: content.sha,
+          title: parsed.attrs.title || slug,
+          metaDescription: parsed.attrs.metaDescription || '',
+          published: parsed.attrs.published !== false,
+          body: parsed.body,
+        };
+      } catch(e) { return null; }
+    }));
+    var pages = results.filter(Boolean);
+    try { sessionStorage.setItem('aa_pages_cache', JSON.stringify(pages)); } catch(e) {}
+    return pages;
+  }
+
+  async function savePage(slug, attrs, body) {
+    var content = buildFrontmatter(attrs, body);
+    var path = 'src/content/pages/' + slug + '.md';
+    var sha = attrs._sha || null;
+    return ghSaveFile(path, content, sha);
+  }
+
+  async function deletePage(slug, sha) {
+    return ghDeleteFile('src/content/pages/' + slug + '.md', sha);
+  }
+
   // ---- Settings (always GitHub) ----
   var defaultSettings = {
     site: { title: 'Aethel_AI', tagline: 'Smart tools for everyday life — no jargon, just results.', description: 'A blog about AI, automation, and smart tools for everyday life.', copyright: 'All rights reserved.' },
@@ -466,6 +511,7 @@ window.AdminAPI = (function() {
     getPat: getPat, storePat: storePat, removePat: removePat, hasPat: hasPat,
     validatePat: validatePat,
     listPosts: listPosts, savePost: savePost, deletePost: deletePost,
+    listPages: listPages, savePage: savePage, deletePage: deletePage,
     parseFrontmatter: parseFrontmatter, buildFrontmatter: buildFrontmatter,
     loadSettings: loadSettings, saveSettings: saveSettings, defaultSettings: defaultSettings,
     loadMessages: loadMessages, saveMessages: saveMessages, generateId: generateId,
@@ -541,6 +587,8 @@ window.AdminAPI = (function() {
       view: 'loading',
       posts: [],
       editingPost: null,
+      pages: [],
+      editPage: null,
       postFilter: { search: '', status: 'all', category: 'all' },
       trendingItems: [],
       popularItems: [],
@@ -624,6 +672,7 @@ window.AdminAPI = (function() {
         { id: 'search', label: 'Search' },
         { id: 'automation', label: 'Automation' },
         { id: 'settings', label: 'Settings' },
+        { id: 'pages', label: 'Pages' },
         { id: 'diagnostics', label: 'Diagnostics' },
       ];
       return '<nav class="admin-tabs">' + tabs.map(function(t) {
@@ -999,6 +1048,54 @@ window.AdminAPI = (function() {
       '</div>';
     }
 
+    // --- Pages ---
+    function renderPages() {
+      if (state.editPage) {
+        return renderPageEditor(state.editPage);
+      }
+      var pages = state.pages || [];
+      var rows = pages.map(function(p) {
+        var statusBadge = p.published
+          ? '<span class="status-badge status-badge--published">Published</span>'
+          : '<span class="status-badge status-badge--draft">Draft</span>';
+        return '<tr>' +
+          '<td><a href="#" class="post-title-link" data-page-slug="' + p.slug + '">' + escapeHtml(p.title) + '</a></td>' +
+          '<td><code>' + escapeHtml(p.slug) + '</code></td>' +
+          '<td>' + statusBadge + '</td>' +
+          '<td><button class="admin-btn-delete" data-page-slug="' + p.slug + '" data-page-sha="' + (p.sha || '') + '">Delete</button></td>' +
+        '</tr>';
+      }).join('');
+      return '<div class="post-list-header">' +
+        '<h1>Pages <span class="count">(' + pages.length + ')</span></h1>' +
+        '<button class="admin-header__btn admin-header__btn--primary" id="btn-new-page">+ New Page</button>' +
+      '</div>' +
+      (pages.length === 0
+        ? '<div class="empty-state"><h2>No pages yet</h2><p>Create your first page to get started.</p></div>'
+        : '<table class="post-table"><thead><tr><th>Title</th><th>Slug</th><th>Status</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>');
+    }
+
+    function renderPageEditor(page) {
+      var isNew = !page.slug;
+      var title = page.title || '';
+      var slug = page.slug || '';
+      var metaDesc = page.metaDescription || '';
+      var published = page.published !== false;
+      var body = page.body || '';
+
+      return '<div class="post-list-header">' +
+        '<h1>' + (isNew ? 'New Page' : 'Edit Page') + '</h1>' +
+        '<button class="admin-header__btn" id="btn-back-pages">Back</button>' +
+        '<button class="admin-header__btn admin-header__btn--primary" id="btn-save-page">Save Page</button>' +
+      '</div>' +
+      '<div class="editor-form">' +
+        '<div class="editor-field"><label>Title</label><input type="text" id="page-title" value="' + escapeHtml(title) + '" placeholder="Page title" /></div>' +
+        '<div class="editor-field"><label>Slug</label><input type="text" id="page-slug" value="' + escapeHtml(slug) + '" placeholder="page-url-slug" ' + (isNew ? '' : 'readonly style="opacity:0.6"') + ' /></div>' +
+        '<div class="editor-field"><label>Meta Description</label><input type="text" id="page-meta" value="' + escapeHtml(metaDesc) + '" placeholder="Brief description for SEO" /></div>' +
+        '<div class="editor-field editor-field--checkbox"><label><input type="checkbox" id="page-published" ' + (published ? 'checked' : '') + ' /> Published</label></div>' +
+        '<div class="editor-field"><label>Content (Markdown)</label><textarea id="page-body" rows="20" placeholder="Page content in Markdown...">' + escapeHtml(body) + '</textarea></div>' +
+      '</div>';
+    }
+
     // --- Automation ---
     function renderAutomation() {
       var runs = state.automationRuns ? state.automationRuns.runs || [] : [];
@@ -1212,6 +1309,10 @@ window.AdminAPI = (function() {
         html += renderSearchAnalytics();
       } else if (state.view === 'automation') {
         html += renderAutomation();
+      } else if (state.view === 'pages') {
+        html += renderPages();
+      } else if (state.view === 'pages-editor') {
+        html += renderPageEditor(state.editPage);
       } else if (state.view === 'settings') {
         html += renderSettingsForm();
       } else if (state.view === 'diagnostics') {
@@ -1222,6 +1323,9 @@ window.AdminAPI = (function() {
       // Persist editor state before rendering
       if (state.view === 'editor') {
         try { sessionStorage.setItem('aa_editing_post', JSON.stringify(state.editingPost || null)); } catch(e) {}
+      }
+      if (state.view === 'pages-editor') {
+        try { sessionStorage.setItem('aa_editing_page', JSON.stringify(state.editPage || null)); } catch(e) {}
       }
 
       app.innerHTML = html;
@@ -1533,6 +1637,50 @@ window.AdminAPI = (function() {
         });
       }
 
+      // --- Pages ---
+      var newPageBtn = document.getElementById('btn-new-page');
+      if (newPageBtn) {
+        newPageBtn.addEventListener('click', function() {
+          state.editPage = { title: '', slug: '', metaDescription: '', published: true, body: '' };
+          state.view = 'pages-editor';
+          render();
+        });
+      }
+
+      qsa('[data-page-slug]').forEach(function(el) {
+        el.addEventListener('click', function() {
+          var slug = this.dataset.pageSlug;
+          var page = state.pages.find(function(p) { return p.slug === slug; });
+          if (page) {
+            state.editPage = JSON.parse(JSON.stringify(page));
+            state.view = 'pages-editor';
+            render();
+          }
+        });
+      });
+
+      qsa('.admin-btn-delete').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var slug = this.dataset.pageSlug;
+          var sha = this.dataset.pageSha;
+          handlePageDelete(slug, sha);
+        });
+      });
+
+      var savePageBtn = document.getElementById('btn-save-page');
+      if (savePageBtn) {
+        savePageBtn.addEventListener('click', handlePageSave);
+      }
+
+      var backPageBtn = document.getElementById('btn-back-pages');
+      if (backPageBtn) {
+        backPageBtn.addEventListener('click', function() {
+          state.editPage = null;
+          state.view = 'pages';
+          render();
+        });
+      }
+
       // Settings: add nav link
       var addNavBtn = document.getElementById('btn-add-nav-link');
       if (addNavBtn) {
@@ -1658,6 +1806,8 @@ window.AdminAPI = (function() {
         loadSearchData();
       } else if (view === 'automation') {
         loadAutomationRuns();
+      } else if (view === 'pages') {
+        loadPages();
       } else {
         render();
       }
@@ -1698,6 +1848,20 @@ window.AdminAPI = (function() {
         state.posts = await AdminAPI.listPosts(force);
         _cache.posts = Date.now();
         state.view = 'list';
+      } catch(e) {
+        state.view = 'error';
+        state.error = e.message;
+      }
+      render();
+    }
+
+    async function loadPages(force) {
+      if (state.view !== 'pages') return;
+      state.view = 'loading';
+      render();
+      try {
+        state.pages = await AdminAPI.listPages(force || true);
+        state.view = 'pages';
       } catch(e) {
         state.view = 'error';
         state.error = e.message;
@@ -2337,6 +2501,61 @@ window.AdminAPI = (function() {
       },
       runDiagnostics: runDiagnostics,
     };
+
+    // --- Page Handlers ---
+    async function handlePageSave() {
+      var titleEl = document.getElementById('page-title');
+      var slugEl = document.getElementById('page-slug');
+      var metaEl = document.getElementById('page-meta');
+      var publishedEl = document.getElementById('page-published');
+      var bodyEl = document.getElementById('page-body');
+
+      if (!titleEl || !bodyEl) return;
+      var title = titleEl.value.trim();
+      if (!title) { showToast('Title is required', 'error'); return; }
+      var slug = slugEl.value.trim() || slugify(title);
+      if (!slug) { showToast('Could not generate slug', 'error'); return; }
+
+      var saveBtn = document.getElementById('btn-save-page');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      try {
+        var attrs = {
+          title: title,
+          metaDescription: metaEl ? metaEl.value.trim() : '',
+          published: publishedEl ? publishedEl.checked : true,
+        };
+        if (state.editPage && state.editPage.sha) {
+          attrs._sha = state.editPage.sha;
+        }
+        var body = bodyEl.value;
+        await AdminAPI.savePage(slug, attrs, body);
+        try { sessionStorage.removeItem('aa_pages_cache'); } catch(e) {}
+        showToast('Page saved! Rebuilding site...', 'success');
+        state.editPage = null;
+        state.view = 'pages';
+        render();
+      } catch(e) {
+        showToast('Error saving: ' + e.message, 'error');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Page';
+      }
+    }
+
+    async function handlePageDelete(slug, sha) {
+      if (!slug || !confirm('Delete this page? This cannot be undone.')) return;
+      try {
+        await AdminAPI.deletePage(slug, sha);
+        showToast('Page deleted. Rebuilding...', 'success');
+        try { sessionStorage.removeItem('aa_pages_cache'); } catch(e) {}
+        state.view = 'pages';
+        state.pages = state.pages.filter(function(p) { return p.slug !== slug; });
+        render();
+      } catch(e) {
+        showToast('Error deleting: ' + e.message, 'error');
+      }
+    }
 
     // --- Diagnostics ---
     async function runDiagnostics() {

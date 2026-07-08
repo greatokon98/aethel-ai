@@ -1,0 +1,152 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Sidebar from '../../components/Sidebar.astro';
+import { getConfig } from '../../lib/site-config';
+import { fetchTrendingNews } from '../../lib/trending';
+import fs from 'node:fs';
+import path from 'node:path';
+import parseFrontmatter from 'front-matter';
+import { Marked } from 'marked';
+
+const marked = new Marked();
+
+export async function getStaticPaths() {
+  const pagesDir = path.resolve('src/content/pages');
+  if (!fs.existsSync(pagesDir)) return [];
+  const files = fs.readdirSync(pagesDir).filter((f) => f.endsWith('.md'));
+  return files.map((file) => ({
+    params: { slug: file.replace(/\.md$/, '') },
+    props: { file },
+  }));
+}
+
+export const prerender = true;
+
+const { slug } = Astro.params;
+const pagesDir = path.resolve('src/content/pages');
+const allFiles = fs.readdirSync(pagesDir).filter((f) => f.endsWith('.md'));
+
+const matchingFile = allFiles.find((f) => f.replace(/\.md$/, '') === slug);
+if (!matchingFile) {
+  return Astro.redirect('/404');
+}
+
+const fileContent = fs.readFileSync(path.join(pagesDir, matchingFile), 'utf-8');
+const { attributes, body } = parseFrontmatter(fileContent);
+
+if (attributes.published === false) {
+  return Astro.redirect('/404');
+}
+
+const htmlContent = marked.parse(body);
+const config = getConfig();
+const siteTitle = config?.site?.title || 'Aethel_AI';
+
+const recentPostsDir = path.resolve('src/content/posts');
+const allPostFiles = fs.existsSync(recentPostsDir)
+  ? fs.readdirSync(recentPostsDir).filter((f) => f.endsWith('.md'))
+  : [];
+const allPosts = allPostFiles.map((f) => {
+  const c = fs.readFileSync(path.join(recentPostsDir, f), 'utf-8');
+  const { attributes: a, body: b } = parseFrontmatter(c);
+  return {
+    ...a as Record<string, unknown>,
+    slug: f.replace(/\.md$/, ''),
+    body: b,
+    publishDate: new Date(a.publishDate as string || Date.now()),
+  };
+});
+const allCategories = [...new Set(allPosts.flatMap((p: any) => p.categories || []))] as string[];
+const recentPosts = allPosts.sort((a: any, b: any) => b.publishDate.getTime() - a.publishDate.getTime()).slice(0, 5);
+const trendingPosts = allPosts.filter((p: any) => p.tags && p.tags.includes('trending'));
+const popularPosts = allPosts.filter((p: any) => p.tags && p.tags.includes('popular'));
+const trending = await fetchTrendingNews();
+---
+
+<BaseLayout title={(attributes.title as string) || slug} description={(attributes.metaDescription as string) || ''}>
+  <div class="page">
+    <div class="container">
+      <div class="blog-grid__layout">
+        <div class="blog-grid__main">
+          <article class="page__content">
+            <h1 class="page__title">{attributes.title as string}</h1>
+            <div class="page__body" set:html={htmlContent} />
+          </article>
+        </div>
+        <div class="blog-grid__sidebar">
+          <Sidebar
+            categories={allCategories}
+            recentPosts={recentPosts}
+            trendingPosts={trendingPosts}
+            trending={trending}
+            popularPosts={popularPosts}
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding: var(--space-16) 0 var(--space-24);
+  }
+
+  .page__title {
+    font-size: var(--text-4xl);
+    margin-bottom: var(--space-8);
+  }
+
+  .page__body {
+    font-size: var(--text-lg);
+    line-height: var(--leading-relaxed);
+    max-width: var(--content-width);
+  }
+
+  .page__body :global(p) {
+    margin-bottom: var(--space-6);
+  }
+
+  .page__body :global(h2) {
+    margin-top: var(--space-10);
+    margin-bottom: var(--space-4);
+  }
+
+  .page__body :global(ul) {
+    margin-bottom: var(--space-6);
+    padding-left: var(--space-6);
+  }
+
+  .page__body :global(li) {
+    margin-bottom: var(--space-2);
+  }
+
+  .blog-grid__layout {
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-width);
+    gap: var(--space-12);
+    align-items: start;
+  }
+
+  .blog-grid__sidebar {
+    position: sticky;
+    top: 88px;
+    align-self: start;
+  }
+
+  @media (max-width: 1024px) {
+    .blog-grid__layout {
+      grid-template-columns: 1fr 280px;
+      gap: var(--space-8);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .blog-grid__layout {
+      grid-template-columns: 1fr;
+    }
+    .blog-grid__sidebar {
+      position: static;
+    }
+  }
+</style>
