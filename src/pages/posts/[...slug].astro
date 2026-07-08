@@ -81,6 +81,8 @@ const trending = await fetchTrendingNews();
   trendingPosts={trendingPosts}
   trending={trending}
   popularPosts={popularPosts}
+  titleFontSize={attributes.titleFontSize as string}
+  titleLineHeight={attributes.titleLineHeight as string}
 >
   <div class="post-content" set:html={htmlContent} />
 </PostLayout>

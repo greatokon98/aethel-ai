@@ -37,6 +37,8 @@ const posts = files
       slug: getSlug(file),
       readingTime: getReadingTime(body),
       draft: (attributes.draft as boolean) || false,
+      titleFontSize: (attributes.titleFontSize as string) || '20',
+      titleLineHeight: (attributes.titleLineHeight as string) || '1.3',
     };
   })
   .filter(p => !p.draft)
@@ -97,6 +99,8 @@ const popularPosts = posts.filter((p) => p.tags && p.tags.includes('popular'));
                   author={post.author}
                   readingTime={post.readingTime}
                   featured={false}
+                  titleFontSize={post.titleFontSize}
+                  titleLineHeight={post.titleLineHeight}
                 />
               </div>
             ))}
@@ -147,6 +151,8 @@ const popularPosts = posts.filter((p) => p.tags && p.tags.includes('popular'));
                 author={post.author}
                 readingTime={post.readingTime}
                 featured={false}
+                titleFontSize={post.titleFontSize}
+                titleLineHeight={post.titleLineHeight}
               />
             </div>
           ))}

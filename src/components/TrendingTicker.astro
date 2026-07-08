@@ -16,16 +16,16 @@ export interface Props {
 }
 
 const { trendingPosts, trending = [], isHomePage = false } = Astro.props;
-const items = trending.length > 0 ? trending.map(t => ({
-  title: t.title,
-  url: t.link,
-  date: t.pubDate,
-  source: t.source,
-})) : trendingPosts.slice(0, 8).map(p => ({
+const items = trendingPosts.length > 0 ? trendingPosts.slice(0, 8).map(p => ({
   title: p.title,
   url: `/posts/${p.slug}`,
   date: p.publishDate.toISOString(),
   source: '',
+})) : trending.slice(0, 8).map(t => ({
+  title: t.title,
+  url: t.link,
+  date: t.pubDate,
+  source: t.source,
 }));
 const paceClass = isHomePage ? 'ticker-track--slow' : 'ticker-track--normal';
 const dataAttr = JSON.stringify(items);

@@ -9,9 +9,11 @@ export interface Props {
   author?: string;
   readingTime?: number;
   featured?: boolean;
+  titleFontSize?: string;
+  titleLineHeight?: string;
 }
 
-const { title, excerpt, publishDate, slug, featuredImage, categories, author, readingTime, featured } = Astro.props;
+const { title, excerpt, publishDate, slug, featuredImage, categories, author, readingTime, featured, titleFontSize = '20', titleLineHeight = '1.3' } = Astro.props;
 const formattedDate = publishDate.toLocaleDateString('en-US', {
   year: 'numeric',
   month: 'long',
@@ -39,7 +41,7 @@ const cardClass = featured ? 'post-card post-card--featured' : 'post-card';
         </div>
       )}
       <div class="post-card__body">
-        <h3 class="post-card__title">{title}</h3>
+        <h3 class="post-card__title" style={`font-size: ${titleFontSize}px; line-height: ${titleLineHeight}`}>{title}</h3>
         <p class="post-card__excerpt">{excerpt}</p>
       </div>
       <div class="post-card__meta">

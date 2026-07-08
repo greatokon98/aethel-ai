@@ -34,6 +34,8 @@ export interface Props {
     slug: string;
     publishDate: Date;
   }>;
+  titleFontSize?: string;
+  titleLineHeight?: string;
 }
 
 const {
@@ -50,6 +52,8 @@ const {
   allCategories = [],
   trending = [],
   popularPosts = [],
+  titleFontSize = '48',
+  titleLineHeight = '1.2',
 } = Astro.props;
 
 const formattedDate = publishDate.toLocaleDateString('en-US', {
@@ -72,7 +76,7 @@ const formattedDate = publishDate.toLocaleDateString('en-US', {
                 ))}
               </div>
             )}
-            <h1 class="post-page__title">{title}</h1>
+            <h1 class="post-page__title" style={`font-size: ${titleFontSize}px; line-height: ${titleLineHeight}`}>{title}</h1>
             <div class="post-page__meta">
               <time datetime={publishDate.toISOString()}>{formattedDate}</time>
               {readingTime && <span class="post-page__reading">{readingTime} min read</span>}

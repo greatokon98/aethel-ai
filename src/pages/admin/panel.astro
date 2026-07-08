@@ -17,6 +17,7 @@ window.AdminAPI = (function() {
   var GITHUB_PAT_KEY = 'aa_github_pat';
   var GITHUB_API = 'https://api.github.com/repos/' + CONFIG.owner + '/' + CONFIG.repo;
   var BASE = CONFIG.type === 'render' ? CONFIG.renderUrl : '';
+  var DEPLOY_HOOK_URL = 'https://api.render.com/deploy/srv-d94pcaeq1p3s73c3v2ag?key=2JzMugJCb0U';
 
   function getPat() { return localStorage.getItem(GITHUB_PAT_KEY); }
   function storePat(token) { localStorage.setItem(GITHUB_PAT_KEY, token); }
@@ -66,11 +67,20 @@ window.AdminAPI = (function() {
     }
   }
 
-  async function ghSaveFile(path, content, sha) {
+  async function ghSaveFile(path, content, sha, retries) {
+    if (retries === undefined) retries = 2;
     var payload = { message: 'Update ' + path, content: btoa(content), branch: CONFIG.branch };
     if (sha) payload.sha = sha;
-    var data = await apiFetch(GITHUB_API + '/contents/' + path, { method: 'PUT', body: payload });
-    return data.content.sha;
+    try {
+      var data = await apiFetch(GITHUB_API + '/contents/' + path, { method: 'PUT', body: payload });
+      return data.content.sha;
+    } catch(e) {
+      if (retries > 0 && e.message && e.message.indexOf('does not match') !== -1) {
+        var fileData = await apiFetch(GITHUB_API + '/contents/' + path + '?ref=' + CONFIG.branch);
+        return ghSaveFile(path, content, fileData.sha, retries - 1);
+      }
+      throw e;
+    }
   }
 
   async function ghDeleteFile(path, sha) {
@@ -2254,12 +2264,15 @@ window.AdminAPI = (function() {
           }
           if (tagsEl) tagsEl.value = attrs.tags.join(', ');
         }
-        // ghSaveFile auto-retries on SHA mismatch, so just pass current SHA
+        // Pass SHA from last loaded state; ghSaveFile retries on mismatch
         if (state.editingPost && state.editingPost.sha) {
           attrs._sha = state.editingPost.sha;
         }
         var body = bodyEl.value;
         await AdminAPI.savePost(slug, attrs, body);
+        try {
+          await fetch(DEPLOY_HOOK_URL, { method: 'POST' });
+        } catch(e) { /* deploy hook optional */ }
         try { sessionStorage.removeItem('aa_posts_cache'); } catch(e) {}
         _cache.posts = 0;
         showToast('Post saved! Rebuilding site...', 'success');
