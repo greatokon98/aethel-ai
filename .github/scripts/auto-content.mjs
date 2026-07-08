@@ -1,7 +1,3 @@
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const yaml = require('js-yaml');
-
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -572,18 +568,23 @@ Reply with just the category name.`;
   const excerpt = topic.reason || `A clear, practical guide to understanding ${topic.title.toLowerCase()} and how it affects your everyday life.`;
   const featuredImage = await fetchFeaturedImage(topic.title, category);
 
-  const frontmatter = yaml.dump({
-    title: topic.title,
-    excerpt,
-    publishDate: date,
-    featuredImage,
-    featured: isFeatured,
-    categories: [category],
-    tags,
-    author: 'Aethel'
-  }, { lineWidth: -1, quotingType: '"', forceQuotes: true, noCompatMode: true });
+  const safe = (s) => JSON.stringify(s ?? '');
 
-  const markdown = `---\n${frontmatter}---\n\n${content}\n`;
+  const markdown = `---
+title: ${safe(topic.title)}
+excerpt: ${safe(excerpt)}
+publishDate: ${safe(date)}
+featuredImage: ${safe(featuredImage)}
+featured: ${isFeatured}
+categories:
+  - ${safe(category)}
+tags:
+${tags.map(t => `  - ${safe(t)}`).join("\n")}
+author: ${safe('Aethel')}
+---
+
+${content}
+`;
   return { slug, markdown, type: postType };
 }
 
