@@ -616,7 +616,7 @@ const featuredData = featured.map(p => ({
 
     .hero__overlay-left {
       pointer-events: auto;
-      max-width: 600px;
+      max-width: 580px;
       align-self: stretch;
       display: flex;
       flex-direction: column;
@@ -629,28 +629,28 @@ const featuredData = featured.map(p => ({
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: white;
-      margin-bottom: var(--space-3);
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: var(--space-4);
     }
 
     .hero__title {
       font-family: var(--font-heading);
-      font-size: var(--text-5xl);
+      font-size: clamp(2.2rem, 3.8vw, 3rem);
       color: white;
-      font-weight: 500;
-      line-height: var(--leading-tight);
-      letter-spacing: -0.02em;
-      margin-bottom: var(--space-3);
+      font-weight: 600;
+      line-height: 1.15;
+      letter-spacing: -0.01em;
+      margin-bottom: var(--space-4);
     }
 
     .hero__desc {
       font-family: var(--font-body);
-      font-size: var(--text-lg);
-      color: rgba(255, 255, 255, 0.8);
-      margin-bottom: var(--space-5);
+      font-size: 1.05rem;
+      color: rgba(255, 255, 255, 0.75);
+      margin-bottom: var(--space-4);
       font-weight: 300;
-      line-height: 1.6;
+      line-height: 1.5;
     }
 
     .hero__meta {
@@ -659,8 +659,8 @@ const featuredData = featured.map(p => ({
       gap: 8px;
       font-family: var(--font-body);
       font-size: var(--text-sm);
-      color: rgba(255, 255, 255, 0.6);
-      margin-bottom: var(--space-5);
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: var(--space-8);
     }
 
     .hero__meta-dot {
@@ -677,15 +677,16 @@ const featuredData = featured.map(p => ({
       color: white;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      padding-bottom: 2px;
-      border-bottom: 2px solid var(--color-accent);
+      padding-bottom: var(--space-1);
+      border-bottom: 2px solid #2563EB;
       text-decoration: none;
       transition: color 300ms ease, border-color 300ms ease;
+      width: fit-content;
     }
 
     .hero__cta:hover {
-      color: var(--color-accent-hover);
-      border-color: var(--color-accent-hover);
+      color: #60A5FA;
+      border-color: #60A5FA;
     }
 
     /* ---- right panel cards ---- */
