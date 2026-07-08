@@ -740,7 +740,10 @@ window.AdminAPI = (function() {
       }).join('');
       return '<div class="post-list-header">' +
         '<h1>Posts <span class="count">(' + shown + '/' + total + ')</span></h1>' +
+        '<div style="display:flex;gap:8px">' +
+        '<button class="admin-header__btn" id="btn-refresh-posts">Refresh</button>' +
         '<button class="admin-header__btn admin-header__btn--primary" id="btn-new-post">+ New Post</button>' +
+        '</div>' +
       '</div>' +
       filterBar +
       (shown === 0 ? '<div class="empty-state"><h2>No posts match filter</h2><p>Try changing your filter criteria.</p></div>' :
@@ -1292,6 +1295,16 @@ window.AdminAPI = (function() {
           state.view = 'editor';
           state.editingPost = null;
           render();
+        });
+      }
+
+      // Refresh posts
+      var refreshBtn = document.getElementById('btn-refresh-posts');
+      if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+          try { sessionStorage.removeItem('aa_posts_cache'); } catch(e) {}
+          _cache.posts = 0;
+          loadPosts(true);
         });
       }
 
@@ -2431,6 +2444,7 @@ window.AdminAPI = (function() {
 
     // --- Init ---
     async function init() {
+      try { sessionStorage.removeItem('aa_posts_cache'); } catch(e) {}
       render();
       var pat = AdminAPI.getPat();
       if (!pat) {
