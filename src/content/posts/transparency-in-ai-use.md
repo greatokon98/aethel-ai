@@ -1,6 +1,6 @@
 ---
 title: "Why AI Transparency Matters More Than AI Intelligence"
-excerpt: "Trust isn't built by making AI smarter. It's built by making AI understandable.  AI doesn't have to explain every line of code. But when it influences decisions that affect our money, careers, health, or safety, we deserve more than \\"the algorithm decided.\\""
+excerpt: "Trust isn't built by making AI smarter. It's built by making AI understandable.  AI doesn't have to explain every line of code. But when it influences decisions that affect our money, careers, health, or safety, we deserve more than \"the algorithm decided.\""
 publishDate: "2026-07-06"
 featuredImage: "https://images.unsplash.com/photo-1694903089438-bf28d4697d9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w5OTIzMTV8MHwxfHNlYXJjaHw3fHxhcnRpZmljaWFsJTIwaW50ZWxsaWdlbmNlfGVufDB8fHx8MTc4MzUxNjM3M3ww&ixlib=rb-4.1.0&q=80&w=1080"
 featured: false

@@ -65,6 +65,20 @@ const recentPosts = allPosts
 const trendingPosts = allPosts.filter((p: any) => p.tags && p.tags.includes('trending'));
 const popularPosts = allPosts.filter((p: any) => p.tags && p.tags.includes('popular'));
 const trending = await fetchTrendingNews();
+
+const currentTags = (attributes.tags as string[]) || [];
+const currentCategories = (attributes.categories as string[]) || [];
+const relatedPosts = allPosts
+  .filter((p: any) => p.slug !== slug)
+  .map((p: any) => {
+    const tagOverlap = (p.tags || []).filter((t: string) => currentTags.includes(t)).length;
+    const catOverlap = (p.categories || []).filter((c: string) => currentCategories.includes(c)).length;
+    const score = tagOverlap * 2 + catOverlap;
+    return { ...p, score };
+  })
+  .filter((p: any) => p.score > 0)
+  .sort((a: any, b: any) => b.score - a.score)
+  .slice(0, 4);
 ---
 
 <PostLayout
@@ -81,6 +95,7 @@ const trending = await fetchTrendingNews();
   trendingPosts={trendingPosts}
   trending={trending}
   popularPosts={popularPosts}
+  relatedPosts={relatedPosts}
   titleFontSize={attributes.titleFontSize as string}
   titleLineHeight={attributes.titleLineHeight as string}
 >
