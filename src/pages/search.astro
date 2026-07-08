@@ -51,8 +51,19 @@ const popularPosts = allPosts.filter((p) => p.tags && p.tags.includes('popular')
 const config = getConfig();
 const siteTitle = config?.site?.title || 'Aethel_AI';
 
+const lightPosts = allPosts.map((p) => ({
+  title: p.title,
+  slug: p.slug,
+  excerpt: p.excerpt,
+  categories: p.categories,
+  tags: p.tags,
+  publishDate: p.publishDate,
+  featuredImage: p.featuredImage && !p.featuredImage.startsWith('data:') ? p.featuredImage : '',
+  readingTime: p.readingTime,
+}));
+
 const searchScript = [
-  'var SEARCH_DATA = ' + JSON.stringify(allPosts) + ';',
+  'var SEARCH_DATA = ' + JSON.stringify(lightPosts) + ';',
   '(function() {',
   '  var data = SEARCH_DATA;',
   '  var grid = document.getElementById("results-grid");',
@@ -133,7 +144,6 @@ const searchScript = [
   '      if (',
   '        p.title.toLowerCase().indexOf(t) !== -1 ||',
   '        p.excerpt.toLowerCase().indexOf(t) !== -1 ||',
-  '        p.body.toLowerCase().indexOf(t) !== -1 ||',
   '        (p.categories || []).some(function(c) { return c.toLowerCase().indexOf(t) !== -1; }) ||',
   '        (p.tags || []).some(function(tg) { return tg.toLowerCase().indexOf(t) !== -1; })',
   '      ) {',
@@ -165,6 +175,19 @@ const searchScript = [
   '    var u = "/search?q=" + encodeURIComponent(v);',
   '    window.history.pushState({ q: v }, "", u);',
   '    doSearch(v);',
+  '  });',
+  '',
+  '  var debounceTimer;',
+  '  input.addEventListener("input", function() {',
+  '    clearTimeout(debounceTimer);',
+  '    debounceTimer = setTimeout(function() {',
+  '      var v = input.value.trim();',
+  '      if (v) {',
+  '        var u = "/search?q=" + encodeURIComponent(v);',
+  '        window.history.replaceState({ q: v }, "", u);',
+  '      }',
+  '      doSearch(v);',
+  '    }, 150);',
   '  });',
   '',
   '  function init() {',

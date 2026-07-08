@@ -1,3 +1,7 @@
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const yaml = require('js-yaml');
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
@@ -48,10 +52,6 @@ function slugify(text) {
     .replace(/[\s_]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 80);
-}
-
-function yamlEscape(str) {
-  return str.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
 }
 
 function extractRSSItems(xml, source) {
@@ -542,25 +542,19 @@ Reply with just the category name.`;
   const isFeatured = postType === 'featured';
   const excerpt = topic.reason || `A clear, practical guide to understanding ${topic.title.toLowerCase()} and how it affects your everyday life.`;
   const featuredImage = await fetchFeaturedImage(topic.title, category);
-  const escapedTitle = yamlEscape(topic.title);
-  const escapedExcerpt = yamlEscape(excerpt);
-  const escapedImage = yamlEscape(featuredImage);
 
-  const markdown = `---
-title: "${escapedTitle}"
-excerpt: "${escapedExcerpt}"
-publishDate: "${date}"
-featuredImage: "${escapedImage}"
-featured: ${isFeatured}
-categories:
-  - ${category}
-tags:
-${tags.map(t => `  - ${t}`).join("\n")}
-author: "Aethel"
----
+  const frontmatter = yaml.dump({
+    title: topic.title,
+    excerpt,
+    publishDate: date,
+    featuredImage,
+    featured: isFeatured,
+    categories: [category],
+    tags,
+    author: 'Aethel'
+  }, { lineWidth: -1, quotingType: '"', forceQuotes: true, noCompatMode: true });
 
-${content}
-`;
+  const markdown = `---\n${frontmatter}---\n\n${content}\n`;
   return { slug, markdown, type: postType };
 }
 
