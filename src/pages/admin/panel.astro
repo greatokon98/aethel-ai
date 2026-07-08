@@ -761,6 +761,7 @@ window.AdminAPI = (function() {
 
       var titleFs = p.titleFontSize || '28';
       var titleLh = p.titleLineHeight || '1.15';
+      var isPopular = p.tags && p.tags.indexOf('popular') !== -1;
 
       return '<div class="editor-form">' +
         '<h1>' + (isNew ? 'New Post' : 'Edit Post') + '</h1>' +
@@ -784,6 +785,7 @@ window.AdminAPI = (function() {
           '<button type="button" class="btn-search-images" id="btn-search-images">Search</button></div></div>' +
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-featured" ' + (p.featured ? 'checked' : '') + ' /> Featured post</label></div>' +
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-draft" ' + (p.draft ? 'checked' : '') + ' /> Save as draft (hidden from live site)</label></div>' +
+        '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-popular" ' + (isPopular ? 'checked' : '') + ' /> Popular post (shows in sidebar widget)</label></div>' +
         '<div class="editor-field"><label>Body (Markdown)</label><textarea class="editor-body" id="ed-body" oninput="window.updatePreview()">' + escapeHtml(p.body) + '</textarea></div>' +
         '<div class="editor-field"><label>Preview</label><div class="editor-preview" id="ed-preview">' + previewContent + '</div></div>' +
         '<div class="editor-actions">' +
@@ -2062,10 +2064,10 @@ window.AdminAPI = (function() {
           return;
         }
         grid.innerHTML = '<div class="fallback-status-msg">Searching ' + selectedProvider + '...</div>';
-        var pat = getPat();
+        var pat = AdminAPI.getPat();
         var controller = new AbortController();
         var timeout = setTimeout(function() { controller.abort(); }, 20000);
-        fetch(BASE + '/api/generate/images/search', {
+        fetch(AdminAPI.CONFIG.renderUrl + '/api/generate/images/search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2203,6 +2205,7 @@ window.AdminAPI = (function() {
       var bodyEl = document.getElementById('ed-body');
       var titleFsEl = document.getElementById('ed-title-fs');
       var titleLhEl = document.getElementById('ed-title-lh');
+      var popularEl = document.getElementById('ed-popular');
 
       if (!titleEl || !bodyEl) return;
 
@@ -2230,6 +2233,14 @@ window.AdminAPI = (function() {
           titleFontSize: titleFsEl ? titleFsEl.value : '28',
           titleLineHeight: titleLhEl ? titleLhEl.value : '1.15',
         };
+        if (popularEl) {
+          if (popularEl.checked && attrs.tags.indexOf('popular') === -1) {
+            attrs.tags.push('popular');
+          } else if (!popularEl.checked && attrs.tags.indexOf('popular') !== -1) {
+            attrs.tags = attrs.tags.filter(function(t) { return t !== 'popular'; });
+          }
+          if (tagsEl) tagsEl.value = attrs.tags.join(', ');
+        }
         // ghSaveFile auto-retries on SHA mismatch, so just pass current SHA
         if (state.editingPost && state.editingPost.sha) {
           attrs._sha = state.editingPost.sha;
