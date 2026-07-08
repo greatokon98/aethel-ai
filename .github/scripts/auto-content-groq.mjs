@@ -111,13 +111,15 @@ async function getExistingPosts() {
 async function commitPost(filename, markdown) {
   const path = `src/content/posts/${filename}`;
   const existingRes = await ghFetch(`${API_BASE}/contents/${path}`);
-  const sha = existingRes.ok ? (await existingRes.json()).sha : undefined;
+  if (existingRes.ok) {
+    console.log(`  Skipped (file exists): ${filename}`);
+    return false;
+  }
 
   const body = {
     message: `auto: ${filename.replace('.md', '')}`,
     content: Buffer.from(markdown, 'utf-8').toString('base64'),
   };
-  if (sha) body.sha = sha;
 
   const res = await ghFetch(`${API_BASE}/contents/${path}`, {
     method: 'PUT',
@@ -371,7 +373,7 @@ async function fetchFeaturedImage(title, categories) {
   const cat = categories || '';
   const searchCat = getSearchCategory(title, cat);
   const pixCat = getPixabayCategory(cat);
-  const pexelsHeaders = { 'Authorization': PEXELS_KEY ? `Bearer ${PEXELS_KEY}` : '' };
+  const pexelsHeaders = PEXELS_KEY ? { 'Authorization': PEXELS_KEY } : null;
 
   if (UNSPLASH_KEY && kws.length > 0) {
     console.log(`  [image] Flux failed, trying Unsplash with ${kws.length} keyword sets`);
@@ -393,7 +395,7 @@ async function fetchFeaturedImage(title, categories) {
     }
   }
 
-  if (kws.length > 0) {
+  if (pexelsHeaders && kws.length > 0) {
     console.log(`  [image] Unsplash failed, trying Pexels with ${kws.length} keyword sets`);
     for (const kw of kws) {
       const enriched = searchCat ? `${kw} ${searchCat}` : kw;
@@ -599,13 +601,29 @@ async function main() {
   discovered.forEach(t => console.log(`    - ${t.title}: ${t.reason}`));
   console.log();
 
+  function normalize(s) {
+    return s.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+  }
+
+  function isDuplicate(title, existingTitles) {
+    const nt = normalize(title);
+    const tokens = nt.split(/\s+/).filter(w => w.length > 3);
+    return existingTitles.some(et => {
+      const ne = normalize(et);
+      if (nt === ne) return true;
+      if (nt.includes(ne) || ne.includes(nt)) return true;
+      const etTokens = ne.split(/\s+/).filter(w => w.length > 3);
+      const overlap = tokens.filter(t => etTokens.includes(t)).length;
+      return overlap / Math.min(tokens.length, etTokens.length) > 0.6;
+    });
+  }
+
   let newTopics = discovered.filter(t => {
-    const lower = t.title.toLowerCase();
-    const isDup = existingTitles.some(et =>
-      lower.includes(et.slice(0, 30)) || et.includes(lower.slice(0, 30))
-    );
-    if (isDup) console.log(`  Skipping (duplicate): ${t.title}`);
-    return !isDup;
+    if (isDuplicate(t.title, existingTitles)) {
+      console.log(`  Skipping (duplicate): ${t.title}`);
+      return false;
+    }
+    return true;
   });
 
   newTopics = newTopics.slice(0, 5);
@@ -619,22 +637,21 @@ async function main() {
   let committed = 0;
   for (let i = 0; i < newTopics.length; i++) {
     const topic = newTopics[i];
+    const slug = slugify(topic.title);
+    if (existingSlugs.has(slug)) {
+      console.log(`  Skipping (slug exists): ${topic.title} \u2192 ${slug}`);
+      continue;
+    }
     console.log(`Writing: "${topic.title}"...`);
     try {
-      let { slug, markdown, type } = await writePost(topic, existingPosts);
+      let { slug: resultSlug, markdown, type } = await writePost(topic, existingPosts);
 
-      if (existingSlugs.has(slug)) {
-        let n = 1;
-        while (existingSlugs.has(`${slug}-${n}`)) n++;
-        slug = `${slug}-${n}`;
-      }
-
-      const filename = `${slug}.md`;
+      const filename = `${resultSlug}.md`;
       console.log(`  Type: ${type}`);
       const success = await commitPost(filename, markdown);
       if (success) {
         committed++;
-        existingSlugs.add(slug);
+        existingSlugs.add(resultSlug);
       }
       console.log();
     } catch (err) {

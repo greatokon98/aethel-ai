@@ -216,9 +216,9 @@ async function fetchFeaturedImage(title, categories) {
     }
   }
 
-  if (kws.length > 0) {
+  if (PEXELS_KEY && kws.length > 0) {
     console.log(`  [image] Unsplash failed, trying Pexels with ${kws.length} keyword sets`);
-    const pexelsHeaders = { 'Authorization': PEXELS_KEY ? `Bearer ${PEXELS_KEY}` : '' };
+    const pexelsHeaders = { 'Authorization': PEXELS_KEY };
     for (const kw of kws) {
       const enriched = searchCat ? `${kw} ${searchCat}` : kw;
       try {
