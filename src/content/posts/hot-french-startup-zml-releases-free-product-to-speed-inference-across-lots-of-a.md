@@ -15,7 +15,7 @@ tags:
   - "inference speed"
   - "AI chips"
 author: "Aethel"
-titleFontSize: "27"
+titleFontSize: "25"
 titleLineHeight: "1.13"
 ---
 
