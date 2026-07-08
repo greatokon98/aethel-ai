@@ -1,21 +1,39 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostCard from '../../components/PostCard.astro';
-import Sidebar from '../../components/Sidebar.astro';
-import Pagination from '../../components/Pagination.astro';
-import { loadAllPosts, paginatePosts } from '../../lib/posts';
-import { getConfig } from '../../lib/site-config';
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import PostCard from '../../../../components/PostCard.astro';
+import Sidebar from '../../../../components/Sidebar.astro';
+import Pagination from '../../../../components/Pagination.astro';
+import { loadAllPosts, paginatePosts } from '../../../../lib/posts';
+import { getConfig } from '../../../../lib/site-config';
 
 export function getStaticPaths() {
-  const posts = loadAllPosts();
-  const allCategories = new Set<string>();
-  posts.forEach((p) => {
-    p.categories.forEach((c) => allCategories.add(c.toLowerCase().replace(/\s+/g, '-')));
+  const allPosts = loadAllPosts();
+  const config = getConfig();
+  const perPage = config.content.postsPerPage || 12;
+
+  const catsToSlugs = new Map<string, string>();
+  allPosts.forEach((p) => {
+    p.categories.forEach((c) => {
+      const slug = c.toLowerCase().replace(/\s+/g, '-');
+      if (!catsToSlugs.has(slug)) catsToSlugs.set(slug, c);
+    });
   });
-  return [...allCategories].map((slug) => ({ params: { slug } }));
+
+  const paths: { params: { slug: string; page: string }; props: { slug: string } }[] = [];
+  catsToSlugs.forEach((catName, catSlug) => {
+    const filtered = allPosts.filter((p) =>
+      p.categories.some((c) => c.toLowerCase().replace(/\s+/g, '-') === catSlug)
+    );
+    const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+    for (let p = 2; p <= totalPages; p++) {
+      paths.push({ params: { slug: catSlug, page: String(p) }, props: { slug: catSlug } });
+    }
+  });
+  return paths;
 }
 
 const { slug } = Astro.params;
+const pageNum = Math.max(2, parseInt(Astro.params.page || '2', 10) || 2);
 
 const allPosts = loadAllPosts();
 const config = getConfig();
@@ -25,21 +43,25 @@ const categoryName = slug!.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperC
 const filtered = allPosts.filter((p) =>
   p.categories.some((c) => c.toLowerCase().replace(/\s+/g, '-') === slug)
 );
-const page = paginatePosts(filtered, 1, perPage);
+const page = paginatePosts(filtered, pageNum, perPage);
+
+if (page.currentPage !== pageNum || page.currentPage <= 1) {
+  return Astro.redirect(`/category/${slug}`);
+}
 
 const allCategories = [...new Set(allPosts.flatMap((p) => p.categories))];
 const trendingPosts = allPosts.filter((p) => p.tags && p.tags.includes('trending'));
 const popularPosts = allPosts.filter((p) => p.tags && p.tags.includes('popular'));
 ---
 
-<BaseLayout title={categoryName} description={`Articles about ${categoryName}`}>
+<BaseLayout title={`${categoryName} — Page ${page.currentPage}`} description={`Articles about ${categoryName} — Page ${page.currentPage}`}>
   <section class="section category-page">
     <div class="container">
       <div class="category-page__layout">
         <div class="category-page__main">
           <h1 class="category-page__title">{categoryName}</h1>
-          <p class="category-page__count">{filtered.length} post{filtered.length !== 1 ? 's' : ''}</p>
-          {filtered.length > 0 ? (
+          <p class="category-page__count">{filtered.length} post{filtered.length !== 1 ? 's' : ''} — Page {page.currentPage}</p>
+          {page.posts.length > 0 ? (
             <div class="category-page__grid">
               {page.posts.map((post, i) => (
                 <div class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}>
@@ -59,18 +81,18 @@ const popularPosts = allPosts.filter((p) => p.tags && p.tags.includes('popular')
                 </div>
               ))}
             </div>
-            <Pagination
-              currentPage={page.currentPage}
-              totalPages={page.totalPages}
-              hasPrev={page.hasPrev}
-              hasNext={page.hasNext}
-              prevUrl={page.hasPrev ? `/category/${slug}${page.currentPage === 2 ? '' : `/page/${page.currentPage - 1}`}` : null}
-              nextUrl={page.hasNext ? `/category/${slug}/page/${page.currentPage + 1}` : null}
-              basePath={`/category/${slug}`}
-            />
           ) : (
             <p class="category-page__empty">No posts found in this category.</p>
           )}
+          <Pagination
+            currentPage={page.currentPage}
+            totalPages={page.totalPages}
+            hasPrev={page.hasPrev}
+            hasNext={page.hasNext}
+            prevUrl={page.hasPrev ? `/category/${slug}${page.currentPage === 2 ? '' : `/page/${page.currentPage - 1}`}` : null}
+            nextUrl={page.hasNext ? `/category/${slug}/page/${page.currentPage + 1}` : null}
+            basePath={`/category/${slug}`}
+          />
         </div>
         <div class="category-page__sidebar">
           <Sidebar
@@ -99,6 +121,7 @@ const popularPosts = allPosts.filter((p) => p.tags && p.tags.includes('popular')
     grid-template-columns: 1fr var(--sidebar-width);
     gap: var(--space-12);
     align-items: start;
+    padding-top: var(--space-16);
   }
 
   .category-page__sidebar {

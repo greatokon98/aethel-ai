@@ -1,0 +1,142 @@
+---
+export interface Props {
+  currentPage: number;
+  totalPages: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  prevUrl: string | null;
+  nextUrl: string | null;
+  basePath?: string;
+}
+
+const { currentPage, totalPages, hasPrev, hasNext, prevUrl, nextUrl, basePath = '/' } = Astro.props;
+
+function pageUrl(n: number): string {
+  if (basePath === '/' && n === 1) return '/';
+  if (basePath !== '/' && n === 1) return basePath;
+  return `${basePath}/page/${n}`;
+}
+
+function range(start: number, end: number): number[] {
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+}
+
+function getPageNumbers(current: number, total: number): (number | '...')[] {
+  if (total <= 7) return range(1, total);
+  const pages: (number | '...')[] = [1];
+  if (current > 3) pages.push('...');
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  pages.push(...range(start, end));
+  if (current < total - 2) pages.push('...');
+  if (total > 1) pages.push(total);
+  return pages;
+}
+---
+
+{
+  totalPages > 1 && (
+    <nav class="pagination" aria-label="Pagination">
+      {hasPrev && prevUrl ? (
+        <a href={prevUrl} class="pagination__link pagination__prev">&larr; Previous</a>
+      ) : (
+        <span class="pagination__link pagination__link--disabled">&larr; Previous</span>
+      )}
+      <div class="pagination__pages">
+        {getPageNumbers(currentPage, totalPages).map((p) =>
+          p === '...' ? (
+            <span class="pagination__ellipsis">&hellip;</span>
+          ) : (
+            <a
+              href={p === currentPage ? undefined : pageUrl(p)}
+              class:pagination__link={{ true: true, 'pagination__link--active': p === currentPage }}
+              aria-current={p === currentPage ? 'page' : undefined}
+            >
+              {p}
+            </a>
+          )
+        )}
+      </div>
+      {hasNext && nextUrl ? (
+        <a href={nextUrl} class="pagination__link pagination__next">Next &rarr;</a>
+      ) : (
+        <span class="pagination__link pagination__link--disabled">Next &rarr;</span>
+      )}
+    </nav>
+  )
+}
+
+<style>
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin-top: var(--space-10);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .pagination__link {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text);
+    text-decoration: none;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    transition: background-color var(--transition), color var(--transition);
+    white-space: nowrap;
+  }
+
+  .pagination__link:hover {
+    background-color: var(--color-surface-hover);
+    color: var(--color-accent);
+  }
+
+  .pagination__link--active {
+    background-color: var(--color-accent);
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .pagination__link--active:hover {
+    background-color: var(--color-accent-hover);
+    color: #ffffff;
+  }
+
+  .pagination__link--disabled {
+    opacity: 0.35;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .pagination__pages {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .pagination__ellipsis {
+    padding: var(--space-1) var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  @media (max-width: 768px) {
+    .pagination {
+      flex-wrap: wrap;
+      gap: var(--space-1);
+    }
+
+    .pagination__link {
+      padding: var(--space-2);
+      font-size: 13px;
+    }
+
+    .pagination__pages {
+      order: 3;
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>

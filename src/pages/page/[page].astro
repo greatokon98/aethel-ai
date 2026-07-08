@@ -1,0 +1,142 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import Sidebar from '../../components/Sidebar.astro';
+import Pagination from '../../components/Pagination.astro';
+import { loadAllPosts, paginatePosts } from '../../lib/posts';
+import { getConfig } from '../../lib/site-config';
+import { fetchTrendingNews } from '../../lib/trending';
+
+export function getStaticPaths() {
+  const allPosts = loadAllPosts();
+  const config = getConfig();
+  const perPage = config.content.postsPerPage || 12;
+  const nonFeatured = allPosts.filter((p) => !p.featured);
+  const totalPages = Math.max(1, Math.ceil(nonFeatured.length / perPage));
+  const paths: { params: { page: string } }[] = [];
+  for (let p = 2; p <= totalPages; p++) {
+    paths.push({ params: { page: String(p) } });
+  }
+  return paths;
+}
+
+const allPosts = loadAllPosts();
+const config = getConfig();
+const perPage = config.content.postsPerPage || 12;
+const pageNum = Math.max(1, parseInt(Astro.params.page || '2', 10) || 2);
+const nonFeatured = allPosts.filter((p) => !p.featured);
+const page = paginatePosts(nonFeatured, pageNum, perPage);
+
+if (page.currentPage !== pageNum || page.currentPage <= 1) {
+  return Astro.redirect('/');
+}
+
+const posts = allPosts;
+const allCategories = [...new Set(posts.flatMap((p) => p.categories))];
+const trendingPosts = posts.filter((p) => p.tags && p.tags.includes('trending'));
+const trending = await fetchTrendingNews();
+const popularPosts = posts.filter((p) => p.tags && p.tags.includes('popular'));
+---
+
+<BaseLayout title={`Page ${page.currentPage}`} description="Latest articles">
+  <section class="section blog-grid">
+    <div class="container">
+      <div class="blog-grid__layout">
+        <div class="blog-grid__main">
+          <h2 class="section-title fade-in">Latest Posts — Page {page.currentPage}</h2>
+          <div class="blog-grid__posts">
+            {page.posts.map((post, i) => (
+              <div
+                class:fade-in={{ true: true, [`fade-in--delay-${Math.min(i + 1, 4)}`]: true }}
+              >
+                <PostCard
+                  title={post.title}
+                  excerpt={post.excerpt}
+                  publishDate={post.publishDate}
+                  slug={post.slug}
+                  featuredImage={post.featuredImage}
+                  categories={post.categories}
+                  author={post.author}
+                  readingTime={post.readingTime}
+                  featured={false}
+                  titleFontSize={post.titleFontSize}
+                  titleLineHeight={post.titleLineHeight}
+                />
+              </div>
+            ))}
+          </div>
+          <Pagination
+            currentPage={page.currentPage}
+            totalPages={page.totalPages}
+            hasPrev={page.hasPrev}
+            hasNext={page.hasNext}
+            prevUrl={page.hasPrev ? (page.currentPage === 2 ? '/' : `/page/${page.currentPage - 1}`) : null}
+            nextUrl={page.hasNext ? `/page/${page.currentPage + 1}` : null}
+          />
+        </div>
+        <div class="blog-grid__sidebar">
+          <Sidebar
+            categories={allCategories}
+            recentPosts={posts.map((p) => ({
+              title: p.title,
+              slug: p.slug,
+              publishDate: p.publishDate,
+            }))}
+            trendingPosts={trendingPosts}
+            trending={trending}
+            popularPosts={popularPosts.map((p) => ({
+              title: p.title,
+              slug: p.slug,
+              publishDate: p.publishDate,
+            }))}
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .blog-grid__layout {
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-width);
+    gap: var(--space-12);
+    align-items: start;
+    padding-top: var(--space-16);
+  }
+
+  .blog-grid__sidebar {
+    position: sticky;
+    top: 88px;
+    align-self: start;
+  }
+
+  .blog-grid__posts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-6);
+    align-content: start;
+  }
+
+  @media (max-width: 1024px) {
+    .blog-grid__layout {
+      grid-template-columns: 1fr 280px;
+      gap: var(--space-8);
+    }
+  }
+
+  @media (max-width: 768px) {
+    .blog-grid__layout {
+      grid-template-columns: 1fr;
+      padding-top: var(--space-10);
+    }
+
+    .blog-grid__sidebar {
+      position: static;
+    }
+
+    .blog-grid__posts {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
