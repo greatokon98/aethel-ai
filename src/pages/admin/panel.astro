@@ -175,7 +175,7 @@ window.AdminAPI = (function() {
           publishDate: parsed.attrs.publishDate || '',
           categories: parsed.attrs.categories || [], tags: parsed.attrs.tags || [],
           draft: parsed.attrs.draft || false, featured: parsed.attrs.featured || false, author: parsed.attrs.author || 'Aethel',
-          featuredImage: parsed.attrs.featuredImage || '', body: parsed.body,
+          featuredImage: parsed.attrs.featuredImage || '', titleFontSize: parsed.attrs.titleFontSize || '28', titleLineHeight: parsed.attrs.titleLineHeight || '1.15', body: parsed.body,
         };
       } catch(e) { return null; }
     }));
@@ -759,9 +759,16 @@ window.AdminAPI = (function() {
       var previewContent = '';
       try { previewContent = marked.parse(p.body || ''); } catch(e) { previewContent = p.body || ''; }
 
+      var titleFs = p.titleFontSize || '28';
+      var titleLh = p.titleLineHeight || '1.15';
+
       return '<div class="editor-form">' +
         '<h1>' + (isNew ? 'New Post' : 'Edit Post') + '</h1>' +
-        '<div class="editor-field"><label>Title</label><input type="text" id="ed-title" value="' + escapeHtml(p.title) + '" /></div>' +
+        '<div class="editor-field"><label>Title</label><input type="text" id="ed-title" value="' + escapeHtml(p.title) + '" style="font-size:' + titleFs + 'px;line-height:' + titleLh + '" /></div>' +
+        '<div class="editor-field-row title-typo-row">' +
+          '<div class="editor-field"><label>Font Size (px)</label><input type="number" id="ed-title-fs" value="' + titleFs + '" min="10" max="72" step="1" oninput="window.updateTitleStyle()" /></div>' +
+          '<div class="editor-field"><label>Line Height</label><input type="number" id="ed-title-lh" value="' + titleLh + '" min="0.5" max="3" step="0.05" oninput="window.updateTitleStyle()" /></div>' +
+        '</div>' +
         '<div class="editor-field"><label>Slug</label><input type="text" id="ed-slug" value="' + (isNew ? '' : p.slug) + '"' + (isNew ? '' : ' readonly style="background:#F8FAFC;color:#94A3B8"') + ' /><div class="editor-hint">URL path (auto-generated from title if empty)</div></div>' +
         '<div class="editor-field"><label>Excerpt</label><textarea id="ed-excerpt" rows="3">' + escapeHtml(p.excerpt) + '</textarea></div>' +
         '<div class="editor-field-row">' +
@@ -2056,15 +2063,19 @@ window.AdminAPI = (function() {
         }
         grid.innerHTML = '<div class="fallback-status-msg">Searching ' + selectedProvider + '...</div>';
         var pat = getPat();
+        var controller = new AbortController();
+        var timeout = setTimeout(function() { controller.abort(); }, 20000);
         fetch(BASE + '/api/generate/images/search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + (pat || '')
           },
-          body: JSON.stringify({ provider: selectedProvider, query: queryStr })
+          body: JSON.stringify({ provider: selectedProvider, query: queryStr }),
+          signal: controller.signal
         })
         .then(function(res) {
+          clearTimeout(timeout);
           if (!res.ok) {
             return res.json().then(function(err) {
               throw new Error(err.error || 'Request failed with status ' + res.status);
@@ -2093,6 +2104,7 @@ window.AdminAPI = (function() {
           });
         })
         .catch(function(err) {
+          clearTimeout(timeout);
           console.error('Image search error:', err);
           grid.innerHTML = '<div class="fallback-status-msg">Search failed: ' + (err.message || 'unknown error') + '</div>';
         });
@@ -2189,6 +2201,8 @@ window.AdminAPI = (function() {
       var featuredEl = document.getElementById('ed-featured');
       var draftEl = document.getElementById('ed-draft');
       var bodyEl = document.getElementById('ed-body');
+      var titleFsEl = document.getElementById('ed-title-fs');
+      var titleLhEl = document.getElementById('ed-title-lh');
 
       if (!titleEl || !bodyEl) return;
 
@@ -2213,6 +2227,8 @@ window.AdminAPI = (function() {
           categories: (catsEl ? catsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           tags: (tagsEl ? tagsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           author: authorEl ? authorEl.value.trim() || 'Aethel' : 'Aethel',
+          titleFontSize: titleFsEl ? titleFsEl.value : '28',
+          titleLineHeight: titleLhEl ? titleLhEl.value : '1.15',
         };
         // ghSaveFile auto-retries on SHA mismatch, so just pass current SHA
         if (state.editingPost && state.editingPost.sha) {
@@ -2225,7 +2241,7 @@ window.AdminAPI = (function() {
         showToast('Post saved! Rebuilding site...', 'success');
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
-            return { slug: slug, name: slug + '.md', sha: attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, body: body };
+            return { slug: slug, name: slug + '.md', sha: attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, body: body };
           }
           if (p.slug === state.editingPost && state.editingPost.slug && state.editingPost.slug !== slug) {
             return null;
@@ -2425,6 +2441,17 @@ window.AdminAPI = (function() {
         loadPosts();
       }
     }
+
+    // Title style preview
+    window.updateTitleStyle = function() {
+      var title = document.getElementById('ed-title');
+      var fs = document.getElementById('ed-title-fs');
+      var lh = document.getElementById('ed-title-lh');
+      if (title && fs && lh) {
+        title.style.fontSize = fs.value + 'px';
+        title.style.lineHeight = lh.value;
+      }
+    };
 
     // Marked preview update
     window.updatePreview = function() {
