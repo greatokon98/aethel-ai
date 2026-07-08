@@ -11,6 +11,10 @@ const PEXELS_KEY = process.env.PEXELS_API_KEY;
 const PIXABAY_KEY = process.env.PIXABAY_API_KEY;
 const VALID_CATS = ['AI Tools', 'Content Creation', 'Productivity', 'Workflow', 'AI News', 'Automation', 'Creativity', 'Entrepreneurship', 'Future of Work', 'Tech News', 'Business News'];
 
+// Number of images returned from each provider search.
+// Keep between 20–24 for best performance on free API tiers.
+const IMAGE_SEARCH_RESULTS = 20;
+
 const PIXABAY_CAT_MAP = {
   'Future of Work': 'business',
   'AI Tools': 'computer',
@@ -653,7 +657,7 @@ router.post('/images/search', async (req, res) => {
     try {
       if (provider === 'unsplash') {
         if (!process.env.UNSPLASH_ACCESS_KEY) return [];
-        const response = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(term)}&per_page=12`, {
+        const response = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(term)}&per_page=${IMAGE_SEARCH_RESULTS}`, {
           headers: { 'Authorization': `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}` }
         });
         const json = await response.json();
@@ -667,7 +671,7 @@ router.post('/images/search', async (req, res) => {
 
       if (provider === 'pexels') {
         if (!process.env.PEXELS_API_KEY) return [];
-        const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(term)}&per_page=12`, {
+        const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(term)}&per_page=${IMAGE_SEARCH_RESULTS}`, {
           headers: { 'Authorization': process.env.PEXELS_API_KEY }
         });
         const json = await response.json();
@@ -681,7 +685,7 @@ router.post('/images/search', async (req, res) => {
 
       if (provider === 'pixabay') {
         if (!process.env.PIXABAY_API_KEY) return [];
-        const response = await fetch(`https://pixabay.com/api/?key=${process.env.PIXABAY_API_KEY}&q=${encodeURIComponent(term)}&per_page=12`);
+        const response = await fetch(`https://pixabay.com/api/?key=${process.env.PIXABAY_API_KEY}&q=${encodeURIComponent(term)}&per_page=${IMAGE_SEARCH_RESULTS}`);
         const json = await response.json();
         return (json.hits || []).map(img => ({
           src: img.webformatURL,
