@@ -7,10 +7,26 @@
   },
   "navigation": {
     "links": [
-      { "label": "Home", "url": "/" },
-      { "label": "Trending", "url": "/trending", "skipHeader": true },
-      { "label": "About", "url": "/about" },
-      { "label": "Contact", "url": "/contact" }
+      {
+        "label": "Home",
+        "url": "/"
+      },
+      {
+        "label": "Trending",
+        "url": "/trending"
+      },
+      {
+        "label": "About",
+        "url": "/about"
+      },
+      {
+        "label": "Contact",
+        "url": "/contact"
+      },
+      {
+        "label": "Our story",
+        "url": "/story"
+      }
     ]
   },
   "social": {
@@ -38,5 +54,6 @@
     "schedule": "every 3 hours",
     "lastRun": null,
     "lastStatus": null
-  }
+  },
+  "_sha": "f7a6158a4350a0fc53669dfd2dd6822292938552"
 }
