@@ -624,6 +624,10 @@ window.AdminAPI = (function() {
       todosSha: null,
       diag: null,
       error: null,
+      backupStatus: null,
+      backupError: null,
+      backupLoading: false,
+      backupLog: [],
     };
 
     // --- Category Detection ---
@@ -1293,6 +1297,35 @@ window.AdminAPI = (function() {
       var badge = function(ok, text) { return '<span class="diag-badge diag-badge--' + (ok ? 'ok' : 'fail') + '">' + (text || (ok ? 'PASS' : 'FAIL')) + '</span>'; };
       var row = function(label, val, badgeHtml) { return '<div class="diag-row"><span class="diag-label">' + label + '</span>' + (badgeHtml ? badgeHtml : '<span class="diag-value">' + val + '</span>') + '</div>'; };
 
+      var backupLogs = state.backupLog || [];
+      var backupLogHtml = '';
+      if (backupLogs.length > 0) {
+        backupLogHtml = '<div class="diag-section" style="background:#FFF7ED;border-color:#FED7AA">' +
+          '<h3 style="color:#9A3412">Backup API Requests</h3>' +
+          '<div style="font-size:12px;line-height:1.6;max-height:240px;overflow-y:auto">' +
+            '<table style="width:100%;border-collapse:collapse">' +
+              '<tr style="color:#9A3412;font-weight:600">' +
+                '<th style="padding:4px 8px;text-align:left;border-bottom:1px solid #FED7AA">Time</th>' +
+                '<th style="padding:4px 8px;text-align:left;border-bottom:1px solid #FED7AA">Endpoint</th>' +
+                '<th style="padding:4px 8px;text-align:center;border-bottom:1px solid #FED7AA">Status</th>' +
+                '<th style="padding:4px 8px;text-align:left;border-bottom:1px solid #FED7AA">Reason</th>' +
+                '<th style="padding:4px 8px;text-align:left;border-bottom:1px solid #FED7AA">Action</th>' +
+              '</tr>';
+        for (var li = 0; li < backupLogs.length; li++) {
+          var le = backupLogs[li];
+          var ts = le.timestamp ? new Date(le.timestamp).toLocaleString() : '—';
+          var statusColor = le.httpStatus === 401 ? '#DC2626' : le.httpStatus && le.httpStatus >= 400 ? '#D97706' : '#9CA3AF';
+          backupLogHtml += '<tr>' +
+            '<td style="padding:4px 8px;border-bottom:1px solid #FED7AA;white-space:nowrap">' + ts + '</td>' +
+            '<td style="padding:4px 8px;border-bottom:1px solid #FED7AA;font-family:monospace">' + escapeHtml(le.endpoint) + '</td>' +
+            '<td style="padding:4px 8px;border-bottom:1px solid #FED7AA;text-align:center;color:' + statusColor + ';font-weight:600">' + (le.httpStatus || '—') + '</td>' +
+            '<td style="padding:4px 8px;border-bottom:1px solid #FED7AA">' + escapeHtml(le.errorMessage || '') + '</td>' +
+            '<td style="padding:4px 8px;border-bottom:1px solid #FED7AA">' + escapeHtml(le.action || '') + '</td>' +
+            '</tr>';
+        }
+        backupLogHtml += '</table></div></div>';
+      }
+
       return '<div class="diag">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
           '<h2>Diagnostics</h2>' +
@@ -1332,6 +1365,8 @@ window.AdminAPI = (function() {
           ) : '<div class="diag-progress"><div class="spinner"></div> Checking data files...</div>') +
         '</div>' +
 
+        backupLogHtml +
+
         '<div class="diag-section" style="background:#EFF6FF;border-color:#93C5FD">' +
           '<h3 style="color:#1D4ED8">Recommendation</h3>' +
           '<div style="font-size:14px;line-height:1.6">' +
@@ -1343,6 +1378,41 @@ window.AdminAPI = (function() {
 
     // --- Backup ---
     function renderBackup() {
+      var loadingEl = '<div style="display:flex;align-items:center;justify-content:center;padding:60px 20px;gap:12px"><div class="admin-spinner"></div><span style="color:#64748B;font-size:15px">Checking backup status...</span></div>';
+      var howItWorks = '<div style="background:#EFF6FF;border:1px solid #93C5FD;border-radius:8px;padding:16px;font-size:13px;color:#1E40AF;line-height:1.5">' +
+        '<strong>How backups work:</strong> Backups run automatically on every git push to main and every 6 hours (configurable). ' +
+        'Files are archived, encrypted with AES-256-GCM, uploaded to Google Drive, verified, and restore-tested. ' +
+        'Retention: 14 daily, 4 weekly, 3 monthly backups are kept.' +
+        '</div>';
+
+      if (state.backupLoading) {
+        return '<div class="post-list-header"><h1>Backup &amp; Disaster Recovery</h1></div>' + loadingEl;
+      }
+
+      if (state.backupError) {
+        var err = state.backupError;
+        var httpStatus = err.httpStatus;
+        var errMsg = err.errorMessage || 'Unknown error';
+        var icon = httpStatus === 401 ? '\uD83D\uDD12' : '\u26A0\uFE0F';
+        var title = httpStatus === 401 ? 'Authentication Required' : 'Backup Service Error';
+        var subtitle = getStatusMessage(httpStatus);
+        var details = httpStatus ? 'HTTP ' + httpStatus + ': ' + errMsg : errMsg;
+        var action = '';
+        if (httpStatus === 401) {
+          action = '<p style="margin:16px 0 0 0"><a href="/admin/" style="color:#3B82F6;font-weight:600">Sign in again \u2197</a></p>';
+        }
+        return '' +
+          '<div class="post-list-header"><h1>Backup &amp; Disaster Recovery</h1></div>' +
+          '<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:32px;text-align:center;margin-bottom:20px">' +
+            '<div style="font-size:40px;margin-bottom:12px">' + icon + '</div>' +
+            '<h2 style="margin:0 0 8px 0;color:#991B1B;font-size:20px">' + title + '</h2>' +
+            '<p style="margin:0 0 4px 0;color:#DC2626;font-size:14px">' + subtitle + '</p>' +
+            '<p style="margin:0;color:#9CA3AF;font-size:12px">' + details + '</p>' +
+            action +
+          '</div>' +
+          howItWorks;
+      }
+
       var b = state.backupStatus || {};
       var h = b.health || {};
 
@@ -1373,8 +1443,6 @@ window.AdminAPI = (function() {
         nextDisplay = nd.toLocaleDateString() + ' ' + nd.toLocaleTimeString();
       }
 
-      var loading = state.backupLoading ? '<div class="admin-spinner" style="margin:20px auto"></div>' : '';
-
       function statusBadge(s) {
         if (s === 'ok') return '<span style="color:#16A34A;font-weight:600">\u2713 OK</span>';
         if (s === 'error') return '<span style="color:#DC2626;font-weight:600">\u2717 Error</span>';
@@ -1392,7 +1460,6 @@ window.AdminAPI = (function() {
           '<h1>Backup &amp; Disaster Recovery</h1>' +
           '<button class="admin-header__btn admin-header__btn--primary" id="btn-run-backup" style="margin-left:12px">Run Backup Now</button>' +
         '</div>' +
-        loading +
         '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px">' +
           '<div style="flex:1;min-width:200px;background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:20px;text-align:center">' +
             '<div style="font-size:36px;font-weight:700;color:' + scoreColor + '">' + score + '</div>' +
@@ -1429,11 +1496,7 @@ window.AdminAPI = (function() {
             '<div style="padding:10px;background:#F8FAFC;border-radius:6px;text-align:center"><div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Space Saved</div><div style="font-size:18px;font-weight:600;color:#0F172A;margin-top:4px">' + (m.spaceSavedPercent || '—') + '%</div></div>' +
           '</div>' +
         '</div>' : '') +
-        '<div style="background:#EFF6FF;border:1px solid #93C5FD;border-radius:8px;padding:16px;font-size:13px;color:#1E40AF;line-height:1.5">' +
-          '<strong>How backups work:</strong> Backups run automatically on every git push to main and every 6 hours (configurable). ' +
-          'Files are archived, encrypted with AES-256-GCM, uploaded to Google Drive, verified, and restore-tested. ' +
-          'Retention: 14 daily, 4 weekly, 3 monthly backups are kept.' +
-        '</div>';
+        howItWorks;
     }
 
     // --- Main render ---
@@ -1446,13 +1509,25 @@ window.AdminAPI = (function() {
       var userData;
       try { userData = JSON.parse(localStorage.getItem('aa_user')); } catch(e) {}
       var userName = (userData && userData.name) || 'Admin';
+
+      var sessionDot, sessionLabel;
+      if (!getPat()) {
+        sessionDot = '#DC2626'; sessionLabel = 'Not signed in';
+      } else if (state.backupError && state.backupError.httpStatus === 401) {
+        sessionDot = '#DC2626'; sessionLabel = 'Session Expired';
+      } else if (state.backupLoading) {
+        sessionDot = '#D97706'; sessionLabel = 'Verifying\u2026';
+      } else {
+        sessionDot = '#16A34A'; sessionLabel = 'Authenticated';
+      }
+
       html += '<header class="admin-header">' +
         '<a href="/" class="admin-header__brand">' +
           '<svg width="24" height="24" viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="6" fill="#3B82F6"/><path d="M8 22 L11 7 Q11.3 5.5 13 5.5 Q14.7 5.5 15 7 L18 22 L16 22 L15 16.5 H10 L9 22 Z M10.5 14.5 H14.5 L12.5 9.5 Z" fill="white"/></svg>' +
           '<span class="admin-header__brand-text">Aethel_AI</span>' +
         '</a>' +
         '<div class="admin-header__actions">' +
-          '<span class="admin-header__user" id="header-user">' + escapeHtml(userName) + '</span>' +
+          '<span class="admin-header__user" id="header-user"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + sessionDot + ';margin-right:6px;vertical-align:middle"></span>' + escapeHtml(userName) + '</span>' +
           '<button class="theme-toggle-btn" id="theme-toggle" title="Toggle theme">☀️</button>' +
           '<button class="admin-header__btn" onclick="window.location.href=\'/\'">View Site</button>' +
           '<button class="admin-header__btn" id="btn-logout">Sign Out</button>' +
@@ -3027,20 +3102,64 @@ window.AdminAPI = (function() {
     // --- Backup ---
     var _backupTimer = null;
 
+    function logBackupEvent(endpoint, httpStatus, errorMessage, action) {
+      state.backupLog.unshift({
+        timestamp: new Date().toISOString(),
+        endpoint: endpoint,
+        httpStatus: httpStatus,
+        errorMessage: errorMessage,
+        action: action || 'none',
+      });
+      if (state.backupLog.length > 50) state.backupLog.length = 50;
+    }
+
+    function getStatusMessage(httpStatus) {
+      var map = {
+        401: 'Authentication required. Please sign in again.',
+        403: 'Your GitHub token does not have sufficient repository permissions.',
+        404: 'Backup service is unavailable.',
+        500: 'Backup service encountered an internal error.',
+        502: 'Unable to validate GitHub token. Please try again later.',
+      };
+      return map[httpStatus] || 'Backup service request failed.';
+    }
+
     async function loadBackupStatus() {
       if (state.view !== 'backup') return;
       clearInterval(_backupTimer);
       state.backupLoading = true;
+      state.backupStatus = null;
+      state.backupError = null;
       render();
       try {
         if (CONFIG.type === 'render') {
+          var pat = getPat();
+          if (!pat) {
+            state.backupLoading = false;
+            state.backupError = { httpStatus: 401, errorMessage: 'No token stored' };
+            logBackupEvent('/api/backup/status', 401, 'No token stored', 'redirect to /admin/');
+            if (state.view === 'backup') render();
+            return;
+          }
           var resp = await fetch(BASE + '/api/backup/status', {
-            headers: { 'Authorization': 'Bearer ' + getPat() },
+            headers: { 'Authorization': 'Bearer ' + pat },
           });
           if (resp.ok) {
             state.backupStatus = await resp.json();
           } else {
-            state.backupStatus = { health: { score: 0, driveStatus: 'error', dbStatus: 'error', repoStatus: 'error' } };
+            var errData;
+            try { errData = await resp.json(); } catch(e) { errData = {}; }
+            var errMsg = errData.error || errData.message || resp.statusText || 'Unknown error';
+            state.backupError = { httpStatus: resp.status, errorMessage: errMsg };
+            logBackupEvent('/api/backup/status', resp.status, errMsg, resp.status === 401 ? 'clear token + redirect to /admin/' : 'none');
+            if (resp.status === 401) {
+              removePat();
+              try { localStorage.removeItem('aa_user'); } catch(e) {}
+              state.backupLoading = false;
+              render();
+              setTimeout(function() { window.location.href = '/admin/'; }, 2000);
+              return;
+            }
           }
         } else {
           state.backupStatus = {
@@ -3052,7 +3171,8 @@ window.AdminAPI = (function() {
           };
         }
       } catch(e) {
-        state.backupStatus = { health: { score: 0, error: e.message, driveStatus: 'error', dbStatus: 'error', repoStatus: 'error' } };
+        state.backupError = { httpStatus: null, errorMessage: e.message };
+        logBackupEvent('/api/backup/status', null, e.message, 'none');
       }
       state.backupLoading = false;
       if (state.view !== 'backup') return;
