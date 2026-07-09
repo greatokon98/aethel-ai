@@ -22,6 +22,11 @@
       {
         "label": "Contact",
         "url": "/contact"
+      },
+      {
+        "label": "Privacy Policy",
+        "url": "/p/privacy-policy",
+        "skipHeader": true
       }
     ]
   },
@@ -51,5 +56,5 @@
     "lastRun": null,
     "lastStatus": null
   },
-  "_sha": "a79383b9069aaabd184a4cec957fbecd63526aac"
+  "_sha": "edc82abe24507a5aabad290291049ba8c27bb8b5"
 }
