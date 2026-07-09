@@ -1,8 +1,3 @@
 {
-  "todos": [
-    {
-      "text": "CHECK MY BOOK",
-      "done": true
-    }
-  ]
+  "todos": []
 }
