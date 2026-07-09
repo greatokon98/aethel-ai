@@ -1936,6 +1936,8 @@ window.AdminAPI = (function() {
         loadTodos();
       } else if (view === 'pages') {
         loadPages();
+      } else if (view === 'diagnostics') {
+        runDiagnostics();
       } else {
         render();
       }
@@ -2797,12 +2799,14 @@ window.AdminAPI = (function() {
       var text = prompt('Enter todo text:');
       if (!text || !text.trim()) return;
       state.todos.push({ text: text.trim(), done: false });
+      render();
       saveTodoList();
     }
 
     async function handleTodoToggle(idx) {
       if (idx < 0 || idx >= state.todos.length) return;
       state.todos[idx].done = !state.todos[idx].done;
+      render();
       saveTodoList();
     }
 
@@ -2810,14 +2814,14 @@ window.AdminAPI = (function() {
       if (idx < 0 || idx >= state.todos.length) return;
       if (!confirm('Delete this todo?')) return;
       state.todos.splice(idx, 1);
+      render();
       saveTodoList();
     }
 
     async function saveTodoList() {
       try {
         var result = await AdminAPI.saveTodos({ todos: state.todos, _sha: state.todosSha });
-        if (result && result._sha) state.todosSha = result._sha;
-        render();
+        state.todosSha = result;
       } catch(e) {
         showToast('Error saving todos: ' + e.message, 'error');
       }
