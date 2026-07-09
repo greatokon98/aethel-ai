@@ -58,7 +58,6 @@ const lightPosts = allPosts.map((p) => ({
   categories: p.categories,
   tags: p.tags,
   publishDate: p.publishDate,
-  featuredImage: p.featuredImage && !p.featuredImage.startsWith('data:') ? p.featuredImage : '',
   readingTime: p.readingTime,
 }));
 
@@ -113,13 +112,6 @@ const searchScript = [
   '        return \'<a href="/category/\' + s + \'" class="search-result-cat">\' + esc(c) + "</a>";',
   '      }).join("");',
   '      h += \'<article class="search-result-card">\';',
-  '        h += \'<a href="/posts/\' + p.slug + \'" class="search-result-img-link">\';',
-  '        if (p.featuredImage) {',
-  '        h += \'<img src="\' + p.featuredImage + \'" alt="\' + esc(p.title) + \'" class="search-result-img" loading="lazy" decoding="async" fetchpriority="low" />\';',
-  '        } else {',
-  '        h += \'<div class="search-result-img-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>\';',
-  '        }',
-  '        h += "</a>";',
   '      h += \'<div class="search-result-body">\';',
   '        if (cats) h += \'<div class="search-result-cats">\' + cats + "</div>";',
   '      h += \'<h3 class="search-result-title"><a href="/posts/\' + p.slug + \'">\' + esc(p.title) + "</a></h3>";',
@@ -360,8 +352,6 @@ const searchScript = [
   }
 
   .search-result-card {
-    display: flex;
-    gap: var(--space-5);
     padding: var(--space-5);
     margin: 0 0 var(--space-3) 0;
     background: var(--color-surface);
@@ -378,42 +368,6 @@ const searchScript = [
 
   .search-result-card:last-child {
     margin-bottom: 0;
-  }
-
-  .search-result-img-link {
-    flex-shrink: 0;
-    width: 160px;
-    height: 120px;
-    overflow: hidden;
-    border-radius: var(--radius-md);
-    text-decoration: none;
-  }
-
-  .search-result-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 400ms ease;
-  }
-
-  .search-result-card:hover .search-result-img {
-    transform: scale(1.05);
-  }
-
-  .search-result-img-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--color-border);
-    color: var(--color-text-muted);
-    border-radius: var(--radius-md);
-    transition: transform 400ms ease;
-  }
-
-  .search-result-card:hover .search-result-img-placeholder {
-    transform: scale(1.05);
   }
 
   .search-result-body {
@@ -539,12 +493,7 @@ const searchScript = [
       font-size: var(--text-base);
     }
     .search-result-card {
-      flex-direction: column;
       padding: var(--space-4);
-    }
-    .search-result-img-link {
-      width: 100%;
-      height: 200px;
     }
     .search-results-title {
       font-size: var(--text-xl);

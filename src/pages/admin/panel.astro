@@ -700,6 +700,7 @@ window.AdminAPI = (function() {
         { id: 'settings', label: 'Settings' },
         { id: 'pages', label: 'Pages' },
         { id: 'diagnostics', label: 'Diagnostics' },
+        { id: 'backup', label: 'Backup' },
       ];
       return '<nav class="admin-tabs">' + tabs.map(function(t) {
         return '<button class="admin-tab' + (state.view === t.id ? ' admin-tab--active' : '') + '" data-tab="' + t.id + '">' + t.label + '</button>';
@@ -1340,6 +1341,101 @@ window.AdminAPI = (function() {
       '</div>';
     }
 
+    // --- Backup ---
+    function renderBackup() {
+      var b = state.backupStatus || {};
+      var h = b.health || {};
+
+      var score = h.score !== undefined ? h.score : 0;
+      var scoreColor = score >= 80 ? '#16A34A' : score >= 50 ? '#D97706' : '#DC2626';
+      var scoreLabel = score >= 80 ? 'Healthy' : score >= 50 ? 'Degraded' : 'Critical';
+
+      var lastBackup = h.lastBackup || null;
+      var lastBackupConclusion = h.lastBackupConclusion || null;
+      var lastBackupUrl = h.lastBackupUrl || null;
+
+      var nextScheduled = h.nextScheduled || null;
+      var driveStatus = h.driveStatus || 'unknown';
+      var dbStatus = h.dbStatus || 'unknown';
+      var repoStatus = h.repoStatus || 'unknown';
+
+      var m = h.latestMetrics || null;
+
+      var lastBackupDisplay = 'Never';
+      if (lastBackup) {
+        var d = new Date(lastBackup);
+        lastBackupDisplay = d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
+      }
+
+      var nextDisplay = 'Unknown';
+      if (nextScheduled) {
+        var nd = new Date(nextScheduled);
+        nextDisplay = nd.toLocaleDateString() + ' ' + nd.toLocaleTimeString();
+      }
+
+      var loading = state.backupLoading ? '<div class="admin-spinner" style="margin:20px auto"></div>' : '';
+
+      function statusBadge(s) {
+        if (s === 'ok') return '<span style="color:#16A34A;font-weight:600">\u2713 OK</span>';
+        if (s === 'error') return '<span style="color:#DC2626;font-weight:600">\u2717 Error</span>';
+        return '<span style="color:#D97706;font-weight:600">? Unknown</span>';
+      }
+
+      function conclusionBadge(c) {
+        if (c === 'success') return '<span style="color:#16A34A;font-weight:600">\u2713 Success</span>';
+        if (c === 'failure') return '<span style="color:#DC2626;font-weight:600">\u2717 Failed</span>';
+        return '<span style="color:#D97706;font-weight:600">\u2022 ' + (c || 'Unknown') + '</span>';
+      }
+
+      return '' +
+        '<div class="post-list-header">' +
+          '<h1>Backup &amp; Disaster Recovery</h1>' +
+          '<button class="admin-header__btn admin-header__btn--primary" id="btn-run-backup" style="margin-left:12px">Run Backup Now</button>' +
+        '</div>' +
+        loading +
+        '<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:24px">' +
+          '<div style="flex:1;min-width:200px;background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:20px;text-align:center">' +
+            '<div style="font-size:36px;font-weight:700;color:' + scoreColor + '">' + score + '</div>' +
+            '<div style="font-size:14px;color:#64748B;margin-top:4px">Health Score (' + scoreLabel + ')</div>' +
+          '</div>' +
+          '<div style="flex:1;min-width:200px;background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:20px;text-align:center">' +
+            '<div style="font-size:16px;font-weight:600;color:#0F172A">' + lastBackupDisplay + '</div>' +
+            '<div style="font-size:14px;color:#64748B;margin-top:4px">Last Backup ' + conclusionBadge(lastBackupConclusion) + '</div>' +
+            (lastBackupUrl ? '<div style="margin-top:8px;font-size:12px"><a href="' + lastBackupUrl + '" target="_blank">View on GitHub \u2197</a></div>' : '') +
+          '</div>' +
+          '<div style="flex:1;min-width:200px;background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:20px;text-align:center">' +
+            '<div style="font-size:16px;font-weight:600;color:#0F172A">' + nextDisplay + '</div>' +
+            '<div style="font-size:14px;color:#64748B;margin-top:4px">Next Scheduled</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:20px;margin-bottom:20px">' +
+          '<h3 style="margin:0 0 16px 0;font-size:16px;color:#0F172A">System Status</h3>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">' +
+            '<div style="padding:12px;background:#F8FAFC;border-radius:6px"><strong>Google Drive:</strong> ' + statusBadge(driveStatus) + '</div>' +
+            '<div style="padding:12px;background:#F8FAFC;border-radius:6px"><strong>Database:</strong> ' + statusBadge(dbStatus) + '</div>' +
+            '<div style="padding:12px;background:#F8FAFC;border-radius:6px"><strong>Repository:</strong> ' + statusBadge(repoStatus) + '</div>' +
+          '</div>' +
+        '</div>' +
+        (m ? '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:20px;margin-bottom:20px">' +
+          '<h3 style="margin:0 0 16px 0;font-size:16px;color:#0F172A">Last Backup Metrics</h3>' +
+          '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">' +
+            '<div style="padding:10px;background:#F8FAFC;border-radius:6px;text-align:center"><div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Duration</div><div style="font-size:18px;font-weight:600;color:#0F172A;margin-top:4px">' + (m.durationSeconds || '—') + 's</div></div>' +
+            '<div style="padding:10px;background:#F8FAFC;border-radius:6px;text-align:center"><div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Repo Size</div><div style="font-size:18px;font-weight:600;color:#0F172A;margin-top:4px">' + (m.compressedSizeMb || '—') + ' MB</div></div>' +
+            '<div style="padding:10px;background:#F8FAFC;border-radius:6px;text-align:center"><div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Compression</div><div style="font-size:18px;font-weight:600;color:#0F172A;margin-top:4px">' + (m.compressionRatio || '—') + '</div></div>' +
+            '<div style="padding:10px;background:#F8FAFC;border-radius:6px;text-align:center"><div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Files</div><div style="font-size:18px;font-weight:600;color:#0F172A;margin-top:4px">' + (m.fileCount || '—') + '</div></div>' +
+            '<div style="padding:10px;background:#F8FAFC;border-radius:6px;text-align:center"><div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Upload</div><div style="font-size:18px;font-weight:600;color:#0F172A;margin-top:4px">' + (m.uploadSeconds || '—') + 's</div></div>' +
+            '<div style="padding:10px;background:#F8FAFC;border-radius:6px;text-align:center"><div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Verify</div><div style="font-size:18px;font-weight:600;color:#0F172A;margin-top:4px">' + (m.verificationSeconds || '—') + 's</div></div>' +
+            '<div style="padding:10px;background:#F8FAFC;border-radius:6px;text-align:center"><div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Restore</div><div style="font-size:18px;font-weight:600;color:#0F172A;margin-top:4px">' + (m.restoreDurationSeconds || '—') + 's</div></div>' +
+            '<div style="padding:10px;background:#F8FAFC;border-radius:6px;text-align:center"><div style="font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:0.04em">Space Saved</div><div style="font-size:18px;font-weight:600;color:#0F172A;margin-top:4px">' + (m.spaceSavedPercent || '—') + '%</div></div>' +
+          '</div>' +
+        '</div>' : '') +
+        '<div style="background:#EFF6FF;border:1px solid #93C5FD;border-radius:8px;padding:16px;font-size:13px;color:#1E40AF;line-height:1.5">' +
+          '<strong>How backups work:</strong> Backups run automatically on every git push to main and every 6 hours (configurable). ' +
+          'Files are archived, encrypted with AES-256-GCM, uploaded to Google Drive, verified, and restore-tested. ' +
+          'Retention: 14 daily, 4 weekly, 3 monthly backups are kept.' +
+        '</div>';
+    }
+
     // --- Main render ---
     function render() {
       var app = document.getElementById('app');
@@ -1400,6 +1496,8 @@ window.AdminAPI = (function() {
         html += renderSettingsForm();
       } else if (state.view === 'diagnostics') {
         html += renderDiagnostics();
+      } else if (state.view === 'backup') {
+        html += renderBackup();
       }
       html += '</div>';
 
@@ -1900,6 +1998,14 @@ window.AdminAPI = (function() {
           loadAutomationRuns();
         });
       }
+
+      // Backup: run now
+      var runBackupBtn = document.getElementById('btn-run-backup');
+      if (runBackupBtn) {
+        runBackupBtn.addEventListener('click', function() {
+          triggerBackup();
+        });
+      }
     }
 
     // --- View switching ---
@@ -1915,6 +2021,10 @@ window.AdminAPI = (function() {
       if (view !== 'dashboard') {
         clearInterval(_dashboardTimer);
         _dashboardTimer = null;
+      }
+      if (view !== 'backup') {
+        clearInterval(_backupTimer);
+        _backupTimer = null;
       }
       state.view = view;
       try { sessionStorage.setItem('aa_active_tab', view); } catch(e) {}
@@ -1938,6 +2048,8 @@ window.AdminAPI = (function() {
         loadPages();
       } else if (view === 'diagnostics') {
         runDiagnostics();
+      } else if (view === 'backup') {
+        loadBackupStatus();
       } else {
         render();
       }
@@ -2912,6 +3024,65 @@ window.AdminAPI = (function() {
       render();
     }
 
+    // --- Backup ---
+    var _backupTimer = null;
+
+    async function loadBackupStatus() {
+      if (state.view !== 'backup') return;
+      clearInterval(_backupTimer);
+      state.backupLoading = true;
+      render();
+      try {
+        if (CONFIG.type === 'render') {
+          var resp = await fetch(BASE + '/api/backup/status', {
+            headers: { 'Authorization': 'Bearer ' + getPat() },
+          });
+          if (resp.ok) {
+            state.backupStatus = await resp.json();
+          } else {
+            state.backupStatus = { health: { score: 0, driveStatus: 'error', dbStatus: 'error', repoStatus: 'error' } };
+          }
+        } else {
+          state.backupStatus = {
+            health: {
+              score: 50, lastBackup: null, lastBackupConclusion: null,
+              driveStatus: 'ok', dbStatus: 'ok', repoStatus: 'ok',
+              nextScheduled: null,
+            }
+          };
+        }
+      } catch(e) {
+        state.backupStatus = { health: { score: 0, error: e.message, driveStatus: 'error', dbStatus: 'error', repoStatus: 'error' } };
+      }
+      state.backupLoading = false;
+      if (state.view !== 'backup') return;
+      render();
+      _backupTimer = setInterval(loadBackupStatus, 30000);
+    }
+
+    async function triggerBackup() {
+      var btn = document.getElementById('btn-run-backup');
+      if (btn) { btn.disabled = true; btn.textContent = 'Triggering...'; }
+      try {
+        if (CONFIG.type === 'render') {
+          var resp = await fetch(BASE + '/api/backup/trigger', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + getPat() },
+          });
+          if (resp.ok) {
+            showToast('Backup triggered! Check GitHub Actions for progress.', 'success');
+          } else {
+            showToast('Failed to trigger backup.', 'error');
+          }
+        } else {
+          showToast('Backup triggering requires Render backend.', 'error');
+        }
+      } catch(e) {
+        showToast('Error: ' + e.message, 'error');
+      }
+      if (btn) { btn.disabled = false; btn.textContent = 'Run Backup Now'; }
+    }
+
     // --- Settings save ---
     async function saveSettings() {
       var s = state.settings || JSON.parse(JSON.stringify(AdminAPI.defaultSettings));
@@ -2969,7 +3140,7 @@ window.AdminAPI = (function() {
       }
       var savedTab;
       try { savedTab = sessionStorage.getItem('aa_active_tab'); } catch(e) {}
-      var allowedTabs = ['dashboard','list','trending','popular','messages','search','automation','settings','diagnostics','editor'];
+      var allowedTabs = ['dashboard','list','trending','popular','messages','search','automation','settings','diagnostics','editor','backup'];
       if (savedTab && allowedTabs.indexOf(savedTab) !== -1) {
         if (savedTab === 'editor') {
           try {
