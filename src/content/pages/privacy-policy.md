@@ -4,6 +4,8 @@ metaDescription: "How Aethel_AI handles your data."
 published: true
 order: 0
 template: "default"
+showInNav: "footer"
+titleFontSize: "28"
 ---
 
 ## Information We Collect
