@@ -84,6 +84,15 @@ import StarField from '../StarField.astro';
       background: #2563EB;
       border-color: #2563EB;
     }
+    [data-theme="light"] .admin-container .admin-header__btn--primary {
+      color: #fff;
+      background: #3B82F6;
+      border-color: #3B82F6;
+    }
+    [data-theme="light"] .admin-container .admin-header__btn--primary:hover {
+      background: #2563EB;
+      border-color: #2563EB;
+    }
     .admin-header__btn--outline {
       background: transparent;
       border-color: #CBD5E1;
@@ -194,6 +203,15 @@ import StarField from '../StarField.astro';
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    a.post-title-link {
+      color: #0F172A;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 200ms;
+    }
+    a.post-title-link:hover {
+      color: #3B82F6;
     }
     .post-table .post-date {
       color: #64748B;
@@ -815,6 +833,8 @@ import StarField from '../StarField.astro';
     [data-theme="dark"] .post-table td { border-color: #1E293B; color: #CBD5E1; }
     [data-theme="dark"] .post-table tr:hover td { background: #0F172A; }
     [data-theme="dark"] .post-table .post-title { color: #F1F5F9; }
+    [data-theme="dark"] a.post-title-link { color: #F1F5F9; }
+    [data-theme="dark"] a.post-title-link:hover { color: #60A5FA; }
     [data-theme="dark"] .editor-field input,
     [data-theme="dark"] .editor-field textarea,
     [data-theme="dark"] .editor-field select { background: #0F172A; border-color: #334155; color: #F1F5F9; }

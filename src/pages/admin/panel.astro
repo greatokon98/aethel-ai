@@ -310,12 +310,6 @@ window.AdminAPI = (function() {
 
   // ---- Todos ----
   async function listTodos() {
-    if (CONFIG.type === 'render') {
-      try {
-        var data = await apiFetch(BASE + '/api/todos');
-        return { todos: data.todos || [] };
-      } catch(e) { return { todos: [] }; }
-    }
     try {
       var file = await ghGetFile('data/todos.json');
       if (!file) return { todos: [], _sha: null };
@@ -326,12 +320,8 @@ window.AdminAPI = (function() {
   }
 
   async function saveTodos(data) {
-    if (CONFIG.type === 'render') {
-      return await apiFetch(BASE + '/api/todos', { method: 'POST', body: data });
-    } else {
-      var content = JSON.stringify({ todos: data.todos }, null, 2);
-      return ghSaveFile('data/todos.json', content, data._sha || null);
-    }
+    var content = JSON.stringify({ todos: data.todos }, null, 2);
+    return ghSaveFile('data/todos.json', content, data._sha || null);
   }
 
   // ---- Search Queries ----
@@ -2842,6 +2832,16 @@ window.AdminAPI = (function() {
       var diag = {};
       var pat = AdminAPI.getPat();
       diag.patPreview = pat ? pat.substring(0, 8) : '';
+
+      if (!pat) {
+        diag.patDone = diag.repoDone = diag.postsDone = diag.dataDone = true;
+        diag.patOk = diag.repoOk = diag.postsOk = diag.messagesOk = diag.searchOk = false;
+        diag.postsError = 'No GitHub token configured';
+        diag.recommendation = 'GitHub token not configured. Go to <strong>Settings</strong> → <strong>Security</strong> → <strong>Developer settings</strong> → <strong>Personal access tokens</strong> to create one with <strong>repo</strong> scope.';
+        state.diag = diag;
+        render();
+        return;
+      }
 
       // 1. Check PAT
       try {
