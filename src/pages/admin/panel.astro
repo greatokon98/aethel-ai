@@ -169,33 +169,48 @@ window.AdminAPI = (function() {
         if (cached) { var parsed = JSON.parse(cached); if (Array.isArray(parsed)) return parsed; }
       } catch(e) {}
     }
+    var data;
     try {
-      var data = await apiFetch(GITHUB_API + '/contents/src/content/posts?ref=' + CONFIG.branch);
+      data = await apiFetch(GITHUB_API + '/contents/src/content/posts?ref=' + AdminAPI.CONFIG.branch);
     } catch(e) {
       if (e.message && e.message.indexOf('Not Found') !== -1) return [];
+      try {
+        var fb = localStorage.getItem('aa_posts_fallback');
+        if (fb) { var p = JSON.parse(fb); if (Array.isArray(p) && p.length > 0) return p; }
+      } catch(ex) {}
       throw e;
     }
     var files = data.filter(function(f) { return f.name.endsWith('.md'); });
-    var results = await Promise.all(files.map(async function(f) {
-      try {
-        var content = await apiFetch(GITHUB_API + '/contents/src/content/posts/' + f.name);
-        var decoded = atob(content.content);
-        var parsed = parseFrontmatter(decoded);
-        var slug = f.name.replace(/\.md$/, '');
-        return {
-          slug: slug, name: f.name, sha: content.sha,
-          title: parsed.attrs.title || slug, excerpt: parsed.attrs.excerpt || '',
-          publishDate: parsed.attrs.publishDate || '',
-          categories: parsed.attrs.categories || [], tags: parsed.attrs.tags || [],
-          draft: parsed.attrs.draft || false, featured: parsed.attrs.featured || false, author: parsed.attrs.author || 'Aethel',
-          featuredImage: parsed.attrs.featuredImage || '', titleFontSize: parsed.attrs.titleFontSize || '28', titleLineHeight: parsed.attrs.titleLineHeight || '1.15', body: parsed.body,
-        };
-      } catch(e) { return null; }
-    }));
-    var posts = results.filter(Boolean);
-    posts.sort(function(a, b) { return new Date(b.publishDate) - new Date(a.publishDate); });
-    try { sessionStorage.setItem('aa_posts_cache', JSON.stringify(posts)); } catch(e) {}
-    return posts;
+
+    // Fetch file contents via raw CDN (download_url) in batches of 6
+    var results = [];
+    for (var i = 0; i < files.length; i += 6) {
+      var batch = files.slice(i, i + 6);
+      var batchResults = await Promise.all(batch.map(async function(f) {
+        try {
+          var resp = await fetch(f.download_url);
+          if (!resp.ok) return null;
+          var text = await resp.text();
+          var parsed = parseFrontmatter(text);
+          var slug = f.name.replace(/\.md$/, '');
+          return {
+            slug: slug, name: f.name, sha: f.sha,
+            title: parsed.attrs.title || slug, excerpt: parsed.attrs.excerpt || '',
+            publishDate: parsed.attrs.publishDate || '',
+            categories: parsed.attrs.categories || [], tags: parsed.attrs.tags || [],
+            draft: parsed.attrs.draft || false, featured: parsed.attrs.featured || false, author: parsed.attrs.author || 'Aethel',
+            featuredImage: parsed.attrs.featuredImage || '', titleFontSize: parsed.attrs.titleFontSize || '28', titleLineHeight: parsed.attrs.titleLineHeight || '1.15', body: parsed.body,
+          };
+        } catch(e) { return null; }
+      }));
+      for (var j = 0; j < batchResults.length; j++) {
+        if (batchResults[j]) results.push(batchResults[j]);
+      }
+    }
+    results.sort(function(a, b) { return new Date(b.publishDate) - new Date(a.publishDate); });
+    try { sessionStorage.setItem('aa_posts_cache', JSON.stringify(results)); } catch(e) {}
+    try { localStorage.setItem('aa_posts_fallback', JSON.stringify(results)); } catch(e) {}
+    return results;
   }
 
   async function savePost(slug, attrs, body) {
@@ -2166,8 +2181,12 @@ window.AdminAPI = (function() {
         _cache.posts = Date.now();
         state.view = 'list';
       } catch(e) {
-        state.view = 'error';
-        state.error = e.message;
+        if (state.posts && state.posts.length > 0) {
+          state.view = 'list';
+        } else {
+          state.view = 'error';
+          state.error = e.message;
+        }
       }
       render();
     }
@@ -3132,7 +3151,7 @@ window.AdminAPI = (function() {
       state.backupError = null;
       render();
       try {
-        if (CONFIG.type === 'render') {
+        if (AdminAPI.CONFIG.type === 'render') {
           var pat = getPat();
           if (!pat) {
             state.backupLoading = false;
@@ -3184,7 +3203,7 @@ window.AdminAPI = (function() {
       var btn = document.getElementById('btn-run-backup');
       if (btn) { btn.disabled = true; btn.textContent = 'Triggering...'; }
       try {
-        if (CONFIG.type === 'render') {
+        if (AdminAPI.CONFIG.type === 'render') {
           var resp = await fetch(BASE + '/api/backup/trigger', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + getPat() },
