@@ -1511,7 +1511,7 @@ window.AdminAPI = (function() {
       var userName = (userData && userData.name) || 'Admin';
 
       var sessionDot, sessionLabel;
-      if (!getPat()) {
+      if (!AdminAPI.getPat()) {
         sessionDot = '#DC2626'; sessionLabel = 'Not signed in';
       } else if (state.backupError && state.backupError.httpStatus === 401) {
         sessionDot = '#DC2626'; sessionLabel = 'Session Expired';
