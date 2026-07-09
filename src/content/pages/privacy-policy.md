@@ -2,6 +2,8 @@
 title: "Privacy Policy"
 metaDescription: "How Aethel_AI handles your data."
 published: true
+order: 0
+template: "default"
 ---
 
 ## Information We Collect
