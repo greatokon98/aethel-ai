@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import parseFrontmatter from 'front-matter';
 import { Marked } from 'marked';
+import '../../styles/page.css';
 
 const marked = new Marked();
 
@@ -49,6 +50,7 @@ const htmlContent = marked.parse(body);
 const config = getConfig();
 const siteTitle = config?.site?.title || 'Aethel_AI';
 const pageTemplate = (attributes as any).template || 'default';
+const titleFontSize = (attributes as any).titleFontSize || '28';
 
 const recentPostsDir = path.resolve('src/content/posts');
 const allPostFiles = fs.existsSync(recentPostsDir)
@@ -77,14 +79,14 @@ const isWide = pageTemplate === 'wide';
     <div class="container">
       {isWide ? (
         <article class="page__content page__content--wide">
-          <h1 class="page__title">{attributes.title as string}</h1>
+          <h1 class="page__title" style={`font-size: ${titleFontSize}px`}>{attributes.title as string}</h1>
           <div class="page__body" set:html={htmlContent} />
         </article>
       ) : (
         <div class="blog-grid__layout">
           <div class="blog-grid__main">
             <article class="page__content">
-              <h1 class="page__title">{attributes.title as string}</h1>
+              <h1 class="page__title" style={`font-size: ${titleFontSize}px`}>{attributes.title as string}</h1>
               <div class="page__body" set:html={htmlContent} />
             </article>
           </div>
@@ -106,40 +108,6 @@ const isWide = pageTemplate === 'wide';
 <style>
   .page {
     padding: var(--space-16) 0 var(--space-24);
-  }
-
-  .page__title {
-    font-size: var(--text-4xl);
-    margin-bottom: var(--space-8);
-  }
-
-  .page__content--wide {
-    max-width: var(--content-width);
-    margin: 0 auto;
-  }
-
-  .page__body {
-    font-size: var(--text-lg);
-    line-height: var(--leading-relaxed);
-    max-width: var(--content-width);
-  }
-
-  .page__body :global(p) {
-    margin-bottom: var(--space-6);
-  }
-
-  .page__body :global(h2) {
-    margin-top: var(--space-10);
-    margin-bottom: var(--space-4);
-  }
-
-  .page__body :global(ul) {
-    margin-bottom: var(--space-6);
-    padding-left: var(--space-6);
-  }
-
-  .page__body :global(li) {
-    margin-bottom: var(--space-2);
   }
 
   .blog-grid__layout {

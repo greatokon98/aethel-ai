@@ -15,7 +15,7 @@ export async function GET(context) {
         title: attributes.title || '',
         publishDate: new Date(attributes.publishDate || Date.now()),
         excerpt: attributes.excerpt || '',
-        slug: (attributes.title || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+        slug: file.replace(/\.md$/, ''),
         draft: attributes.draft || false,
       };
     })

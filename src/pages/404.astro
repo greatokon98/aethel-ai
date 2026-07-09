@@ -1,0 +1,61 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Page Not Found">
+  <section class="not-found">
+    <div class="container">
+      <h1 class="not-found__code">404</h1>
+      <h2 class="not-found__title">Page Not Found</h2>
+      <p class="not-found__message">
+        The page you're looking for doesn't exist or has been moved.
+      </p>
+      <a href="/" class="not-found__link">Back to Home</a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .not-found {
+    padding: var(--space-24) 0;
+    text-align: center;
+  }
+
+  .not-found__code {
+    font-family: var(--font-heading);
+    font-size: var(--text-7xl);
+    font-weight: 700;
+    color: var(--color-accent);
+    margin-bottom: var(--space-4);
+    line-height: 1;
+  }
+
+  .not-found__title {
+    font-family: var(--font-heading);
+    font-size: var(--text-3xl);
+    color: var(--color-text);
+    margin-bottom: var(--space-4);
+  }
+
+  .not-found__message {
+    font-size: var(--text-lg);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-8);
+  }
+
+  .not-found__link {
+    display: inline-block;
+    padding: var(--space-3) var(--space-6);
+    background-color: var(--color-accent);
+    color: #ffffff;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color var(--transition);
+  }
+
+  .not-found__link:hover {
+    background-color: var(--color-accent-hover);
+    color: #ffffff;
+  }
+</style>

@@ -236,6 +236,8 @@ window.AdminAPI = (function() {
           published: parsed.attrs.published !== false,
           order: parsed.attrs.order || 0,
           template: parsed.attrs.template || 'default',
+          showInNav: parsed.attrs.showInNav || 'none',
+          titleFontSize: parsed.attrs.titleFontSize || '28',
           body: parsed.body,
         };
       } catch(e) { return null; }
@@ -303,6 +305,32 @@ window.AdminAPI = (function() {
     } else {
       var content = JSON.stringify({ messages: data.messages }, null, 2);
       return ghSaveFile('data/messages.json', content, data._sha || null);
+    }
+  }
+
+  // ---- Todos ----
+  async function listTodos() {
+    if (CONFIG.type === 'render') {
+      try {
+        var data = await apiFetch(BASE + '/api/todos');
+        return { todos: data.todos || [] };
+      } catch(e) { return { todos: [] }; }
+    }
+    try {
+      var file = await ghGetFile('data/todos.json');
+      if (!file) return { todos: [], _sha: null };
+      var data = JSON.parse(file.content);
+      data._sha = file.sha;
+      return data;
+    } catch(e) { return { todos: [], _sha: null }; }
+  }
+
+  async function saveTodos(data) {
+    if (CONFIG.type === 'render') {
+      return await apiFetch(BASE + '/api/todos', { method: 'POST', body: data });
+    } else {
+      var content = JSON.stringify({ todos: data.todos }, null, 2);
+      return ghSaveFile('data/todos.json', content, data._sha || null);
     }
   }
 
@@ -524,6 +552,7 @@ window.AdminAPI = (function() {
     triggerWorkflow: triggerWorkflow, getWorkflowStatus: getWorkflowStatus,
     fetchTrending: fetchTrending,
     fetchPopular: fetchPopular,
+    listTodos: listTodos, saveTodos: saveTodos,
     generatePost: generatePost, regeneratePost: regeneratePost,
     generatePostGemini: generatePostGemini, regeneratePostGemini: regeneratePostGemini,
     getFile: ghGetFile, saveFile: ghSaveFile,
@@ -601,6 +630,8 @@ window.AdminAPI = (function() {
       searchData: null,
       automationRuns: null,
       workflowRuns: null,
+      todos: [],
+      todosSha: null,
       diag: null,
       error: null,
     };
@@ -674,6 +705,7 @@ window.AdminAPI = (function() {
         { id: 'popular', label: 'Popular' },
         { id: 'messages', label: 'Messages' },
         { id: 'search', label: 'Search' },
+        { id: 'todos', label: 'Todos' },
         { id: 'automation', label: 'Automation' },
         { id: 'settings', label: 'Settings' },
         { id: 'pages', label: 'Pages' },
@@ -1063,12 +1095,19 @@ window.AdminAPI = (function() {
         var statusBadge = p.published
           ? '<span class="page-status-toggle status-badge status-badge--published" data-page-slug="' + p.slug + '" title="Click to toggle">Published</span>'
           : '<span class="page-status-toggle status-badge status-badge--draft" data-page-slug="' + p.slug + '" title="Click to toggle">Draft</span>';
+        var navBadge = p.showInNav === 'header' ? '<span class="nav-badge nav-badge--header" title="Shows in header &amp; footer">H+F</span>'
+          : p.showInNav === 'footer' ? '<span class="nav-badge nav-badge--footer" title="Shows in footer only">F</span>'
+          : '<span class="nav-badge nav-badge--none" title="No nav link">—</span>';
         return '<tr>' +
           '<td><a href="#" class="post-title-link" data-page-slug="' + p.slug + '">' + escapeHtml(p.title) + '</a></td>' +
           '<td><code>' + escapeHtml(p.slug) + '</code></td>' +
           '<td>' + statusBadge + '</td>' +
           '<td style="text-align:center"><input type="number" class="page-order-input" value="' + (p.order || 0) + '" data-page-slug="' + p.slug + '" style="width:50px;text-align:center" /></td>' +
-          '<td><button class="admin-btn-delete" data-page-slug="' + p.slug + '" data-page-sha="' + (p.sha || '') + '">Delete</button></td>' +
+          '<td style="text-align:center">' + navBadge + '</td>' +
+          '<td><div class="post-actions">' +
+            '<button class="btn-edit-page" data-page-slug="' + p.slug + '">Edit</button>' +
+            '<button class="admin-btn-delete" data-page-slug="' + p.slug + '" data-page-sha="' + (p.sha || '') + '">Delete</button>' +
+          '</div></td>' +
         '</tr>';
       }).join('');
       return '<div class="post-list-header">' +
@@ -1077,7 +1116,7 @@ window.AdminAPI = (function() {
       '</div>' +
       (pages.length === 0
         ? '<div class="empty-state"><h2>No pages yet</h2><p>Create your first page to get started.</p></div>'
-        : '<table class="post-table"><thead><tr><th>Title</th><th>Slug</th><th>Status</th><th>Order</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>');
+        : '<table class="post-table"><thead><tr><th>Title</th><th>Slug</th><th>Status</th><th>Order</th><th>Nav</th><th>Actions</th></tr></thead><tbody>' + rows + '</tbody></table>');
     }
 
     function renderPageEditor(page) {
@@ -1088,6 +1127,8 @@ window.AdminAPI = (function() {
       var published = page.published !== false;
       var pageOrder = page.order || 0;
       var template = page.template || 'default';
+      var showInNav = page.showInNav || 'none';
+      var titleFontSize = page.titleFontSize || '28';
       var body = page.body || '';
 
       var templates = [
@@ -1096,6 +1137,15 @@ window.AdminAPI = (function() {
       ];
       var templateOptions = templates.map(function(t) {
         return '<option value="' + t.value + '"' + (t.value === template ? ' selected' : '') + '>' + t.label + '</option>';
+      }).join('');
+
+      var navOptions = [
+        { value: 'none', label: 'None (no nav link)' },
+        { value: 'header', label: 'Header & Footer' },
+        { value: 'footer', label: 'Footer only' },
+      ];
+      var navOptionHtml = navOptions.map(function(t) {
+        return '<option value="' + t.value + '"' + (t.value === showInNav ? ' selected' : '') + '>' + t.label + '</option>';
       }).join('');
 
       return '<div class="post-list-header">' +
@@ -1108,10 +1158,33 @@ window.AdminAPI = (function() {
         '<div class="editor-field"><label>Slug</label><input type="text" id="page-slug" value="' + escapeHtml(slug) + '" placeholder="page-url-slug" ' + (isNew ? '' : 'readonly style="opacity:0.6"') + ' /></div>' +
         '<div class="editor-field"><label>Meta Description</label><input type="text" id="page-meta" value="' + escapeHtml(metaDesc) + '" placeholder="Brief description for SEO" /></div>' +
         '<div class="editor-field"><label>Order</label><input type="number" id="page-order" value="' + pageOrder + '" min="0" step="1" style="width:80px" /></div>' +
+        '<div class="editor-field"><label>Title Font Size (px)</label><input type="number" id="page-title-fs" value="' + titleFontSize + '" min="10" max="72" step="1" style="width:80px" /></div>' +
         '<div class="editor-field"><label>Template</label><select id="page-template">' + templateOptions + '</select></div>' +
+        '<div class="editor-field"><label>Show in Navigation</label><select id="page-show-nav">' + navOptionHtml + '</select></div>' +
         '<div class="editor-field editor-field--checkbox"><label><input type="checkbox" id="page-published" ' + (published ? 'checked' : '') + ' /> Published</label></div>' +
         '<div class="editor-field"><label>Content (Markdown)</label><textarea id="page-body" rows="20" placeholder="Page content in Markdown...">' + escapeHtml(body) + '</textarea></div>' +
       '</div>';
+    }
+
+    // --- Todos ---
+    function renderTodos() {
+      var todos = state.todos || [];
+      var todoItems = todos.length === 0
+        ? '<div class="empty-state"><div class="empty-state__icon">📋</div><h2>No todos yet</h2><p>Add your first task to get started.</p></div>'
+        : '<div class="todo-list">' + todos.map(function(t, i) {
+            var checked = t.done ? 'checked' : '';
+            return '<div class="todo-item' + (t.done ? ' todo-item--done' : '') + '" data-idx="' + i + '">' +
+              '<input type="checkbox" class="todo-checkbox" data-idx="' + i + '" ' + checked + ' />' +
+              '<span class="todo-text">' + escapeHtml(t.text) + '</span>' +
+              '<button class="todo-delete" data-idx="' + i + '">×</button>' +
+            '</div>';
+          }).join('') + '</div>';
+
+      return '<div class="post-list-header">' +
+        '<h1>Todos</h1>' +
+        '<button class="admin-header__btn admin-header__btn--primary" id="btn-add-todo">+ Add Todo</button>' +
+      '</div>' +
+      todoItems;
     }
 
     // --- Automation ---
@@ -1317,6 +1390,8 @@ window.AdminAPI = (function() {
         html += renderPostList(state.posts);
       } else if (state.view === 'editor') {
         html += renderEditor(state.editingPost);
+      } else if (state.view === 'todos') {
+        html += renderTodos();
       } else if (state.view === 'trending') {
         html += renderTrendingList();
       } else if (state.view === 'popular') {
@@ -1677,6 +1752,19 @@ window.AdminAPI = (function() {
         });
       });
 
+      qsa('.btn-edit-page').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var slug = this.dataset.pageSlug;
+          var page = state.pages.find(function(p) { return p.slug === slug; });
+          if (page) {
+            state.editPage = JSON.parse(JSON.stringify(page));
+            state.view = 'pages-editor';
+            render();
+          }
+        });
+      });
+
       qsa('.admin-btn-delete').forEach(function(btn) {
         btn.addEventListener('click', function() {
           var slug = this.dataset.pageSlug;
@@ -1713,6 +1801,21 @@ window.AdminAPI = (function() {
           render();
         });
       }
+
+      // Todos
+      qsa('#btn-add-todo').forEach(function(btn) {
+        btn.addEventListener('click', handleTodoAdd);
+      });
+      qsa('.todo-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+          handleTodoToggle(parseInt(this.dataset.idx, 10));
+        });
+      });
+      qsa('.todo-delete').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          handleTodoDelete(parseInt(this.dataset.idx, 10));
+        });
+      });
 
       // Settings: add nav link
       var addNavBtn = document.getElementById('btn-add-nav-link');
@@ -1839,6 +1942,8 @@ window.AdminAPI = (function() {
         loadSearchData();
       } else if (view === 'automation') {
         loadAutomationRuns();
+      } else if (view === 'todos') {
+        loadTodos();
       } else if (view === 'pages') {
         loadPages();
       } else {
@@ -1895,6 +2000,22 @@ window.AdminAPI = (function() {
       try {
         state.pages = await AdminAPI.listPages(force || true);
         state.view = 'pages';
+      } catch(e) {
+        state.view = 'error';
+        state.error = e.message;
+      }
+      render();
+    }
+
+    async function loadTodos() {
+      if (state.view !== 'todos') return;
+      state.view = 'loading';
+      render();
+      try {
+        var result = await AdminAPI.listTodos();
+        state.todos = result.todos || [];
+        state.todosSha = result._sha || null;
+        state.view = 'todos';
       } catch(e) {
         state.view = 'error';
         state.error = e.message;
@@ -2543,6 +2664,8 @@ window.AdminAPI = (function() {
       var publishedEl = document.getElementById('page-published');
       var orderEl = document.getElementById('page-order');
       var templateEl = document.getElementById('page-template');
+      var showNavEl = document.getElementById('page-show-nav');
+      var titleFsEl = document.getElementById('page-title-fs');
       var bodyEl = document.getElementById('page-body');
 
       if (!titleEl || !bodyEl) return;
@@ -2556,12 +2679,15 @@ window.AdminAPI = (function() {
       saveBtn.textContent = 'Saving...';
 
       try {
+        var showNav = showNavEl ? showNavEl.value : 'none';
         var attrs = {
           title: title,
           metaDescription: metaEl ? metaEl.value.trim() : '',
           published: publishedEl ? publishedEl.checked : true,
           order: orderEl ? parseInt(orderEl.value, 10) || 0 : 0,
           template: templateEl ? templateEl.value : 'default',
+          showInNav: showNav,
+          titleFontSize: titleFsEl ? titleFsEl.value : '28',
         };
         if (state.editPage && state.editPage.sha) {
           attrs._sha = state.editPage.sha;
@@ -2569,6 +2695,26 @@ window.AdminAPI = (function() {
         var body = bodyEl.value;
         await AdminAPI.savePage(slug, attrs, body);
         try { sessionStorage.removeItem('aa_pages_cache'); } catch(e) {}
+        // Manage nav link
+        try {
+          var settings = await AdminAPI.loadSettings();
+          var linkIndex = -1;
+          for (var ni = 0; ni < settings.navigation.links.length; ni++) {
+            if (settings.navigation.links[ni].url === '/p/' + slug) {
+              linkIndex = ni;
+              break;
+            }
+          }
+          if (showNav === 'none') {
+            if (linkIndex !== -1) settings.navigation.links.splice(linkIndex, 1);
+          } else {
+            var linkEntry = { label: title, url: '/p/' + slug };
+            if (showNav === 'footer') linkEntry.skipHeader = true;
+            if (linkIndex !== -1) settings.navigation.links[linkIndex] = linkEntry;
+            else settings.navigation.links.push(linkEntry);
+          }
+          await AdminAPI.saveSettings(settings);
+        } catch(e) { /* nav link update optional */ }
         showToast('Page saved! Rebuilding site...', 'success');
         state.editPage = null;
         state.view = 'pages';
@@ -2584,6 +2730,17 @@ window.AdminAPI = (function() {
       if (!slug || !confirm('Delete this page? This cannot be undone.')) return;
       try {
         await AdminAPI.deletePage(slug, sha);
+        // Remove nav link
+        try {
+          var settings = await AdminAPI.loadSettings();
+          for (var ni = 0; ni < settings.navigation.links.length; ni++) {
+            if (settings.navigation.links[ni].url === '/p/' + slug) {
+              settings.navigation.links.splice(ni, 1);
+              break;
+            }
+          }
+          await AdminAPI.saveSettings(settings);
+        } catch(e) {}
         showToast('Page deleted. Rebuilding...', 'success');
         try { sessionStorage.removeItem('aa_pages_cache'); } catch(e) {}
         state.view = 'pages';
@@ -2605,6 +2762,8 @@ window.AdminAPI = (function() {
           published: newPublished,
           order: page.order || 0,
           template: page.template || 'default',
+          showInNav: page.showInNav || 'none',
+          titleFontSize: page.titleFontSize || '28',
           _sha: page.sha,
         };
         await AdminAPI.savePage(slug, attrs, page.body || '');
@@ -2628,6 +2787,8 @@ window.AdminAPI = (function() {
           published: page.published,
           order: order,
           template: page.template || 'default',
+          showInNav: page.showInNav || 'none',
+          titleFontSize: page.titleFontSize || '28',
           _sha: page.sha,
         };
         await AdminAPI.savePage(slug, attrs, page.body || '');
@@ -2638,6 +2799,37 @@ window.AdminAPI = (function() {
         render();
       } catch(e) {
         showToast('Error updating order: ' + e.message, 'error');
+      }
+    }
+
+    // --- Todos ---
+    function handleTodoAdd() {
+      var text = prompt('Enter todo text:');
+      if (!text || !text.trim()) return;
+      state.todos.push({ text: text.trim(), done: false });
+      saveTodoList();
+    }
+
+    async function handleTodoToggle(idx) {
+      if (idx < 0 || idx >= state.todos.length) return;
+      state.todos[idx].done = !state.todos[idx].done;
+      saveTodoList();
+    }
+
+    function handleTodoDelete(idx) {
+      if (idx < 0 || idx >= state.todos.length) return;
+      if (!confirm('Delete this todo?')) return;
+      state.todos.splice(idx, 1);
+      saveTodoList();
+    }
+
+    async function saveTodoList() {
+      try {
+        var result = await AdminAPI.saveTodos({ todos: state.todos, _sha: state.todosSha });
+        if (result && result._sha) state.todosSha = result._sha;
+        render();
+      } catch(e) {
+        showToast('Error saving todos: ' + e.message, 'error');
       }
     }
 

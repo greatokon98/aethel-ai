@@ -106,6 +106,16 @@ import StarField from '../StarField.astro';
     }
     .theme-toggle-btn:hover { color: #fff; }
 
+    /* admin-header__btn in content area needs dark colors for light backgrounds */
+    [data-theme="light"] .admin-container .admin-header__btn {
+      color: #475569;
+      border-color: #CBD5E1;
+    }
+    [data-theme="light"] .admin-container .admin-header__btn:hover {
+      color: #0F172A;
+      border-color: #94A3B8;
+    }
+
     .admin-container {
       max-width: 1100px;
       margin: 0 auto;
@@ -218,6 +228,21 @@ import StarField from '../StarField.astro';
     .post-table .post-featured-badge { background: #FEF3C7; color: #D97706; }
     .post-table .post-draft-badge { background: #FEE2E2; color: #DC2626; }
     .post-table .post-live-badge { background: #DCFCE7; color: #16A34A; }
+    .nav-badge {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .nav-badge--header { background: #DBEAFE; color: #3B82F6; }
+    .nav-badge--footer { background: #DCFCE7; color: #16A34A; }
+    .nav-badge--none { background: #F1F5F9; color: #94A3B8; }
+    [data-theme="dark"] .nav-badge--header { background: #1E3A5F; color: #93C5FD; }
+    [data-theme="dark"] .nav-badge--footer { background: #052E16; color: #86EFAC; }
+    [data-theme="dark"] .nav-badge--none { background: #1E293B; color: #64748B; }
+
     .post-filter-bar {
       display: flex;
       gap: 10px;

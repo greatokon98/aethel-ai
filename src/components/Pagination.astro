@@ -14,7 +14,8 @@ const { currentPage, totalPages, hasPrev, hasNext, prevUrl, nextUrl, basePath = 
 function pageUrl(n: number): string {
   if (basePath === '/' && n === 1) return '/';
   if (basePath !== '/' && n === 1) return basePath;
-  return `${basePath}/page/${n}`;
+  const base = basePath === '/' ? '' : basePath;
+  return `${base}/page/${n}`;
 }
 
 function range(start: number, end: number): number[] {
@@ -94,9 +95,9 @@ function getPageNumbers(current: number, total: number): (number | '...')[] {
   }
 
   .pagination__link--active {
-    background-color: var(--color-accent);
+    background-color: var(--color-accent, #3B82F6);
     color: #ffffff;
-    font-weight: 600;
+    font-weight: 700;
   }
 
   .pagination__link--active:hover {
