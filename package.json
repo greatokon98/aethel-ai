@@ -20,7 +20,7 @@
     "@astrojs/rss": "^4.0.19",
     "@astrojs/vercel": "^11.0.2",
     "archiver": "^8.0.0",
-    "astro": "^7.0.6",
+    "astro": "^7.0.7",
     "front-matter": "^4.0.2",
     "marked": "^18.0.5",
     "react": "^19.2.7",
