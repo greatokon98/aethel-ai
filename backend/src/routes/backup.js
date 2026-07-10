@@ -8,8 +8,19 @@ const DRIVE_CLIENT_ID = process.env.GOOGLE_DRIVE_CLIENT_ID || null;
 const DRIVE_CLIENT_SECRET = process.env.GOOGLE_DRIVE_CLIENT_SECRET || null;
 const DRIVE_REFRESH_TOKEN = process.env.GOOGLE_DRIVE_REFRESH_TOKEN || null;
 const DRIVE_FOLDER_ID = process.env.BACKUP_DRIVE_FOLDER_ID || process.env.GOOGLE_DRIVE_FOLDER_ID || null;
+const DRIVE_KEY_B64 = process.env.GOOGLE_DRIVE_KEY || null;
+
+function hasDriveCredentials() {
+  return !!(DRIVE_CLIENT_ID && DRIVE_CLIENT_SECRET && DRIVE_REFRESH_TOKEN) || !!DRIVE_KEY_B64;
+}
 
 async function getDriveToken() {
+  if (DRIVE_KEY_B64) {
+    try {
+      const key = JSON.parse(Buffer.from(DRIVE_KEY_B64, 'base64').toString());
+      if (key.client_email && key.private_key) return 'service-account';
+    } catch {}
+  }
   if (!DRIVE_CLIENT_ID || !DRIVE_CLIENT_SECRET || !DRIVE_REFRESH_TOKEN) return null;
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -94,7 +105,7 @@ router.get('/status', async (_req, res) => {
         successCount,
         failCount,
         nextScheduled: getNextCronTime(),
-        driveStatus: driveToken ? 'ok' : 'unconfigured',
+        driveStatus: hasDriveCredentials() ? 'ok' : 'unconfigured',
         dbStatus: process.env.DATABASE_URL ? 'ok' : 'unavailable',
         repoStatus: 'ok',
         queueDepth: 0,
@@ -120,6 +131,9 @@ router.get('/metrics', async (_req, res) => {
     const driveToken = await getDriveToken();
     if (!driveToken || !DRIVE_FOLDER_ID) {
       return res.json({ metrics: null, error: 'Drive not configured' });
+    }
+    if (driveToken === 'service-account') {
+      return res.json({ metrics: null, error: 'Metrics require OAuth (service account cannot list files via API on personal Drive)' });
     }
 
     const metaQ = `name='metadata' and '${DRIVE_FOLDER_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;

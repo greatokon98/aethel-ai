@@ -562,6 +562,8 @@ window.AdminAPI = (function() {
     generatePostGemini: generatePostGemini, regeneratePostGemini: regeneratePostGemini,
     getFile: ghGetFile, saveFile: ghSaveFile,
     apiPost: apiPost,
+    DEPLOY_HOOK_URL: DEPLOY_HOOK_URL,
+    VERCEL_DEPLOY_HOOK_URL: VERCEL_DEPLOY_HOOK_URL,
   };
 })();
 
@@ -2788,10 +2790,10 @@ window.AdminAPI = (function() {
         var body = bodyEl.value;
         await AdminAPI.savePost(slug, attrs, body);
         try {
-          await fetch(DEPLOY_HOOK_URL, { method: 'POST' });
+          await fetch(AdminAPI.DEPLOY_HOOK_URL, { method: 'POST' });
         } catch(e) { /* deploy hook optional */ }
         try {
-          await fetch(VERCEL_DEPLOY_HOOK_URL, { method: 'POST' });
+          await fetch(AdminAPI.VERCEL_DEPLOY_HOOK_URL, { method: 'POST' });
         } catch(e) { /* vercel deploy hook optional */ }
         try { sessionStorage.removeItem('aa_posts_cache'); } catch(e) {}
         _cache.posts = 0;
@@ -3160,7 +3162,7 @@ window.AdminAPI = (function() {
             if (state.view === 'backup') render();
             return;
           }
-          var resp = await fetch(BASE + '/api/backup/status', {
+          var resp = await fetch(AdminAPI.CONFIG.renderUrl + '/api/backup/status', {
             headers: { 'Authorization': 'Bearer ' + pat },
           });
           if (resp.ok) {
@@ -3172,7 +3174,7 @@ window.AdminAPI = (function() {
             state.backupError = { httpStatus: resp.status, errorMessage: errMsg };
             logBackupEvent('/api/backup/status', resp.status, errMsg, resp.status === 401 ? 'clear token + redirect to /admin/' : 'none');
             if (resp.status === 401) {
-              removePat();
+              AdminAPI.removePat();
               try { localStorage.removeItem('aa_user'); } catch(e) {}
               state.backupLoading = false;
               render();
@@ -3204,7 +3206,7 @@ window.AdminAPI = (function() {
       if (btn) { btn.disabled = true; btn.textContent = 'Triggering...'; }
       try {
         if (AdminAPI.CONFIG.type === 'render') {
-          var resp = await fetch(BASE + '/api/backup/trigger', {
+          var resp = await fetch(AdminAPI.CONFIG.renderUrl + '/api/backup/trigger', {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + AdminAPI.getPat() },
           });
