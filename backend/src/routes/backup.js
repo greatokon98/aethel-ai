@@ -59,23 +59,32 @@ router.get('/status', async (_req, res) => {
     const headers = { Accept: 'application/vnd.github.v3+json' };
     if (GITHUB_TOKEN) headers['Authorization'] = `Bearer ${GITHUB_TOKEN}`;
 
-    const workflowResp = await fetch(workflowUrl, { headers });
-    const workflowData = workflowResp.ok ? await workflowResp.json() : { workflow_runs: [] };
-    const runs = workflowData.workflow_runs || [];
-
-    const lastRun = runs.length > 0 ? {
-      id: runs[0].id,
-      status: runs[0].status,
-      conclusion: runs[0].conclusion,
-      timestamp: runs[0].created_at,
-      htmlUrl: runs[0].html_url,
-    } : null;
-
-    const successCount = runs.filter(r => r.conclusion === 'success').length;
-    const failCount = runs.filter(r => r.conclusion === 'failure').length;
-    const healthScore = calculateHealth(lastRun, successCount, failCount);
-
+    let lastRun = null;
+    let successCount = 0;
+    let failCount = 0;
     let latestMetrics = null;
+    let runsFromApi = false;
+
+    try {
+      const workflowResp = await fetch(workflowUrl, { headers });
+      if (workflowResp.ok) {
+        runsFromApi = true;
+        const workflowData = await workflowResp.json();
+        const runs = workflowData.workflow_runs || [];
+        if (runs.length > 0) {
+          lastRun = {
+            id: runs[0].id,
+            status: runs[0].status,
+            conclusion: runs[0].conclusion,
+            timestamp: runs[0].created_at,
+            htmlUrl: runs[0].html_url,
+          };
+        }
+        successCount = runs.filter(r => r.conclusion === 'success').length;
+        failCount = runs.filter(r => r.conclusion === 'failure').length;
+      }
+    } catch {}
+
     const driveToken = await getDriveToken();
     if (driveToken && DRIVE_FOLDER_ID) {
       try {
@@ -90,10 +99,26 @@ router.get('/status', async (_req, res) => {
               const content = await readDriveFile(driveToken, metricsFile.id);
               if (content) latestMetrics = JSON.parse(content);
             }
+            if (!lastRun) {
+              const latestFile = files.files.find(f => f.name === 'latest.json');
+              if (latestFile) {
+                const content = await readDriveFile(driveToken, latestFile.id);
+                if (content) {
+                  const meta = JSON.parse(content);
+                  lastRun = {
+                    conclusion: meta.status === 'SUCCESS' ? 'success' : (meta.status || 'unknown'),
+                    timestamp: meta.timestamp || null,
+                    htmlUrl: meta.gitCommit ? `https://github.com/${REPO}/commit/${meta.gitCommit}` : null,
+                  };
+                }
+              }
+            }
           }
         }
       } catch {}
     }
+
+    const healthScore = calculateHealth(lastRun, successCount, failCount, runsFromApi);
 
     res.json({
       health: {
@@ -101,7 +126,7 @@ router.get('/status', async (_req, res) => {
         lastBackup: lastRun ? lastRun.timestamp : null,
         lastBackupConclusion: lastRun ? lastRun.conclusion : null,
         lastBackupUrl: lastRun ? lastRun.htmlUrl : null,
-        totalRuns: runs.length,
+        totalRuns: successCount + failCount,
         successCount,
         failCount,
         nextScheduled: getNextCronTime(),
@@ -189,18 +214,22 @@ router.post('/trigger', async (_req, res) => {
   }
 });
 
-function calculateHealth(lastRun, successCount, failCount) {
+function calculateHealth(lastRun, successCount, failCount, runsFromApi) {
   let score = 100;
   if (!lastRun) {
     score -= 30;
   } else if (lastRun.conclusion === 'failure') {
     score -= 20;
   }
-  const total = successCount + failCount;
-  if (total > 0) {
-    const successRate = successCount / total;
-    if (successRate < 0.8) score -= 15;
-    else if (successRate < 0.95) score -= 5;
+  if (runsFromApi) {
+    const total = successCount + failCount;
+    if (total > 0) {
+      const successRate = successCount / total;
+      if (successRate < 0.8) score -= 15;
+      else if (successRate < 0.95) score -= 5;
+    }
+  } else if (lastRun) {
+    score -= 10;
   }
   return Math.max(0, score);
 }
