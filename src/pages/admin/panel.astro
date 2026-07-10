@@ -3152,7 +3152,7 @@ window.AdminAPI = (function() {
       render();
       try {
         if (AdminAPI.CONFIG.type === 'render') {
-          var pat = getPat();
+          var pat = AdminAPI.getPat();
           if (!pat) {
             state.backupLoading = false;
             state.backupError = { httpStatus: 401, errorMessage: 'No token stored' };
@@ -3206,7 +3206,7 @@ window.AdminAPI = (function() {
         if (AdminAPI.CONFIG.type === 'render') {
           var resp = await fetch(BASE + '/api/backup/trigger', {
             method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + getPat() },
+            headers: { 'Authorization': 'Bearer ' + AdminAPI.getPat() },
           });
           if (resp.ok) {
             showToast('Backup triggered! Check GitHub Actions for progress.', 'success');
