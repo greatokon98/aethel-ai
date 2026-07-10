@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "prebuild": "node scripts/sanitize-frontmatter.mjs",
+    "prebuild": "node scripts/sanitize-frontmatter.mjs && node scripts/extract-images.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "dev:admin": "npx decap-server",
