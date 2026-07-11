@@ -25,6 +25,127 @@ window.AdminAPI = (function() {
   function removePat() { localStorage.removeItem(GITHUB_PAT_KEY); }
   function hasPat() { return !!getPat(); }
 
+  var DRAFT_VERSION = 1;
+  var DRAFT_PREFIX = 'aa_draft_';
+
+  function debounce(fn, ms) {
+    var timer;
+    return function() {
+      var ctx = this, args = arguments;
+      clearTimeout(timer);
+      timer = setTimeout(function() { fn.apply(ctx, args); }, ms);
+    };
+  }
+
+  function draftKey(slug) { return DRAFT_PREFIX + (slug || 'new-post'); }
+
+  function saveDraft() {
+    var slugEl = document.getElementById('ed-slug');
+    var titleEl = document.getElementById('ed-title');
+    var bodyEl = document.getElementById('ed-body');
+    if (!titleEl || !bodyEl) return;
+    var key = draftKey(slugEl ? slugEl.value.trim() : '');
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        editorVersion: DRAFT_VERSION,
+        savedAt: new Date().toISOString(),
+        title: titleEl.value,
+        slug: slugEl ? slugEl.value : '',
+        excerpt: (document.getElementById('ed-excerpt') || {}).value || '',
+        body: bodyEl.value,
+        categories: (document.getElementById('ed-categories') || {}).value || '',
+        tags: (document.getElementById('ed-tags') || {}).value || '',
+        featuredImage: (document.getElementById('ed-image') || {}).value || '',
+        featured: (document.getElementById('ed-featured') || {}).checked || false,
+        draft: (document.getElementById('ed-draft') || {}).checked || false,
+        popular: (document.getElementById('ed-popular') || {}).checked || false,
+        publishDate: (document.getElementById('ed-date') || {}).value || '',
+        author: (document.getElementById('ed-author') || {}).value || '',
+        titleFontSize: (document.getElementById('ed-title-fs') || {}).value || '28',
+        titleLineHeight: (document.getElementById('ed-title-lh') || {}).value || '1.15',
+      }));
+    } catch(e) {}
+  }
+
+  function clearDraft(slug) {
+    try {
+      localStorage.removeItem(draftKey(slug));
+      if (slug !== 'new-post') localStorage.removeItem(draftKey('new-post'));
+    } catch(e) {}
+  }
+
+  function getDraft(slug) {
+    var raw;
+    try { raw = localStorage.getItem(draftKey(slug)); } catch(e) {}
+    if (raw) try { return JSON.parse(raw); } catch(e) {}
+    if (slug) {
+      try { raw = localStorage.getItem(draftKey('new-post')); } catch(e) {}
+      if (raw) try { return JSON.parse(raw); } catch(e) {}
+    }
+    return null;
+  }
+
+  function mountAutoSave() {
+    var fields = ['ed-title','ed-slug','ed-excerpt','ed-body','ed-categories','ed-tags','ed-image','ed-date','ed-author','ed-title-fs','ed-title-lh'];
+    var handler = debounce(saveDraft, 3000);
+    fields.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', handler);
+    });
+    ['ed-featured','ed-draft','ed-popular'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', handler);
+    });
+    window.addEventListener('beforeunload', saveDraft);
+  }
+
+  function restoreDraft() {
+    if (state.view !== 'editor') return false;
+    var slug = state.editingPost ? state.editingPost.slug : '';
+    var draft = getDraft(slug);
+    if (!draft || !draft.editorVersion) return false;
+    var titleEl = document.getElementById('ed-title');
+    var bodyEl = document.getElementById('ed-body');
+    if (!titleEl || !bodyEl) return false;
+    if (draft.body !== undefined) bodyEl.value = draft.body;
+    if (draft.title !== undefined) titleEl.value = draft.title;
+    if (draft.slug !== undefined) { var se = document.getElementById('ed-slug'); if (se) se.value = draft.slug; }
+    if (draft.excerpt !== undefined) { var ee = document.getElementById('ed-excerpt'); if (ee) ee.value = draft.excerpt; }
+    if (draft.categories !== undefined) { var ce = document.getElementById('ed-categories'); if (ce) ce.value = draft.categories; }
+    if (draft.tags !== undefined) { var te = document.getElementById('ed-tags'); if (te) te.value = draft.tags; }
+    if (draft.featuredImage !== undefined) { var ie = document.getElementById('ed-image'); if (ie) ie.value = draft.featuredImage; }
+    if (draft.publishDate !== undefined) { var de = document.getElementById('ed-date'); if (de) de.value = draft.publishDate; }
+    if (draft.author !== undefined) { var ae = document.getElementById('ed-author'); if (ae) ae.value = draft.author; }
+    if (draft.titleFontSize !== undefined) { var fse = document.getElementById('ed-title-fs'); if (fse) fse.value = draft.titleFontSize; }
+    if (draft.titleLineHeight !== undefined) { var lhe = document.getElementById('ed-title-lh'); if (lhe) lhe.value = draft.titleLineHeight; }
+    var fe = document.getElementById('ed-featured');
+    if (fe && draft.featured !== undefined) fe.checked = !!draft.featured;
+    var dfe = document.getElementById('ed-draft');
+    if (dfe && draft.draft !== undefined) dfe.checked = !!draft.draft;
+    var pe = document.getElementById('ed-popular');
+    if (pe && draft.popular !== undefined) pe.checked = !!draft.popular;
+    try { window.updateTitleStyle(); } catch(e) {}
+    try { window.updatePreview(); } catch(e) {}
+    var form = document.querySelector('.editor-form');
+    if (form && !form.querySelector('.draft-banner')) {
+      var mins = Math.round((Date.now() - new Date(draft.savedAt).getTime()) / 60000);
+      var timeAgo = mins < 1 ? 'just now' : mins < 60 ? mins + 'm ago' : Math.round(mins/60) + 'h ago';
+      var banner = document.createElement('div');
+      banner.className = 'draft-banner';
+      banner.innerHTML = 'Draft restored \u2014 last saved ' + timeAgo + '. <a href="#" id="btn-clear-draft" style="color:var(--accent);text-decoration:underline">Clear</a>';
+      form.insertBefore(banner, form.firstChild);
+      var clearBtn = document.getElementById('btn-clear-draft');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          clearDraft(slug);
+          if (banner.parentNode) banner.parentNode.removeChild(banner);
+        });
+      }
+    }
+    return true;
+  }
+
   function apiFetch(url, opts) {
     var pat = getPat();
     var o = opts || {};
@@ -876,13 +997,13 @@ window.AdminAPI = (function() {
 
       return '<div class="editor-form">' +
         '<h1>' + (isNew ? 'New Post' : 'Edit Post') + '</h1>' +
-        '<div class="editor-field"><label>Title</label><input type="text" id="ed-title" value="' + escapeHtml(p.title) + '" style="font-size:' + titleFs + 'px;line-height:' + titleLh + '" /></div>' +
+        '<div class="editor-field"><label>Title</label><input type="text" id="ed-title" value="' + escapeHtml(p.title) + '" style="font-size:' + titleFs + 'px;line-height:' + titleLh + '" oninput="window.updateSeoPreview()" /></div>' +
         '<div class="editor-field-row title-typo-row">' +
           '<div class="editor-field"><label>Font Size (px)</label><input type="number" id="ed-title-fs" value="' + titleFs + '" min="10" max="72" step="1" oninput="window.updateTitleStyle()" /></div>' +
           '<div class="editor-field"><label>Line Height</label><input type="number" id="ed-title-lh" value="' + titleLh + '" min="0.5" max="3" step="0.05" oninput="window.updateTitleStyle()" /></div>' +
         '</div>' +
-        '<div class="editor-field"><label>Slug</label><input type="text" id="ed-slug" value="' + (isNew ? '' : p.slug) + '"' + (isNew ? '' : ' readonly style="background:#F8FAFC;color:#94A3B8"') + ' /><div class="editor-hint">URL path (auto-generated from title if empty)</div></div>' +
-        '<div class="editor-field"><label>Excerpt</label><textarea id="ed-excerpt" rows="3">' + escapeHtml(p.excerpt) + '</textarea></div>' +
+        '<div class="editor-field"><label>Slug</label><input type="text" id="ed-slug" value="' + (isNew ? '' : p.slug) + '"' + (isNew ? '' : ' readonly style="background:#F8FAFC;color:#94A3B8"') + ' oninput="window.updateSeoPreview()" /><div class="editor-hint">URL path (auto-generated from title if empty)</div></div>' +
+        '<div class="editor-field"><label>Excerpt</label><textarea id="ed-excerpt" rows="3" oninput="window.updateSeoPreview()">' + escapeHtml(p.excerpt) + '</textarea></div>' +
         '<div class="editor-field-row">' +
           '<div class="editor-field"><label>Publish Date</label><input type="date" id="ed-date" value="' + (p.publishDate || '').split('T')[0] + '" /></div>' +
           '<div class="editor-field"><label>Author</label><input type="text" id="ed-author" value="' + escapeHtml(p.author || 'Aethel') + '" /></div>' +
@@ -897,8 +1018,14 @@ window.AdminAPI = (function() {
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-featured" ' + (p.featured ? 'checked' : '') + ' /> Featured post</label></div>' +
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-draft" ' + (p.draft ? 'checked' : '') + ' /> Save as draft (hidden from live site)</label></div>' +
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-popular" ' + (isPopular ? 'checked' : '') + ' /> Popular post (shows in sidebar widget)</label></div>' +
-        '<div class="editor-field"><label>Body (Markdown)</label><textarea class="editor-body" id="ed-body" oninput="window.updatePreview()">' + escapeHtml(p.body) + '</textarea></div>' +
+        '<div class="editor-field"><label>Body (Markdown)</label><textarea class="editor-body" id="ed-body" oninput="window.updatePreview();window.updateSeoPreview()">' + escapeHtml(p.body) + '</textarea></div>' +
         '<div class="editor-field"><label>Preview</label><div class="editor-preview" id="ed-preview">' + previewContent + '</div></div>' +
+        '<div class="editor-field"><label>SEO Preview</label><div class="seo-preview" id="ed-seo-preview">' +
+          '<div class="seo-url">aethel-ai.vercel.app/<span id="seo-url-slug">' + escapeHtml(p.slug || 'post-slug') + '</span></div>' +
+          '<div class="seo-title" id="seo-title">' + escapeHtml(p.title.slice(0, 60) || 'Post Title') + '</div>' +
+          '<div class="seo-desc" id="seo-desc">' + escapeHtml((p.excerpt || p.body || 'Post description...').replace(/<[^>]*>/g, '').replace(/\n+/g, ' ').slice(0, 160)) + '</div>' +
+        '</div></div>' +
+        renderRelatedPosts() +
         '<div class="editor-actions">' +
           '<button class="btn-save" id="btn-save-post">' + (isNew ? 'Create Post' : 'Save Changes') + '</button>' +
           '<button class="btn-cancel" id="btn-cancel-edit">Cancel</button>' +
@@ -931,6 +1058,30 @@ window.AdminAPI = (function() {
           '</div>' +
         '</div>' +
       '</div>';
+    }
+
+    function renderRelatedPosts() {
+      var post = state.editingPost;
+      if (!post || !state.posts || !state.posts.length) return '';
+      var postCats = (post.categories || []).map(function(c) { return c.toLowerCase().trim(); });
+      var scored = [];
+      state.posts.forEach(function(p) {
+        if (p.slug === post.slug) return;
+        var score = (p.categories || []).filter(function(c) { return postCats.indexOf(c.toLowerCase().trim()) !== -1; }).length;
+        if (score > 0) scored.push({ post: p, score: score });
+      });
+      scored.sort(function(a, b) { return b.score - a.score; });
+      var top = scored.slice(0, 8);
+      if (top.length === 0) return '';
+      var items = top.map(function(item) {
+        var shared = (item.post.categories || []).filter(function(c) { return postCats.indexOf(c.toLowerCase().trim()) !== -1; });
+        return '<div class="related-post" data-title="' + escapeHtml(item.post.title) + '" data-slug="' + escapeHtml(item.post.slug) + '">' +
+          '<span class="related-post-title">' + escapeHtml(item.post.title) + '</span>' +
+          '<span class="related-post-cats">' + shared.join(', ') + '</span>' +
+          '<button class="related-post-btn">Insert Link</button>' +
+        '</div>';
+      }).join('');
+      return '<div class="related-posts">' + items + '</div>';
     }
 
     // --- Trending ---
@@ -1733,6 +1884,12 @@ window.AdminAPI = (function() {
         saveBtn.addEventListener('click', handleSave);
       }
 
+      // Auto-save drafts
+      if (state.view === 'editor') {
+        mountAutoSave();
+        restoreDraft();
+      }
+
       // Editor delete
       var delBtn = document.getElementById('btn-editor-delete');
       if (delBtn) {
@@ -1774,6 +1931,16 @@ window.AdminAPI = (function() {
           }
         });
       }
+
+      // Related post insert buttons
+      qsa('.related-post-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var container = this.closest('.related-post');
+          if (container) {
+            window.insertMarkdownLink(container.dataset.title, container.dataset.slug);
+          }
+        });
+      });
 
       // Generate with Gemini
       var genGeminiBtn = document.getElementById('btn-generate-gemini');
@@ -2798,6 +2965,7 @@ window.AdminAPI = (function() {
         try { sessionStorage.removeItem('aa_posts_cache'); } catch(e) {}
         _cache.posts = 0;
         showToast('Post saved! Rebuilding site...', 'success');
+        clearDraft(slug);
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
             return { slug: slug, name: slug + '.md', sha: attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, body: body };
@@ -3313,6 +3481,42 @@ window.AdminAPI = (function() {
       if (body && preview) {
         try { preview.innerHTML = marked.parse(body.value); } catch(e) { preview.textContent = body.value; }
       }
+    };
+
+    // SEO preview update
+    window.updateSeoPreview = function() {
+      var titleEl = document.getElementById('ed-title');
+      var slugEl = document.getElementById('ed-slug');
+      var excerptEl = document.getElementById('ed-excerpt');
+      var bodyEl = document.getElementById('ed-body');
+      var seoTitle = document.getElementById('seo-title');
+      var seoDesc = document.getElementById('seo-desc');
+      var seoUrl = document.getElementById('seo-url-slug');
+      if (!seoTitle || !seoDesc) return;
+      var t = titleEl ? titleEl.value.trim() : '';
+      seoTitle.textContent = t.slice(0, 60) || 'Post Title';
+      var s = slugEl ? slugEl.value.trim() : '';
+      if (seoUrl) seoUrl.textContent = s || 'post-slug';
+      var d = excerptEl ? excerptEl.value.trim() : '';
+      if (!d && bodyEl) d = bodyEl.value.trim().replace(/#{1,6}\s/g, '').replace(/[`*_~[\]>]/g, '').replace(/\n+/g, ' ').slice(0, 160);
+      seoDesc.textContent = d.slice(0, 160) || 'Post description...';
+    };
+
+    // Insert markdown link at cursor in editor body
+    window.insertMarkdownLink = function(title, slug) {
+      var body = document.getElementById('ed-body');
+      if (!body) return;
+      var selected = body.value.substring(body.selectionStart, body.selectionEnd);
+      var linkText = selected || title;
+      var link = '[' + linkText + '](/posts/' + slug + ')';
+      if (body.selectionStart !== undefined) {
+        body.setRangeText(link, body.selectionStart, body.selectionEnd, 'end');
+      } else {
+        body.value += link;
+      }
+      body.focus();
+      window.updatePreview();
+      window.updateSeoPreview();
     };
 
     // Load marked from CDN

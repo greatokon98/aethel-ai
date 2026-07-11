@@ -399,6 +399,24 @@ import StarField from '../StarField.astro';
       font-weight: 500;
       margin-bottom: 24px;
     }
+    .draft-banner {
+      background: #FEF3C7;
+      border: 1px solid #FDE68A;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #92400E;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    [data-theme="dark"] .draft-banner {
+      background: #422006;
+      border-color: #78350F;
+      color: #FDE68A;
+    }
     .editor-field { margin-bottom: 20px; }
     .editor-field label {
       display: block;
@@ -470,6 +488,85 @@ import StarField from '../StarField.astro';
       color: #64748B;
       font-style: italic;
     }
+    .seo-preview {
+      padding: 16px;
+      background: #fff;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      font-family: Arial, sans-serif;
+    }
+    .seo-preview .seo-url {
+      font-size: 14px;
+      color: #006621;
+      margin-bottom: 2px;
+      word-break: break-all;
+    }
+    .seo-preview .seo-title {
+      font-size: 18px;
+      color: #1A0DAB;
+      margin-bottom: 2px;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+    .seo-preview .seo-desc {
+      font-size: 14px;
+      color: #545454;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    [data-theme="dark"] .seo-preview { background: #1E293B; border-color: #334155; }
+    [data-theme="dark"] .seo-preview .seo-url { color: #8AB4F8; }
+    [data-theme="dark"] .seo-preview .seo-title { color: #8AB4F8; }
+    [data-theme="dark"] .seo-preview .seo-desc { color: #BDC1C6; }
+    .related-posts {
+      margin-bottom: 20px;
+    }
+    .related-post {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+    .related-post-title {
+      flex: 1;
+      font-size: 13px;
+      color: #0F172A;
+      line-height: 1.3;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .related-post-cats {
+      font-size: 11px;
+      color: #94A3B8;
+      flex-shrink: 0;
+    }
+    .related-post-btn {
+      flex-shrink: 0;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-family: 'DM Sans', sans-serif;
+      border: 1px solid #3B82F6;
+      background: transparent;
+      color: #3B82F6;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 200ms;
+      white-space: nowrap;
+    }
+    .related-post-btn:hover {
+      background: #EFF6FF;
+    }
+    [data-theme="dark"] .related-post { background: #0F172A; border-color: #334155; }
+    [data-theme="dark"] .related-post-title { color: #F1F5F9; }
+    [data-theme="dark"] .related-post-cats { color: #64748B; }
+    [data-theme="dark"] .related-post-btn { color: #60A5FA; border-color: #60A5FA; }
+    [data-theme="dark"] .related-post-btn:hover { background: rgba(59,130,246,0.1); }
     .editor-actions {
       display: flex;
       gap: 10px;

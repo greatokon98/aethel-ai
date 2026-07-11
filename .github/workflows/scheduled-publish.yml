@@ -1,0 +1,30 @@
+name: Scheduled Publishing
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check and publish scheduled posts
+        run: node scripts/check-scheduled.mjs
+
+      - name: Commit and push
+        run: |
+          git config user.name "Aethel Bot"
+          git config user.email "bot@aethel-ai.com"
+          git add src/content/posts/
+          if git diff --staged --quiet; then
+            echo "No scheduled posts to publish"
+            exit 0
+          fi
+          git commit -m "auto: publish scheduled posts"
+          git push

@@ -54,7 +54,12 @@ if ((attributes.draft as boolean)) {
   return Astro.redirect('/404');
 }
 const publishDate = new Date(attributes.publishDate as string);
-const htmlContent = marked.parse(body);
+const rawHtml = marked.parse(body);
+const htmlContent = rawHtml.replace(/<h([23])>(.*?)<\/h\1>/gs, function(m, level, inner) {
+  var plain = inner.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, '');
+  var id = plain.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-+/g, '-');
+  return '<h' + level + ' id="' + id + '">' + inner + '</h' + level + '>';
+});
 const readingTime = getReadingTime(body);
 
 const allCategories = [...new Set(allPosts.flatMap((p: any) => p.categories || []))] as string[];
