@@ -999,7 +999,7 @@ window.AdminAPI = (function() {
     // --- Editor ---
     function renderEditor(post) {
       var isNew = !post;
-      var p = post || { title: '', excerpt: '', body: '', categories: [], tags: [], author: 'Aethel', featured: false, featuredImage: '', publishDate: new Date().toISOString().split('T')[0] };
+      var p = post || { title: '', excerpt: '', body: '', categories: [], tags: [], author: 'Aethel', featured: false, featuredImage: '', publishDate: new Date().toISOString().split('T')[0], draft: true };
       var cats = (p.categories || []).join(', ');
       var tags = (p.tags || []).join(', ');
       var previewContent = '';
@@ -1041,14 +1041,14 @@ window.AdminAPI = (function() {
         '</div></div>' +
         renderRelatedPosts() +
         '<div class="editor-actions">' +
-          '<button class="btn-save" id="btn-save-post">Save as Draft</button>' +
+          '<button class="btn-save" id="btn-save-post">Save</button>' +
           '<button class="btn-publish" id="btn-publish-post">Publish</button>' +
           '<button class="btn-cancel" id="btn-cancel-edit">Close</button>' +
           '<span class="draft-status" id="draft-status"></span>' +
           (isNew ? '<button class="btn-regenerate" id="btn-generate">Generate with AI</button>' : '') +
-          (!isNew ? '<button class="btn-regenerate" id="btn-regenerate">Regenerate with Groq</button>' : '') +
+          (!isNew ? '<button class="btn-regenerate" id="btn-regenerate">Write with Groq</button>' : '') +
           (isNew ? '<button class="btn-regenerate btn-gemini" id="btn-generate-gemini">Generate with Gemini</button>' : '') +
-          (!isNew ? '<button class="btn-regenerate btn-gemini" id="btn-regenerate-gemini">Regenerate with Gemini</button>' : '') +
+          (!isNew ? '<button class="btn-regenerate btn-gemini" id="btn-regenerate-gemini">Write with Gemini</button>' : '') +
           (!isNew ? '<button class="btn-delete" id="btn-editor-delete">Delete Post</button>' : '') +
           (!isNew ? '<button class="btn-regenerate btn-complete-ai" id="btn-complete-ai">Complete with AI</button>' : '') +
         '</div>' +
@@ -1891,7 +1891,7 @@ window.AdminAPI = (function() {
       // Cancel edit
       var cancelBtn = document.getElementById('btn-cancel-edit');
       if (cancelBtn) {
-        cancelBtn.addEventListener('click', function() { saveCancelDraft(); state.view = 'list'; render(); });
+        cancelBtn.addEventListener('click', function() { saveDraft(); state.view = 'list'; render(); });
       }
 
       // Save post
@@ -3000,7 +3000,7 @@ window.AdminAPI = (function() {
           publishDate: dateEl ? dateEl.value : new Date().toISOString().split('T')[0],
           featuredImage: imageEl ? imageEl.value.trim() : '',
           featured: featuredEl ? featuredEl.checked : false,
-          draft: true,
+          draft: draftEl ? draftEl.checked : true,
           categories: (catsEl ? catsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           tags: (tagsEl ? tagsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           author: authorEl ? authorEl.value.trim() || 'Aethel' : 'Aethel',
@@ -3025,15 +3025,9 @@ window.AdminAPI = (function() {
           state.editingPost = state.editingPost || {};
           state.editingPost.sha = newSha;
         }
-        try {
-          await fetch(AdminAPI.DEPLOY_HOOK_URL, { method: 'POST' });
-        } catch(e) { /* deploy hook optional */ }
-        try {
-          await fetch(AdminAPI.VERCEL_DEPLOY_HOOK_URL, { method: 'POST' });
-        } catch(e) { /* vercel deploy hook optional */ }
         try { localStorage.removeItem('aa_posts_cache'); } catch(e) {}
         _cache.posts = 0;
-        showToast('Post saved! Rebuilding site...', 'success');
+        showToast('Changes saved', 'success');
         clearDraft(slug);
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
@@ -3048,7 +3042,7 @@ window.AdminAPI = (function() {
       } catch(e) {
         showToast('Error saving: ' + e.message, 'error');
         saveBtn.disabled = false;
-        saveBtn.textContent = 'Save as Draft';
+        saveBtn.textContent = 'Save';
       }
     }
 
@@ -3066,6 +3060,7 @@ window.AdminAPI = (function() {
       var titleFsEl = document.getElementById('ed-title-fs');
       var titleLhEl = document.getElementById('ed-title-lh');
       var popularEl = document.getElementById('ed-popular');
+      var draftEl = document.getElementById('ed-draft');
 
       if (!titleEl || !bodyEl) return;
 
@@ -3074,6 +3069,11 @@ window.AdminAPI = (function() {
 
       var slug = slugEl.value.trim() || slugify(title);
       if (!slug) { showToast('Could not generate slug', 'error'); return; }
+
+      if (draftEl && draftEl.checked) {
+        alert('Post can\u2019t go live with draft checked. Uncheck draft and try again.');
+        return;
+      }
 
       var publishBtn = document.getElementById('btn-publish-post');
       publishBtn.disabled = true;
@@ -3136,62 +3136,6 @@ window.AdminAPI = (function() {
         publishBtn.disabled = false;
         publishBtn.textContent = 'Publish';
       }
-    }
-
-    function saveCancelDraft() {
-      var slugEl = document.getElementById('ed-slug');
-      var titleEl = document.getElementById('ed-title');
-      var bodyEl = document.getElementById('ed-body');
-      if (!titleEl || !bodyEl) return;
-      var title = titleEl.value.trim();
-      if (!title) return;
-      var slug = slugEl.value.trim() || slugify(title);
-      if (!slug) return;
-      var excerptEl = document.getElementById('ed-excerpt');
-      var dateEl = document.getElementById('ed-date');
-      var authorEl = document.getElementById('ed-author');
-      var catsEl = document.getElementById('ed-categories');
-      var tagsEl = document.getElementById('ed-tags');
-      var imageEl = document.getElementById('ed-image');
-      var featuredEl = document.getElementById('ed-featured');
-      var titleFsEl = document.getElementById('ed-title-fs');
-      var titleLhEl = document.getElementById('ed-title-lh');
-      var popularEl = document.getElementById('ed-popular');
-      var draftEl = document.getElementById('ed-draft');
-
-      var draft = true;
-
-      var attrs = {
-        title: title,
-        excerpt: excerptEl ? excerptEl.value.trim() : '',
-        publishDate: dateEl ? dateEl.value : new Date().toISOString().split('T')[0],
-        featuredImage: imageEl ? imageEl.value.trim() : '',
-        featured: featuredEl ? featuredEl.checked : false,
-        draft: draft,
-        categories: (catsEl ? catsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
-        tags: (tagsEl ? tagsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
-        author: authorEl ? authorEl.value.trim() || 'Aethel' : 'Aethel',
-        titleFontSize: titleFsEl ? titleFsEl.value : '28',
-        titleLineHeight: titleLhEl ? titleLhEl.value : '1.15',
-      };
-      if (popularEl) {
-        if (popularEl.checked && attrs.tags.indexOf('popular') === -1) {
-          attrs.tags.push('popular');
-        } else if (!popularEl.checked && attrs.tags.indexOf('popular') !== -1) {
-          attrs.tags = attrs.tags.filter(function(t) { return t !== 'popular'; });
-        }
-        if (tagsEl) tagsEl.value = attrs.tags.join(', ');
-      }
-      if (state.editingPost && state.editingPost.sha) {
-        attrs._sha = state.editingPost.sha;
-      }
-      var body = bodyEl.value;
-      AdminAPI.savePost(slug, attrs, body).then(function(newSha) {
-        if (newSha && state.editingPost) {
-          state.editingPost.sha = newSha;
-        }
-        clearDraft(slug);
-      }).catch(function() {});
     }
 
     async function handleDelete(post) {
