@@ -65,6 +65,7 @@ window.AdminAPI = (function() {
         featuredImage: (document.getElementById('ed-image') || {}).value || '',
         featured: (document.getElementById('ed-featured') || {}).checked || false,
         draft: (document.getElementById('ed-draft') || {}).checked || false,
+        scheduled: (document.getElementById('ed-scheduled') || {}).checked || false,
         popular: (document.getElementById('ed-popular') || {}).checked || false,
         publishDate: (document.getElementById('ed-date') || {}).value || '',
         author: (document.getElementById('ed-author') || {}).value || '',
@@ -106,7 +107,7 @@ window.AdminAPI = (function() {
       var el = document.getElementById(id);
       if (el) el.addEventListener('input', handler);
     });
-    ['ed-featured','ed-draft','ed-popular'].forEach(function(id) {
+    ['ed-featured','ed-draft','ed-scheduled','ed-popular'].forEach(function(id) {
       var el = document.getElementById(id);
       if (el) el.addEventListener('change', handler);
     });
@@ -136,6 +137,8 @@ window.AdminAPI = (function() {
     if (fe && draft.featured !== undefined) fe.checked = !!draft.featured;
     var dfe = document.getElementById('ed-draft');
     if (dfe && draft.draft !== undefined) dfe.checked = !!draft.draft;
+    var sfe = document.getElementById('ed-scheduled');
+    if (sfe && draft.scheduled !== undefined) sfe.checked = !!draft.scheduled;
     var pe = document.getElementById('ed-popular');
     if (pe && draft.popular !== undefined) pe.checked = !!draft.popular;
     try { window.updateTitleStyle(); } catch(e) {}
@@ -333,7 +336,7 @@ window.AdminAPI = (function() {
             title: parsed.attrs.title || slug, excerpt: parsed.attrs.excerpt || '',
             publishDate: parsed.attrs.publishDate || '',
             categories: parsed.attrs.categories || [], tags: parsed.attrs.tags || [],
-            draft: parsed.attrs.draft || false, featured: parsed.attrs.featured || false, author: parsed.attrs.author || 'Aethel',
+            draft: parsed.attrs.draft || false, scheduled: parsed.attrs.scheduled || false, featured: parsed.attrs.featured || false, author: parsed.attrs.author || 'Aethel',
             published: parsed.attrs.published !== false,
             featuredImage: parsed.attrs.featuredImage || '', titleFontSize: parsed.attrs.titleFontSize || '28', titleLineHeight: parsed.attrs.titleLineHeight || '1.15', body: parsed.body,
           };
@@ -1103,6 +1106,7 @@ window.AdminAPI = (function() {
           '<button type="button" class="btn-search-images" id="btn-search-images">Search</button></div></div>' +
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-featured" ' + (p.featured ? 'checked' : '') + ' /> Featured post</label></div>' +
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-draft" ' + (p.draft ? 'checked' : '') + ' /> Save as draft (hidden from live site)</label></div>' +
+        '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-scheduled" ' + (p.scheduled ? 'checked' : '') + ' /> Scheduled (auto-publish on date)</label></div>' +
         '<div class="editor-field"><label class="editor-checkbox"><input type="checkbox" id="ed-popular" ' + (isPopular ? 'checked' : '') + ' /> Popular post (shows in sidebar widget)</label></div>' +
         '<div class="editor-field"><label>Body (Markdown)</label><textarea class="editor-body" id="ed-body" oninput="window.updatePreview();window.updateSeoPreview()">' + escapeHtml(p.body) + '</textarea></div>' +
         '<div class="editor-field"><label>Preview</label><div class="editor-preview" id="ed-preview">' + previewContent + '</div></div>' +
@@ -3041,6 +3045,7 @@ window.AdminAPI = (function() {
       var imageEl = document.getElementById('ed-image');
       var featuredEl = document.getElementById('ed-featured');
       var draftEl = document.getElementById('ed-draft');
+      var scheduledEl = document.getElementById('ed-scheduled');
       var bodyEl = document.getElementById('ed-body');
       var titleFsEl = document.getElementById('ed-title-fs');
       var titleLhEl = document.getElementById('ed-title-lh');
@@ -3066,6 +3071,7 @@ window.AdminAPI = (function() {
           featuredImage: imageEl ? imageEl.value.trim() : '',
           featured: featuredEl ? featuredEl.checked : false,
           draft: draftEl ? draftEl.checked : true,
+          scheduled: scheduledEl ? scheduledEl.checked : false,
           published: false,
           categories: (catsEl ? catsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           tags: (tagsEl ? tagsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
@@ -3112,8 +3118,8 @@ window.AdminAPI = (function() {
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
             return isDraft ?
-              { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: true, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: attrs.published, body: body, hasPending: false } :
-              { slug: slug, name: slug + '.md', sha: p.sha || attrs._sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: false, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: false, body: body, hasPending: true, _pendingSha: newSha || attrs._pendingSha };
+              { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: true, scheduled: attrs.scheduled, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: attrs.published, body: body, hasPending: false } :
+              { slug: slug, name: slug + '.md', sha: p.sha || attrs._sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: false, scheduled: attrs.scheduled, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: false, body: body, hasPending: true, _pendingSha: newSha || attrs._pendingSha };
           }
           if (p.slug === state.editingPost && state.editingPost.slug && state.editingPost.slug !== slug) {
             return null;
@@ -3143,6 +3149,7 @@ window.AdminAPI = (function() {
       var titleLhEl = document.getElementById('ed-title-lh');
       var popularEl = document.getElementById('ed-popular');
       var draftEl = document.getElementById('ed-draft');
+      var scheduledEl = document.getElementById('ed-scheduled');
 
       if (!titleEl || !bodyEl) return;
 
@@ -3164,6 +3171,7 @@ window.AdminAPI = (function() {
           featuredImage: imageEl ? imageEl.value.trim() : '',
           featured: featuredEl ? featuredEl.checked : false,
           draft: draftEl ? draftEl.checked : true,
+          scheduled: scheduledEl ? scheduledEl.checked : false,
           published: true,
           categories: (catsEl ? catsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           tags: (tagsEl ? tagsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
@@ -3203,7 +3211,7 @@ window.AdminAPI = (function() {
         AdminAPI.clearDraft(slug);
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
-            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: attrs.published, body: body, hasPending: false };
+            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, scheduled: attrs.scheduled, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: attrs.published, body: body, hasPending: false };
           }
           if (p.slug === state.editingPost && state.editingPost.slug && state.editingPost.slug !== slug) {
             return null;

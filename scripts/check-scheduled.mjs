@@ -19,6 +19,7 @@ function main() {
 
     const frontmatter = fmMatch[1];
     if (!frontmatter.match(/^draft:\s*true$/m)) continue;
+    if (!frontmatter.match(/^scheduled:\s*true$/m)) continue;
 
     const dateMatch = frontmatter.match(/^publishDate:\s*["']?(\d{4}-\d{2}-\d{2})["']?$/m);
     if (!dateMatch) continue;
