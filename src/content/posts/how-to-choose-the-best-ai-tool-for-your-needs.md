@@ -4,13 +4,15 @@ excerpt: "People need a simple framework to pick the right AI for their specific
 publishDate: "2026-07-05"
 featuredImage: "https://images.unsplash.com/photo-1569011312883-031325587704?w=800"
 featured: false
-draft: false
+draft: true
 categories:
   - "AI Tools"
 tags:
   - "AI"
   - "automation"
 author: "Aethel"
+titleFontSize: "28"
+titleLineHeight: "1.15"
 ---
 
 **Choosing an AI tool feels like walking into a massive tech store with no idea what you need, just that everyone else is buying something cool.** It’s overwhelming, right? Every day there's a new "game-changer" on the market, promising to solve all your problems.
