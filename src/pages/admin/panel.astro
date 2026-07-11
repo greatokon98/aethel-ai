@@ -343,6 +343,58 @@ window.AdminAPI = (function() {
         if (batchResults[j]) results.push(batchResults[j]);
       }
     }
+    // Merge pending files into results
+    try {
+      var pendingData = await apiFetch(GITHUB_API + '/contents/src/content/posts/_pending?ref=' + AdminAPI.CONFIG.branch);
+      if (Array.isArray(pendingData)) {
+        var pendingFiles = pendingData.filter(function(f) { return f.name.endsWith('.md'); });
+        var pendingResults = await Promise.all(pendingFiles.map(async function(f) {
+          try {
+            var resp = await fetch(f.download_url);
+            if (!resp.ok) return null;
+            var text = await resp.text();
+            var parsed = parseFrontmatter(text);
+            var slug = f.name.replace(/\.md$/, '');
+            return {
+              slug: slug, name: '_pending/' + f.name, sha: f.sha,
+              title: parsed.attrs.title || slug,
+              excerpt: parsed.attrs.excerpt || '',
+              publishDate: parsed.attrs.publishDate || '',
+              categories: parsed.attrs.categories || [],
+              tags: parsed.attrs.tags || [],
+              draft: false,
+              featured: parsed.attrs.featured || false,
+              author: parsed.attrs.author || 'Aethel',
+              published: false,
+              featuredImage: parsed.attrs.featuredImage || '',
+              titleFontSize: parsed.attrs.titleFontSize || '28',
+              titleLineHeight: parsed.attrs.titleLineHeight || '1.15',
+              body: parsed.body,
+              hasPending: true,
+              _pendingSha: f.sha,
+              _isPending: true,
+            };
+          } catch(e) { return null; }
+        }));
+        for (var pi = 0; pi < pendingResults.length; pi++) {
+          var pr = pendingResults[pi];
+          if (!pr) continue;
+          var found = false;
+          for (var ri = 0; ri < results.length; ri++) {
+            if (results[ri].slug === pr.slug) {
+              results[ri].hasPending = true;
+              results[ri]._pendingSha = pr._pendingSha;
+              results[ri].title = pr.title;
+              results[ri].excerpt = pr.excerpt;
+              results[ri].body = pr.body;
+              found = true;
+              break;
+            }
+          }
+          if (!found) results.push(pr);
+        }
+      }
+    } catch(e) { /* no _pending directory */ }
     results.sort(function(a, b) { return new Date(b.publishDate) - new Date(a.publishDate); });
     try { localStorage.setItem('aa_posts_cache', JSON.stringify(results)); } catch(e) {}
     try { localStorage.setItem('aa_posts_fallback', JSON.stringify(results)); } catch(e) {}
@@ -358,6 +410,20 @@ window.AdminAPI = (function() {
 
   async function deletePost(slug, sha) {
     return ghDeleteFile('src/content/posts/' + slug + '.md', sha);
+  }
+
+  async function savePendingPost(slug, attrs, body) {
+    var content = buildFrontmatter(attrs, body);
+    var path = 'src/content/posts/_pending/' + slug + '.md';
+    var sha = attrs._pendingSha || null;
+    return ghSaveFile(path, content, sha);
+  }
+
+  async function deletePendingPost(slug) {
+    try {
+      var f = await ghGetFile('src/content/posts/_pending/' + slug + '.md');
+      if (f) await ghDeleteFile('src/content/posts/_pending/' + slug + '.md', f.sha);
+    } catch(e) { /* no pending file, ignore */ }
   }
 
   async function listPages(force) {
@@ -684,6 +750,7 @@ window.AdminAPI = (function() {
     getPat: getPat, storePat: storePat, removePat: removePat, hasPat: hasPat,
     validatePat: validatePat,
     listPosts: listPosts, savePost: savePost, deletePost: deletePost,
+    savePendingPost: savePendingPost, deletePendingPost: deletePendingPost,
     listPages: listPages, savePage: savePage, deletePage: deletePage,
     parseFrontmatter: parseFrontmatter, buildFrontmatter: buildFrontmatter,
     loadSettings: loadSettings, saveSettings: saveSettings, defaultSettings: defaultSettings,
@@ -927,6 +994,7 @@ window.AdminAPI = (function() {
         if (f.status === 'recent' && (!p.publishDate || new Date(p.publishDate) < new Date(Date.now() - 7 * 86400000))) return false;
         if (f.status === 'new' && (!p.publishDate || new Date(p.publishDate) < new Date(Date.now() - 3 * 86400000))) return false;
         if (f.status === 'newest' && (!p.publishDate || new Date(p.publishDate) < new Date(Date.now() - 86400000))) return false;
+        if (f.status === 'pending' && (p.draft || p.published !== false)) return false;
         if (f.search) {
           var q = f.search.toLowerCase();
           var title = (p.title || '').toLowerCase();
@@ -953,6 +1021,7 @@ window.AdminAPI = (function() {
           '<option value="recent"' + (f.status === 'recent' ? ' selected' : '') + '>Recent (7 days)</option>' +
           '<option value="new"' + (f.status === 'new' ? ' selected' : '') + '>New (3 days)</option>' +
           '<option value="newest"' + (f.status === 'newest' ? ' selected' : '') + '>Newest (24h)</option>' +
+          '<option value="pending"' + (f.status === 'pending' ? ' selected' : '') + '>Pending</option>' +
         '</select>' +
         '<select class="post-filter-select" id="pf-category">' + catOpts + '</select>' +
       '</div>';
@@ -972,7 +1041,7 @@ window.AdminAPI = (function() {
         var date = p.publishDate ? formatDate(p.publishDate) : '';
         var cats = (p.categories || []).map(function(c) { return '<span class="post-cat">' + escapeHtml(c) + '</span>'; }).join('');
         var featuredBadge = p.featured ? '<span class="post-featured-badge">Featured</span>' : '';
-        var draftBadge = p.draft ? '<span class="post-draft-badge">Draft</span>' : (p.published ? '<span class="post-live-badge">Live</span>' : '<span class="post-pending-badge">Pending</span>');
+        var draftBadge = p.draft ? '<span class="post-draft-badge">Draft</span>' : (p.hasPending || !p.published ? '<span class="post-pending-badge">Pending</span>' : '<span class="post-live-badge">Live</span>');
         return '<tr>' +
           '<td data-label="Title"><div class="post-title">' + escapeHtml(p.title) + draftBadge + '</div></td>' +
           '<td data-label="Date" class="post-date">' + date + '</td>' +
@@ -1052,7 +1121,7 @@ window.AdminAPI = (function() {
           (!isNew ? '<button class="btn-regenerate" id="btn-regenerate">Write with Groq</button>' : '') +
           (isNew ? '<button class="btn-regenerate btn-gemini" id="btn-generate-gemini">Generate with Gemini</button>' : '') +
           (!isNew ? '<button class="btn-regenerate btn-gemini" id="btn-regenerate-gemini">Write with Gemini</button>' : '') +
-          (!isNew ? '<button class="btn-delete" id="btn-editor-delete">Delete Post</button>' : '') +
+          '' +
           (!isNew ? '<button class="btn-regenerate btn-complete-ai" id="btn-complete-ai">Complete with AI</button>' : '') +
         '</div>' +
       '</div>' +
@@ -1913,16 +1982,6 @@ window.AdminAPI = (function() {
       if (state.view === 'editor') {
         AdminAPI.mountAutoSave();
         AdminAPI.restoreDraft();
-      }
-
-      // Editor delete
-      var delBtn = document.getElementById('btn-editor-delete');
-      if (delBtn) {
-        delBtn.addEventListener('click', function() {
-          if (state.editingPost && confirm('Delete "' + state.editingPost.title + '"? This cannot be undone.')) {
-            handleDelete(state.editingPost);
-          }
-        });
       }
 
       // Generate with AI
@@ -2926,12 +2985,13 @@ window.AdminAPI = (function() {
       else if (filter === 'draft') filtered = state.posts.filter(function(p) { return p.draft; });
       else if (filter === 'popular') filtered = state.posts.filter(function(p) { return p.tags && p.tags.indexOf('popular') !== -1; });
       else if (filter === 'trending') filtered = state.posts.filter(function(p) { return p.tags && p.tags.indexOf('trending') !== -1; });
+      else if (filter === 'pending') filtered = state.posts.filter(function(p) { return !p.draft && (p.hasPending || p.published === false); });
 
       var rowsHtml = filtered.map(function(item) {
         var date = item.publishDate ? formatDate(item.publishDate) : '';
         var cats = (item.categories || []).map(function(c) { return '<span class="post-cat">' + escapeHtml(c) + '</span>'; }).join('');
         var tags = (item.tags || []).slice(0, 3).map(function(t) { return '<span style="font-size:11px;color:#64748B">' + escapeHtml(t) + '</span>'; }).join('');
-        var draftBadge = item.draft ? '<span class="post-draft-badge">Draft</span>' : (item.published ? '<span class="post-live-badge">Live</span>' : '<span class="post-pending-badge">Pending</span>');
+        var draftBadge = item.draft ? '<span class="post-draft-badge">Draft</span>' : (item.hasPending || !item.published ? '<span class="post-pending-badge">Pending</span>' : '<span class="post-live-badge">Live</span>');
         return '<tr>' +
           '<td><div class="post-title">' + escapeHtml(item.title) + draftBadge + '</div></td>' +
           '<td><div class="post-cats">' + cats + '</div></td>' +
@@ -3025,20 +3085,35 @@ window.AdminAPI = (function() {
         if (state.editingPost && state.editingPost.sha) {
           attrs._sha = state.editingPost.sha;
         }
+        if (state.editingPost && state.editingPost._pendingSha) {
+          attrs._pendingSha = state.editingPost._pendingSha;
+        }
         var body = bodyEl.value;
-        var newSha = await AdminAPI.savePost(slug, attrs, body);
+        var isDraft = draftEl && draftEl.checked;
+        var newSha;
+        if (isDraft) {
+          newSha = await AdminAPI.savePost(slug, attrs, body);
+        } else {
+          newSha = await AdminAPI.savePendingPost(slug, attrs, body);
+        }
         if (newSha) {
           state.editingPost = state.editingPost || {};
-          state.editingPost.sha = newSha;
+          if (isDraft) {
+            state.editingPost.sha = newSha;
+          } else {
+            state.editingPost._pendingSha = newSha;
+          }
           state.editingPost.published = attrs.published;
         }
         try { localStorage.removeItem('aa_posts_cache'); } catch(e) {}
         _cache.posts = Date.now();
-        showToast('Changes saved', 'success');
+        showToast(isDraft ? 'Draft changes saved' : 'Pending changes saved', 'success');
         AdminAPI.clearDraft(slug);
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
-            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: attrs.published, body: body };
+            return isDraft ?
+              { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: true, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: attrs.published, body: body, hasPending: false } :
+              { slug: slug, name: slug + '.md', sha: p.sha || attrs._sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: false, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: false, body: body, hasPending: true, _pendingSha: newSha || attrs._pendingSha };
           }
           if (p.slug === state.editingPost && state.editingPost.slug && state.editingPost.slug !== slug) {
             return null;
@@ -3121,13 +3196,14 @@ window.AdminAPI = (function() {
         try {
           await fetch(AdminAPI.VERCEL_DEPLOY_HOOK_URL, { method: 'POST' });
         } catch(e) { /* vercel deploy hook optional */ }
+        try { await AdminAPI.deletePendingPost(slug); } catch(e) {}  // remove pending file if exists
         try { localStorage.removeItem('aa_posts_cache'); } catch(e) {}
         _cache.posts = Date.now();
         showToast(attrs.draft ? 'Saved as draft, rebuilding...' : 'Post published! Rebuilding...', 'success');
         AdminAPI.clearDraft(slug);
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
-            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: attrs.published, body: body };
+            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: attrs.published, body: body, hasPending: false };
           }
           if (p.slug === state.editingPost && state.editingPost.slug && state.editingPost.slug !== slug) {
             return null;
@@ -3144,6 +3220,7 @@ window.AdminAPI = (function() {
 
     async function handleDelete(post) {
       try {
+        await AdminAPI.deletePendingPost(post.slug);
         await AdminAPI.deletePost(post.slug, post.sha);
         showToast('Post deleted. Rebuilding...', 'success');
         _cache.posts = 0;
