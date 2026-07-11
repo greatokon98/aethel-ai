@@ -4,7 +4,7 @@ excerpt: "To navigate online safely and make informed decisions."
 publishDate: "2026-07-11"
 featuredImage: "/images/posts/understanding-ai-red-flags-on-social-media.jpg"
 featured: false
-draft: true
+draft: false
 categories:
   - "AI News"
 tags:
