@@ -1,5 +1,5 @@
 ---
-title: "AI Agents: Trusting Them With Your Important Tasks"
+title: "AI Agents: Trusting Them With Your Important Tasks."
 excerpt: "People need clear guidance on what types of tasks AI agents are genuinely ready for versus where human oversight remains essential for safety and success."
 publishDate: "2026-07-10"
 featuredImage: "/images/posts/ai-agents-trusting-them-with-your-important-tasks.jpg"
