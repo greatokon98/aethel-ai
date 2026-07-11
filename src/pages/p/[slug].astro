@@ -66,10 +66,11 @@ const allPosts = allPostFiles.map((f) => {
     publishDate: new Date(a.publishDate as string || Date.now()),
   };
 });
-const allCategories = [...new Set(allPosts.flatMap((p: any) => p.categories || []))] as string[];
-const recentPosts = allPosts.sort((a: any, b: any) => b.publishDate.getTime() - a.publishDate.getTime()).slice(0, 5);
-const trendingPosts = allPosts.filter((p: any) => p.tags && p.tags.includes('trending'));
-const popularPosts = allPosts.filter((p: any) => p.tags && p.tags.includes('popular'));
+const publishedPosts = allPosts.filter((p: any) => !p.draft);
+const allCategories = [...new Set(publishedPosts.flatMap((p: any) => p.categories || []))] as string[];
+const recentPosts = publishedPosts.sort((a: any, b: any) => b.publishDate.getTime() - a.publishDate.getTime()).slice(0, 5);
+const trendingPosts = publishedPosts.filter((p: any) => p.tags && p.tags.includes('trending'));
+const popularPosts = publishedPosts.filter((p: any) => p.tags && p.tags.includes('popular'));
 const trending = await fetchTrendingNews();
 const isWide = pageTemplate === 'wide';
 ---

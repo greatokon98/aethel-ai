@@ -334,6 +334,7 @@ window.AdminAPI = (function() {
             publishDate: parsed.attrs.publishDate || '',
             categories: parsed.attrs.categories || [], tags: parsed.attrs.tags || [],
             draft: parsed.attrs.draft || false, featured: parsed.attrs.featured || false, author: parsed.attrs.author || 'Aethel',
+            published: parsed.attrs.published !== false,
             featuredImage: parsed.attrs.featuredImage || '', titleFontSize: parsed.attrs.titleFontSize || '28', titleLineHeight: parsed.attrs.titleLineHeight || '1.15', body: parsed.body,
           };
         } catch(e) { return null; }
@@ -971,7 +972,7 @@ window.AdminAPI = (function() {
         var date = p.publishDate ? formatDate(p.publishDate) : '';
         var cats = (p.categories || []).map(function(c) { return '<span class="post-cat">' + escapeHtml(c) + '</span>'; }).join('');
         var featuredBadge = p.featured ? '<span class="post-featured-badge">Featured</span>' : '';
-        var draftBadge = p.draft ? '<span class="post-draft-badge">Draft</span>' : '<span class="post-live-badge">Live</span>';
+        var draftBadge = p.draft ? '<span class="post-draft-badge">Draft</span>' : (p.published ? '<span class="post-live-badge">Live</span>' : '<span class="post-pending-badge">Pending</span>');
         return '<tr>' +
           '<td data-label="Title"><div class="post-title">' + escapeHtml(p.title) + draftBadge + '</div></td>' +
           '<td data-label="Date" class="post-date">' + date + '</td>' +
@@ -1001,7 +1002,7 @@ window.AdminAPI = (function() {
     // --- Editor ---
     function renderEditor(post) {
       var isNew = !post;
-      var p = post || { title: '', excerpt: '', body: '', categories: [], tags: [], author: 'Aethel', featured: false, featuredImage: '', publishDate: new Date().toISOString().split('T')[0], draft: true };
+      var p = post || { title: '', excerpt: '', body: '', categories: [], tags: [], author: 'Aethel', featured: false, featuredImage: '', publishDate: new Date().toISOString().split('T')[0], draft: true, published: false };
       var cats = (p.categories || []).join(', ');
       var tags = (p.tags || []).join(', ');
       var previewContent = '';
@@ -2930,7 +2931,7 @@ window.AdminAPI = (function() {
         var date = item.publishDate ? formatDate(item.publishDate) : '';
         var cats = (item.categories || []).map(function(c) { return '<span class="post-cat">' + escapeHtml(c) + '</span>'; }).join('');
         var tags = (item.tags || []).slice(0, 3).map(function(t) { return '<span style="font-size:11px;color:#64748B">' + escapeHtml(t) + '</span>'; }).join('');
-        var draftBadge = item.draft ? '<span class="post-draft-badge">Draft</span>' : '';
+        var draftBadge = item.draft ? '<span class="post-draft-badge">Draft</span>' : (item.published ? '<span class="post-live-badge">Live</span>' : '<span class="post-pending-badge">Pending</span>');
         return '<tr>' +
           '<td><div class="post-title">' + escapeHtml(item.title) + draftBadge + '</div></td>' +
           '<td><div class="post-cats">' + cats + '</div></td>' +
@@ -3005,6 +3006,7 @@ window.AdminAPI = (function() {
           featuredImage: imageEl ? imageEl.value.trim() : '',
           featured: featuredEl ? featuredEl.checked : false,
           draft: draftEl ? draftEl.checked : true,
+          published: false,
           categories: (catsEl ? catsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           tags: (tagsEl ? tagsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           author: authorEl ? authorEl.value.trim() || 'Aethel' : 'Aethel',
@@ -3028,14 +3030,15 @@ window.AdminAPI = (function() {
         if (newSha) {
           state.editingPost = state.editingPost || {};
           state.editingPost.sha = newSha;
+          state.editingPost.published = attrs.published;
         }
         try { localStorage.removeItem('aa_posts_cache'); } catch(e) {}
-        _cache.posts = 0;
+        _cache.posts = Date.now();
         showToast('Changes saved', 'success');
         AdminAPI.clearDraft(slug);
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
-            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, body: body };
+            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: attrs.published, body: body };
           }
           if (p.slug === state.editingPost && state.editingPost.slug && state.editingPost.slug !== slug) {
             return null;
@@ -3086,6 +3089,7 @@ window.AdminAPI = (function() {
           featuredImage: imageEl ? imageEl.value.trim() : '',
           featured: featuredEl ? featuredEl.checked : false,
           draft: draftEl ? draftEl.checked : true,
+          published: true,
           categories: (catsEl ? catsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           tags: (tagsEl ? tagsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           author: authorEl ? authorEl.value.trim() || 'Aethel' : 'Aethel',
@@ -3109,6 +3113,7 @@ window.AdminAPI = (function() {
           state.editingPost = state.editingPost || {};
           state.editingPost.sha = newSha;
           state.editingPost.draft = attrs.draft;
+          state.editingPost.published = attrs.published;
         }
         try {
           await fetch(AdminAPI.DEPLOY_HOOK_URL, { method: 'POST' });
@@ -3117,12 +3122,12 @@ window.AdminAPI = (function() {
           await fetch(AdminAPI.VERCEL_DEPLOY_HOOK_URL, { method: 'POST' });
         } catch(e) { /* vercel deploy hook optional */ }
         try { localStorage.removeItem('aa_posts_cache'); } catch(e) {}
-        _cache.posts = 0;
+        _cache.posts = Date.now();
         showToast(attrs.draft ? 'Saved as draft, rebuilding...' : 'Post published! Rebuilding...', 'success');
         AdminAPI.clearDraft(slug);
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
-            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, body: body };
+            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, published: attrs.published, body: body };
           }
           if (p.slug === state.editingPost && state.editingPost.slug && state.editingPost.slug !== slug) {
             return null;
