@@ -4,7 +4,7 @@ excerpt: "Create your own AI assistant that summarizes emails, checks your calen
 publishDate: "2026-06-19"
 featuredImage: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800"
 featured: false
-draft: true
+draft: false
 categories:
   - "Productivity"
   - "Automation"

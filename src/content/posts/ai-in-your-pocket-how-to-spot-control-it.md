@@ -4,7 +4,7 @@ excerpt: "People need practical steps to identify AI features in their daily app
 publishDate: "2026-07-11"
 featuredImage: "/images/posts/ai-in-your-pocket-how-to-spot-control-it.jpg"
 featured: false
-draft: true
+draft: false
 categories:
   - "AI Tools"
 tags:
