@@ -76,6 +76,7 @@ const formattedDate = publishDate.toLocaleDateString('en-US', {
 ---
 
 <BaseLayout title={title} description={description} image={featuredImage}>
+  <div class="reading-progress" id="reading-progress"></div>
   <article class="post-page">
     <div class="container">
       <div class="post-page__layout">
@@ -103,6 +104,13 @@ const formattedDate = publishDate.toLocaleDateString('en-US', {
           )}
 
           <div class="post-page__content">
+            <nav class="post-page__toc" id="post-toc">
+              <div class="post-page__toc-header">
+                <span class="post-page__toc-title">On this page</span>
+                <button class="post-page__toc-toggle" id="post-toc-toggle" aria-label="Toggle table of contents">▾</button>
+              </div>
+              <ul class="post-page__toc-list" id="post-toc-list"></ul>
+            </nav>
             <slot />
           </div>
 
@@ -345,6 +353,103 @@ const formattedDate = publishDate.toLocaleDateString('en-US', {
     }
   }
 
+  .reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: var(--color-accent);
+    width: 0%;
+    z-index: 9999;
+    transition: width 0.1s linear;
+  }
+
+  .post-page__toc {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4) var(--space-6);
+    margin-bottom: var(--space-8);
+  }
+
+  .post-page__toc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .post-page__toc-title {
+    font-family: var(--font-heading);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+  }
+
+  .post-page__toc-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    padding: var(--space-1);
+    display: none;
+    transition: transform 0.2s;
+  }
+
+  .post-page__toc.is-collapsed .post-page__toc-toggle {
+    transform: rotate(-90deg);
+  }
+
+  .post-page__toc-list {
+    list-style: none;
+    margin: var(--space-3) 0 0 0;
+    padding: 0;
+    font-size: var(--text-sm);
+  }
+
+  .post-page__toc-list li {
+    margin-bottom: var(--space-1);
+  }
+
+  .post-page__toc-list a {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    display: block;
+    padding: var(--space-1) 0;
+    border-left: 2px solid transparent;
+    padding-left: var(--space-3);
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .post-page__toc-list a:hover,
+  .post-page__toc-list a:focus {
+    color: var(--color-accent);
+    border-left-color: var(--color-accent);
+  }
+
+  .post-page__toc-list a.is-active {
+    color: var(--color-accent);
+    border-left-color: var(--color-accent);
+    font-weight: 500;
+  }
+
+  .post-page__toc-list .toc-h3 {
+    padding-left: var(--space-6);
+    font-size: 0.925em;
+  }
+
+  @media (max-width: 768px) {
+    .post-page__toc-toggle {
+      display: block;
+    }
+
+    .post-page__toc.is-collapsed .post-page__toc-list {
+      display: none;
+    }
+  }
+
   @media (max-width: 768px) {
     .post-page__layout {
       grid-template-columns: 1fr;
@@ -368,3 +473,62 @@ const formattedDate = publishDate.toLocaleDateString('en-US', {
     }
   }
 </style>
+
+<script>
+  (function() {
+    var toc = document.getElementById('post-toc');
+    var list = document.getElementById('post-toc-list');
+    var progress = document.getElementById('reading-progress');
+    var toggle = document.getElementById('post-toc-toggle');
+
+    if (toc && list) {
+      var headings = document.querySelectorAll('.post-page__content h2, .post-page__content h3');
+      if (headings.length === 0) {
+        toc.style.display = 'none';
+      } else {
+        headings.forEach(function(h) {
+          if (!h.id) return;
+          var li = document.createElement('li');
+          var a = document.createElement('a');
+          a.href = '#' + h.id;
+          a.textContent = h.textContent;
+          if (h.tagName === 'H3') a.className = 'toc-h3';
+          li.appendChild(a);
+          list.appendChild(li);
+        });
+
+        if (toggle) {
+          toggle.addEventListener('click', function() {
+            toc.classList.toggle('is-collapsed');
+          });
+        }
+
+        var links = list.querySelectorAll('a');
+        function onScroll() {
+          var scrollY = window.scrollY;
+          var activeIdx = -1;
+          headings.forEach(function(h, i) {
+            if (h.offsetTop - 120 <= scrollY) activeIdx = i;
+          });
+          links.forEach(function(a, i) {
+            a.classList.toggle('is-active', i === activeIdx);
+          });
+        }
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+      }
+    }
+
+    if (progress) {
+      function onProgress() {
+        var scrollY = window.scrollY;
+        var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        if (docHeight > 0) {
+          progress.style.width = Math.min(100, (scrollY / docHeight) * 100) + '%';
+        }
+      }
+      window.addEventListener('scroll', onProgress, { passive: true });
+      onProgress();
+    }
+  })();
+</script>
