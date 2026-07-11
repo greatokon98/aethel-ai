@@ -3074,11 +3074,6 @@ window.AdminAPI = (function() {
       var slug = slugEl.value.trim() || slugify(title);
       if (!slug) { showToast('Could not generate slug', 'error'); return; }
 
-      if (draftEl && draftEl.checked) {
-        alert('Post can\u2019t go live with draft checked. Uncheck draft and try again.');
-        return;
-      }
-
       var publishBtn = document.getElementById('btn-publish-post');
       publishBtn.disabled = true;
       publishBtn.textContent = 'Publishing...';
@@ -3090,7 +3085,7 @@ window.AdminAPI = (function() {
           publishDate: dateEl ? dateEl.value : new Date().toISOString().split('T')[0],
           featuredImage: imageEl ? imageEl.value.trim() : '',
           featured: featuredEl ? featuredEl.checked : false,
-          draft: false,
+          draft: draftEl ? draftEl.checked : true,
           categories: (catsEl ? catsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           tags: (tagsEl ? tagsEl.value : '').split(',').map(function(s) { return s.trim(); }).filter(Boolean),
           author: authorEl ? authorEl.value.trim() || 'Aethel' : 'Aethel',
@@ -3113,7 +3108,7 @@ window.AdminAPI = (function() {
         if (newSha) {
           state.editingPost = state.editingPost || {};
           state.editingPost.sha = newSha;
-          state.editingPost.draft = false;
+          state.editingPost.draft = attrs.draft;
         }
         try {
           await fetch(AdminAPI.DEPLOY_HOOK_URL, { method: 'POST' });
@@ -3123,11 +3118,11 @@ window.AdminAPI = (function() {
         } catch(e) { /* vercel deploy hook optional */ }
         try { localStorage.removeItem('aa_posts_cache'); } catch(e) {}
         _cache.posts = 0;
-        showToast('Post published! Rebuilding...', 'success');
+        showToast(attrs.draft ? 'Saved as draft, rebuilding...' : 'Post published! Rebuilding...', 'success');
         AdminAPI.clearDraft(slug);
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
-            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: false, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, body: body };
+            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, body: body };
           }
           if (p.slug === state.editingPost && state.editingPost.slug && state.editingPost.slug !== slug) {
             return null;
