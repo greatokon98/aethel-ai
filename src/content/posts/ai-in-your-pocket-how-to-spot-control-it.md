@@ -4,6 +4,7 @@ excerpt: "People need practical steps to identify AI features in their daily app
 publishDate: "2026-07-11"
 featuredImage: "/images/posts/ai-in-your-pocket-how-to-spot-control-it.jpg"
 featured: false
+draft: true
 categories:
   - "AI Tools"
 tags:
@@ -11,6 +12,8 @@ tags:
   - "automation"
   - "popular"
 author: "Aethel"
+titleFontSize: "28"
+titleLineHeight: "1.15"
 ---
 
 **That little device in your pocket? It’s far more intelligent, and perhaps a bit more nosy, than you probably realize.** I remember the first time I truly grasped how much AI was baked into my smartphone. I was trying to find a specific photo from years ago, and my phone, without me even prompting it, had already categorized it by location, date, and even the people in it. It was incredibly helpful, sure, but also a quiet, almost unsettling demonstration of how much it "knew" about my life.
