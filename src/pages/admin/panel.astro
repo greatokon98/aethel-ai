@@ -64,6 +64,13 @@ window.AdminAPI = (function() {
         titleFontSize: (document.getElementById('ed-title-fs') || {}).value || '28',
         titleLineHeight: (document.getElementById('ed-title-lh') || {}).value || '1.15',
       }));
+      var ds = document.getElementById('draft-status');
+      if (ds) {
+        ds.textContent = 'Draft saved';
+        ds.style.opacity = '1';
+        clearTimeout(ds._timer);
+        ds._timer = setTimeout(function() { ds.style.opacity = '0'; }, 2000);
+      }
     } catch(e) {}
   }
 
@@ -1029,6 +1036,7 @@ window.AdminAPI = (function() {
         '<div class="editor-actions">' +
           '<button class="btn-save" id="btn-save-post">' + (isNew ? 'Create Post' : 'Save Changes') + '</button>' +
           '<button class="btn-cancel" id="btn-cancel-edit">Cancel</button>' +
+          '<span class="draft-status" id="draft-status"></span>' +
           (isNew ? '<button class="btn-regenerate" id="btn-generate">Generate with AI</button>' : '') +
           (!isNew ? '<button class="btn-regenerate" id="btn-regenerate">Regenerate with Groq</button>' : '') +
           (isNew ? '<button class="btn-regenerate btn-gemini" id="btn-generate-gemini">Generate with Gemini</button>' : '') +
@@ -2285,6 +2293,7 @@ window.AdminAPI = (function() {
         clearInterval(_backupTimer);
         _backupTimer = null;
       }
+      if (state.view === 'editor') saveDraft();
       state.view = view;
       try { sessionStorage.setItem('aa_active_tab', view); } catch(e) {}
       if (view === 'dashboard') {
