@@ -4,15 +4,18 @@ excerpt: "Create your own AI assistant that summarizes emails, checks your calen
 publishDate: "2026-06-19"
 featuredImage: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800"
 featured: false
+draft: true
 categories:
-  - Productivity
-  - Automation
+  - "Productivity"
+  - "Automation"
 tags:
-  - AI assistant
-  - automation
-  - workflow
-  - step-by-step
+  - "AI assistant"
+  - "automation"
+  - "workflow"
+  - "step-by-step"
 author: "Aethel"
+titleFontSize: "28"
+titleLineHeight: "1.15"
 ---
 
 Imagine having an assistant who reads your emails, checks your calendar, summarizes the news, and sends you a daily briefing — all without you lifting a finger. This is not science fiction. You can build this today with free or low-cost tools, and you do not need to write a single line of code.
