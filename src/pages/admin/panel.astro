@@ -293,7 +293,7 @@ window.AdminAPI = (function() {
   async function listPosts(force) {
     if (!force) {
       try {
-        var cached = sessionStorage.getItem('aa_posts_cache');
+        var cached = localStorage.getItem('aa_posts_cache');
         if (cached) { var parsed = JSON.parse(cached); if (Array.isArray(parsed)) return parsed; }
       } catch(e) {}
     }
@@ -336,7 +336,7 @@ window.AdminAPI = (function() {
       }
     }
     results.sort(function(a, b) { return new Date(b.publishDate) - new Date(a.publishDate); });
-    try { sessionStorage.setItem('aa_posts_cache', JSON.stringify(results)); } catch(e) {}
+    try { localStorage.setItem('aa_posts_cache', JSON.stringify(results)); } catch(e) {}
     try { localStorage.setItem('aa_posts_fallback', JSON.stringify(results)); } catch(e) {}
     return results;
   }
@@ -1849,7 +1849,7 @@ window.AdminAPI = (function() {
       var refreshBtn = document.getElementById('btn-refresh-posts');
       if (refreshBtn) {
         refreshBtn.addEventListener('click', function() {
-          try { sessionStorage.removeItem('aa_posts_cache'); } catch(e) {}
+          try { localStorage.removeItem('aa_posts_cache'); } catch(e) {}
           _cache.posts = 0;
           loadPosts(true);
         });
@@ -2318,6 +2318,9 @@ window.AdminAPI = (function() {
         runDiagnostics();
       } else if (view === 'backup') {
         loadBackupStatus();
+      } else if (view === 'list') {
+        render();
+        if (!_cache.posts || Date.now() - _cache.posts >= CACHE_TTL) refreshPosts();
       } else {
         render();
       }
@@ -2352,6 +2355,33 @@ window.AdminAPI = (function() {
         render();
         return;
       }
+
+      // Show cached data immediately if available
+      if (!force && state.posts.length > 0) {
+        state.view = 'list';
+        render();
+        refreshPosts();
+        return;
+      }
+
+      // Check localStorage cache for instant first load
+      if (!force) {
+        try {
+          var cached = localStorage.getItem('aa_posts_cache');
+          if (cached) {
+            var parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              state.posts = parsed;
+              state.view = 'list';
+              render();
+              refreshPosts();
+              return;
+            }
+          }
+        } catch(e) {}
+      }
+
+      // No cache available — full loading cycle
       state.view = 'loading';
       render();
       try {
@@ -2367,6 +2397,19 @@ window.AdminAPI = (function() {
         }
       }
       render();
+    }
+
+    async function refreshPosts() {
+      try {
+        var fresh = await AdminAPI.listPosts(true);
+        if (fresh && fresh.length > 0 && JSON.stringify(fresh) !== JSON.stringify(state.posts)) {
+          state.posts = fresh;
+          _cache.posts = Date.now();
+          if (state.view === 'list') render();
+        } else if (fresh) {
+          _cache.posts = Date.now();
+        }
+      } catch(e) { /* silent background refresh */ }
     }
 
     async function loadPages(force) {
@@ -2971,7 +3014,7 @@ window.AdminAPI = (function() {
         try {
           await fetch(AdminAPI.VERCEL_DEPLOY_HOOK_URL, { method: 'POST' });
         } catch(e) { /* vercel deploy hook optional */ }
-        try { sessionStorage.removeItem('aa_posts_cache'); } catch(e) {}
+        try { localStorage.removeItem('aa_posts_cache'); } catch(e) {}
         _cache.posts = 0;
         showToast('Post saved! Rebuilding site...', 'success');
         clearDraft(slug);
@@ -3449,7 +3492,6 @@ window.AdminAPI = (function() {
 
     // --- Init ---
     async function init() {
-      try { sessionStorage.removeItem('aa_posts_cache'); } catch(e) {}
       render();
       var pat = AdminAPI.getPat();
       if (!pat) {
