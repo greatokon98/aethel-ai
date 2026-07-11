@@ -4,9 +4,9 @@ excerpt: ""
 publishDate: "2026-07-11"
 featuredImage: ""
 featured: false
-draft: true
+draft: false
 scheduled: false
-published: false
+published: true
 categories:
   - "Tech News"
 tags:
