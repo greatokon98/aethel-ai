@@ -4,7 +4,7 @@ excerpt: "As I spent more time with the Beatbot AquaSense X, I realized that its
 publishDate: "2026-07-11"
 featuredImage: "/images/posts/beatbot-aquasense-x-review-a-pool-robot-that-cleans-itself.jpg"
 featured: true
-draft: true
+draft: false
 categories:
   - "AI Tools"
 tags:
