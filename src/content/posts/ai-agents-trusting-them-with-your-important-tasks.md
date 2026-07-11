@@ -5,7 +5,7 @@ publishDate: "2026-07-10"
 featuredImage: "/images/posts/ai-agents-trusting-them-with-your-important-tasks.jpg"
 featured: false
 draft: false
-published: false
+published: true
 categories:
   - "Productivity"
 tags:
