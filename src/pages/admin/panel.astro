@@ -37,6 +37,13 @@ window.AdminAPI = (function() {
     };
   }
 
+  function friendlyError(err) {
+    var msg = (err && err.message) || String(err || '');
+    if (msg.indexOf('429') !== -1 || msg.toLowerCase().indexOf('rate limit') !== -1) return 'Rate limit reached. Please wait a minute and try again.';
+    if (msg.indexOf('sha') !== -1 && msg.indexOf('supplied') !== -1) return 'Save failed: file changed externally. Refresh the post and try again.';
+    return msg;
+  }
+
   function draftKey(slug) { return DRAFT_PREFIX + (slug || 'new-post'); }
 
   function saveDraft() {
@@ -2620,7 +2627,7 @@ window.AdminAPI = (function() {
         window.updatePreview();
         showToast('Content generated! Review and save.', 'success');
       } catch (err) {
-        alert('Generation failed: ' + err.message);
+        showToast(friendlyError(err), 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Generate with AI';
@@ -2655,9 +2662,9 @@ window.AdminAPI = (function() {
         if (content.categories) state.editingPost.categories = content.categories;
         if (content.tags) state.editingPost.tags = content.tags;
         window.updatePreview();
-        alert('Post regenerated successfully! Check the body and preview below.');
+        showToast('Post regenerated! Review body and preview below.', 'success');
       } catch (err) {
-        alert('Regeneration failed: ' + err.message);
+        showToast(friendlyError(err), 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Regenerate with Groq';
@@ -2699,7 +2706,7 @@ window.AdminAPI = (function() {
         window.updatePreview();
         showToast('Content generated with Gemini! Review and save.', 'success');
       } catch (err) {
-        alert('Gemini generation failed: ' + err.message);
+        showToast(friendlyError(err), 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Generate with Gemini';
@@ -2740,7 +2747,7 @@ window.AdminAPI = (function() {
         window.updatePreview();
         showToast('Post regenerated with Gemini! Review and save.', 'success');
       } catch (err) {
-        alert('Gemini regeneration failed: ' + err.message);
+        showToast(friendlyError(err), 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Regenerate with Gemini';
@@ -2769,7 +2776,7 @@ window.AdminAPI = (function() {
           alert('Completion returned empty. Try again.');
         }
       } catch (err) {
-        alert('Completion failed: ' + err.message);
+        showToast(friendlyError(err), 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Complete with AI';
@@ -2796,7 +2803,7 @@ window.AdminAPI = (function() {
           alert('No image could be generated for this topic. Try Search instead.');
         }
       } catch (err) {
-        alert('Image generation failed: ' + err.message);
+        showToast(friendlyError(err), 'error');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Generate Image';
@@ -3007,7 +3014,11 @@ window.AdminAPI = (function() {
           attrs._sha = state.editingPost.sha;
         }
         var body = bodyEl.value;
-        await AdminAPI.savePost(slug, attrs, body);
+        var newSha = await AdminAPI.savePost(slug, attrs, body);
+        if (newSha) {
+          state.editingPost = state.editingPost || {};
+          state.editingPost.sha = newSha;
+        }
         try {
           await fetch(AdminAPI.DEPLOY_HOOK_URL, { method: 'POST' });
         } catch(e) { /* deploy hook optional */ }
@@ -3020,7 +3031,7 @@ window.AdminAPI = (function() {
         clearDraft(slug);
         state.posts = state.posts.map(function(p) {
           if (p.slug === slug) {
-            return { slug: slug, name: slug + '.md', sha: attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, body: body };
+            return { slug: slug, name: slug + '.md', sha: newSha || attrs._sha || p.sha, title: attrs.title, excerpt: attrs.excerpt, publishDate: attrs.publishDate, categories: attrs.categories, tags: attrs.tags, draft: attrs.draft, featured: attrs.featured, author: attrs.author, featuredImage: attrs.featuredImage, titleFontSize: attrs.titleFontSize, titleLineHeight: attrs.titleLineHeight, body: body };
           }
           if (p.slug === state.editingPost && state.editingPost.slug && state.editingPost.slug !== slug) {
             return null;
