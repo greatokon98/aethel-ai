@@ -15,15 +15,14 @@ export interface Props {
 }
 
 const { posts } = Astro.props;
-const id = 'rp-' + Math.random().toString(36).slice(2, 7);
 ---
 
 {posts.length > 0 && (
   <section class="related-posts">
     <h2 class="related-posts__title">Related Posts</h2>
     <div class="related-posts__wrap">
-      <button class="related-posts__arrow related-posts__arrow--left" id={id + '-l'} aria-label="Scroll left">&#10094;</button>
-      <div class="related-posts__grid" id={id + '-g'}>
+      <button type="button" class="related-posts__arrow related-posts__arrow--left" aria-label="Scroll left">&#10094;</button>
+      <div class="related-posts__grid">
         {posts.map((post) => (
           <PostCard
             title={post.title}
@@ -38,25 +37,32 @@ const id = 'rp-' + Math.random().toString(36).slice(2, 7);
           />
         ))}
       </div>
-      <button class="related-posts__arrow related-posts__arrow--right" id={id + '-r'} aria-label="Scroll right">&#10095;</button>
+      <button type="button" class="related-posts__arrow related-posts__arrow--right" aria-label="Scroll right">&#10095;</button>
     </div>
   </section>
 )}
 
-<script>
-  var grid = document.getElementById('{id}-g');
-  var leftBtn = document.getElementById('{id}-l');
-  var rightBtn = document.getElementById('{id}-r');
-  if (grid && leftBtn && rightBtn) {
-    function updateArrows() {
-      leftBtn.style.display = grid.scrollLeft <= 2 ? 'none' : '';
-      rightBtn.style.display = grid.scrollLeft + grid.clientWidth >= grid.scrollWidth - 2 ? 'none' : '';
-    }
-    grid.addEventListener('scroll', updateArrows);
-    leftBtn.addEventListener('click', function() { grid.scrollBy({ left: -300, behavior: 'smooth' }); });
-    rightBtn.addEventListener('click', function() { grid.scrollBy({ left: 300, behavior: 'smooth' }); });
-    updateArrows();
-  }
+<script is:inline>
+  (function() {
+    var arrows = document.querySelectorAll('.related-posts__arrow');
+    arrows.forEach(function(btn) {
+      var wrap = btn.closest('.related-posts__wrap');
+      if (!wrap) return;
+      var grid = wrap.querySelector('.related-posts__grid');
+      if (!grid) return;
+      var isLeft = btn.classList.contains('related-posts__arrow--left');
+      function update() {
+        btn.style.display = isLeft
+          ? (grid.scrollLeft <= 2 ? 'none' : '')
+          : (grid.scrollLeft + grid.clientWidth >= grid.scrollWidth - 2 ? 'none' : '');
+      }
+      grid.addEventListener('scroll', update);
+      btn.addEventListener('click', function() {
+        grid.scrollBy({ left: isLeft ? -300 : 300, behavior: 'smooth' });
+      });
+      update();
+    });
+  })();
 </script>
 
 <style>
