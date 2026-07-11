@@ -4,7 +4,8 @@ excerpt: ""
 publishDate: "2026-07-11"
 featuredImage: ""
 featured: false
-draft: false
+draft: true
+published: true
 categories:
   - "AI News"
 tags:
