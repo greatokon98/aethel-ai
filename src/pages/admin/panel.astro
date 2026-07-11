@@ -3099,6 +3099,7 @@ window.AdminAPI = (function() {
         var newSha;
         if (isDraft) {
           newSha = await AdminAPI.savePost(slug, attrs, body);
+          try { await AdminAPI.deletePendingPost(slug); } catch(e) {}
         } else {
           newSha = await AdminAPI.savePendingPost(slug, attrs, body);
         }
