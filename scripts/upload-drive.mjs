@@ -20,10 +20,20 @@ async function getAccessTokenFromEnv() {
     return accessToken;
   }
 
-  // OAuth refresh token
+  // OAuth refresh token (fall through to service account on invalid_grant)
   if (refreshToken && clientId && clientSecret) {
-    _authMode = 'refresh_token';
-    return getAccessTokenFromRefreshToken(refreshToken, clientId, clientSecret);
+    try {
+      _authMode = 'refresh_token';
+      return await getAccessTokenFromRefreshToken(refreshToken, clientId, clientSecret);
+    } catch (e) {
+      if (e.message && e.message.includes('invalid_grant')) {
+        console.warn('[auth] Refresh token expired/revoked, falling back to service account');
+        _authMode = null;
+        _authToken = null;
+      } else {
+        throw e;
+      }
+    }
   }
 
   // Service Account (from file or env)
