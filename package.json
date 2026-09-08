@@ -15,10 +15,10 @@
     "redeploy": "HOOK=$(cat .deploy-hook-url 2>/dev/null) && test -n \"$HOOK\" && curl -s -X POST \"$HOOK\" || echo 'No .deploy-hook-url file found. Run: echo \"YOUR_HOOK_URL\" > .deploy-hook-url'"
   },
   "dependencies": {
-    "@astrojs/mdx": "^7.0.2",
-    "@astrojs/react": "^6.0.1",
+    "@astrojs/mdx": "^8.0.0",
+    "@astrojs/react": "^6.0.5",
     "@astrojs/rss": "^4.0.19",
-    "@astrojs/vercel": "^11.0.2",
+    "@astrojs/vercel": "^11.0.10",
     "archiver": "^8.0.0",
     "astro": "^7.0.6",
     "front-matter": "^4.0.2",
